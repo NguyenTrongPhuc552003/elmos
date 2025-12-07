@@ -7,6 +7,7 @@
 # - Linux kernel repo: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git (mainline).
 # - Base branch: master (can be extended in config if needed).
 # - Headers setup: User must manually create $HOME/Documents/kernel-dev/linux/headers and populate with necessary headers (e.g., elf.h, byteswap.h from libelf or kernel sources).
+# - Patches: Applied with 3-way merge; conflicts generate .rej files.
 # - Build uses gmake with LLVM=1 for cross-compilation.
 # - Default ARCH mapping: arm64 (for Apple Silicon) or x86_64 (for Intel).
 # - Sparse image: Always at script's directory, mounted at /Volumes/kernel-dev.
@@ -216,6 +217,26 @@ arch)
 	echo "export TARGET_ARCH=\"$2\"" >"$MOUNT_POINT/config.env"
 	echo "Target architecture set to: $2"
 	;;
+patch)
+	[[ -z "$2" ]] && {
+		echo "Usage: $0 patch <file>"
+		exit 1
+	}
+	ensure_mounted
+	cd "$KERNEL_DIR"
+
+	echo "Applying $2 ..."
+	if git am --3way "$SCRIPT_DIR/$2"; then
+		echo "Applied cleanly"
+	else
+		echo "Conflict! Applying with .rej files..."
+		git am --abort 2>/dev/null
+		git apply --reject "$SCRIPT_DIR/$2" && echo "Check .rej files!" || {
+			echo "Patch failed completely"
+			exit 1
+		}
+	fi
+	;;
 config)
 	ensure_mounted
 	load_config
@@ -307,6 +328,7 @@ Commands:
   update                    Fetch + hard reset to upstream master
   branch <name>             Checkout (create if missing)
   arch <target>             Set target arch (arm64, x86_64, etc.)
+  patch <file>              Apply a patch file (with 3-way merge)
   config [type]             make defconfig (or allnoconfig, etc.)
   build [jobs] [targets]    Build (default: all cores, Image dtbs modules)
   clean                     make distclean
