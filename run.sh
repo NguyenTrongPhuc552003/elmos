@@ -1,0 +1,322 @@
+#!/bin/bash
+# run.sh
+# Script for managing Linux kernel build environment on macOS.
+# Follows SOLID principles: single responsibility per function, open for extension, etc.
+# Commands are handled in a case statement for clarity and maintainability.
+# Assumptions:
+# - Linux kernel repo: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git (mainline).
+# - Base branch: master (can be extended in config if needed).
+# - Headers setup: User must manually create $HOME/Documents/kernel-dev/linux/headers and populate with necessary headers (e.g., elf.h, byteswap.h from libelf or kernel sources).
+# - Build uses gmake with LLVM=1 for cross-compilation.
+# - Default ARCH mapping: arm64 (for Apple Silicon) or x86_64 (for Intel).
+# - Sparse image: Always at script's directory, mounted at /Volumes/kernel-dev.
+# - Repo: Cloned into /Volumes/kernel-dev/linux if not present.
+# - Config persisted in /Volumes/kernel-dev/config.env for TARGET_ARCH.
+# - Mount required for most commands; use no args to mount, 'exit' to unmount.
+# - Doctor checks basics; extend as needed.
+# - Delete local branch: safe delete command at local repo
+
+set -e
+
+source ./common.env # Loads PATH, HOSTCFLAGS, etc.
+
+# ─────────────────────────────────────────────────────────────
+# Global paths & defaults
+# ─────────────────────────────────────────────────────────────
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+IMAGE_FILE="${SCRIPT_DIR}/img.sparseimage"
+VOLUME_NAME="kernel-dev"
+MOUNT_POINT="/Volumes/${VOLUME_NAME}"
+KERNEL_DIR="${MOUNT_POINT}/linux"
+BASE_BRANCH="master"
+
+# Default target arch = host arch
+if [ "$(uname -m)" = "arm64" ]; then
+	DEFAULT_ARCH="arm64"
+else
+	DEFAULT_ARCH="x86_64"
+fi
+
+# ─────────────────────────────────────────────────────────────
+# Helper functions
+# ─────────────────────────────────────────────────────────────
+is_mounted() { mount | grep -q "${MOUNT_POINT}"; }
+
+section() {
+	echo "────────────────────────────────────────────"
+	echo " $1"
+	echo "────────────────────────────────────────────"
+}
+
+mount_image() {
+	if [ ! -f "${IMAGE_FILE}" ]; then
+		echo "Creating 20GB case-sensitive sparseimage..."
+		hdiutil create -size 20g -fs 'Case-sensitive APFS' -type SPARSE -volname "${VOLUME_NAME}" "${IMAGE_FILE}"
+	fi
+	echo "Mounting kernel-dev volume..."
+	hdiutil attach "${IMAGE_FILE}"
+}
+
+unmount_image() {
+	if is_mounted; then
+		echo "Unmounting ${MOUNT_POINT}..."
+		hdiutil detach -force "${MOUNT_POINT}"
+	fi
+	echo "Current hdiutil state:"
+	hdiutil info
+}
+
+ensure_mounted() {
+	if ! is_mounted; then
+		echo "Error: Volume not mounted. Run ./run.sh to mount first."
+		exit 1
+	fi
+}
+
+check_repo() {
+	if [ ! -d "${KERNEL_DIR}/.git" ]; then
+		echo "Cloning mainline Linux kernel into ${KERNEL_DIR}..."
+		git clone https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git "${KERNEL_DIR}"
+	fi
+}
+
+load_config() {
+	[ -f "${MOUNT_POINT}/config.env" ] && source "${MOUNT_POINT}/config.env"
+}
+
+# ─────────────────────────────────────────────────────────────
+# Doctor — fast & beautiful dependency check
+# ─────────────────────────────────────────────────────────────
+doctor() {
+	echo "Running doctor — environment check"
+	echo
+
+	# 1. Homebrew packages (single fast call)
+	section "Homebrew packages"
+	local DEPENDENCIES=(llvm lld gnu-sed make libelf git)
+	local installed=$(brew list --formulae)
+	local missing=()
+
+	for dep in "${DEPENDENCIES[@]}"; do
+		[[ $installed == *"$dep"* ]] || missing+=("$dep")
+	done
+
+	if [ ${#missing[@]} -eq 0 ]; then
+		echo "All required Homebrew packages are installed"
+	else
+		echo "Missing packages:"
+		printf '   • %s\n' "${missing[@]}"
+		echo
+		echo "Fix with: brew install ${missing[*]}"
+		echo
+	fi
+
+	# 2. Critical tools with version
+	section "Critical tools"
+	local ok=1
+	command -v gmake >/dev/null && echo "gmake: OK ($(gmake --version | head -n1))" || {
+		echo "gmake: MISSING (brew install make)"
+		ok=0
+	}
+	command -v clang >/dev/null && echo "clang: OK ($(clang --version | head -n1 | awk '{print $4}'))" || {
+		echo "clang: MISSING"
+		ok=0
+	}
+	command -v git >/dev/null && echo "git:   OK ($(git --version))" || {
+		echo "git:   MISSING"
+		ok=0
+	}
+
+	# 3. Custom headers (required for macOS host compilation)
+	section "macOS host headers"
+	local headers_dir="${HOME}/Documents/kernel-dev/linux/headers"
+	if [[ -d "$headers_dir" &&
+		-f "$headers_dir/elf.h" &&
+		-f "$headers_dir/byteswap.h" ]]; then
+		echo "$headers_dir: OK (elf.h & byteswap.h found)"
+	else
+		echo "$headers_dir: MISSING or incomplete"
+		echo "   Create directory and place elf.h, byteswap.h, etc."
+		echo "   (copy from libelf or kernel sources)"
+		ok=0
+	fi
+
+	# Final verdict
+	echo
+	if [ ${#missing[@]} -eq 0 ] && [ $ok -eq 1 ]; then
+		echo "Doctor result: Everything looks perfect! Ready to build Linux on macOS."
+	else
+		echo "Doctor result: Issues found — fix above and re-run './run.sh doctor'"
+		return 1
+	fi
+}
+
+# ─────────────────────────────────────────────────────────────
+# Main command dispatcher
+# ─────────────────────────────────────────────────────────────
+if [ $# -eq 0 ]; then
+	mount_image
+	check_repo
+	exit 0
+fi
+
+case "$1" in
+doctor) doctor ;;
+status)
+	ensure_mounted
+	cd "$KERNEL_DIR"
+	git status
+	;;
+reinit)
+	ensure_mounted
+	echo "This will delete the entire kernel tree and re-clone. Continue? (Y/n)"
+	read -r ans
+	[[ "$ans" == "n" || "$ans" == "N" ]] && echo "Aborted." && exit 0
+	rm -rf "$KERNEL_DIR"
+	check_repo
+	;;
+update)
+	ensure_mounted
+	cd "$KERNEL_DIR"
+	git fetch origin
+	git reset --hard "origin/$BASE_BRANCH"
+	git clean -fd
+	;;
+branch)
+	[[ -z "$2" ]] && {
+		echo "Usage: $0 branch <name|tag>"
+		exit 1
+	}
+	ensure_mounted
+	cd "$KERNEL_DIR"
+
+	case "$2" in
+	v*) # v6.18, v6.17, etc.
+		if git show-ref --tags --quiet "refs/tags/$2"; then
+			echo "Official tag $2 found → checking out"
+			git checkout "$2"
+			exit 0
+		fi
+		;;
+	esac
+
+	# Existing local branch → just switch
+	git show-ref --quiet "refs/heads/$2" && {
+		git checkout "$2"
+		exit 0
+	}
+
+	# Nothing found → create new branch tracking origin/master
+	echo "Creating new branch $2 from origin/master"
+	git checkout -b "$2" --track origin/master
+	;;
+arch)
+	[[ -z "$2" ]] && echo "Usage: $0 arch <arm64|x86_64|...>" && exit 1
+	ensure_mounted
+	echo "export TARGET_ARCH=\"$2\"" >"$MOUNT_POINT/config.env"
+	echo "Target architecture set to: $2"
+	;;
+config)
+	ensure_mounted
+	load_config
+	arch="${TARGET_ARCH:-$DEFAULT_ARCH}"
+	cd "$KERNEL_DIR"
+	gmake ARCH="$arch" LLVM=1 "${2:-defconfig}"
+	;;
+build)
+	ensure_mounted
+	load_config
+	arch="${TARGET_ARCH:-$DEFAULT_ARCH}"
+	jobs="${2:-$(sysctl -n hw.ncpu)}"
+
+	# shift past "build" and optional job count
+	shift
+	if [ -n "$1" ] && [ "$1" -eq "$1" ] 2>/dev/null; then
+		jobs="$1"
+		shift
+	fi
+
+	# if anything left → user targets, else default
+	targets="${*:-Image dtbs modules}"
+
+	cd "$KERNEL_DIR"
+	echo "Building ARCH=$arch | $jobs jobs | $targets"
+	gmake ARCH="$arch" LLVM=1 -j"$jobs" $targets
+	;;
+clean)
+	ensure_mounted
+	load_config
+	arch="${TARGET_ARCH:-$DEFAULT_ARCH}"
+	cd "$KERNEL_DIR"
+	gmake ARCH="$arch" LLVM=1 distclean
+	;;
+reset)
+	ensure_mounted
+	cd "$KERNEL_DIR"
+	echo "This will discard all local changes and reset to origin/$BASE_BRANCH. Continue? (Y/n)"
+	read -r ans
+	[[ "$ans" == "n" || "$ans" == "N" ]] && echo "Aborted." && exit 0
+	git reset --hard "origin/$BASE_BRANCH"
+	git clean -fd
+	;;
+delete)
+	[[ -z "$2" ]] && {
+		echo "Usage: $0 delete <branch>"
+		exit 1
+	}
+
+	ensure_mounted
+	cd "$KERNEL_DIR"
+
+	BRANCH="$2"
+
+	# Safety: refuse to delete master or main
+	if [[ "$BRANCH" == "master" || "$BRANCH" == "main" ]]; then
+		echo "Error: Cowardly refusing to delete '$BRANCH'"
+		exit 1
+	fi
+
+	# Must not be on the branch you're deleting
+	CURRENT=$(git branch --show-current)
+	if [[ "$CURRENT" == "$BRANCH" ]]; then
+		echo "Error: You are currently on '$BRANCH'. Switch away first."
+		exit 1
+	fi
+
+	# Delete only local branch
+	if git show-ref --quiet "refs/heads/$BRANCH"; then
+		git branch -D "$BRANCH"
+		echo "Deleted local branch: $BRANCH"
+	else
+		echo "Branch '$BRANCH' does not exist locally"
+	fi
+	;;
+exit)
+	unmount_image
+	;;
+help | *)
+	cat <<EOF
+Usage: ./run.sh [command] [args]
+
+No argument → mount (or create) img.sparseimage + ensure kernel repo
+
+Commands:
+  doctor                    Fast dependency & environment check
+  status                    git status
+  reinit                    Delete & re-clone kernel repo
+  update                    Fetch + hard reset to upstream master
+  branch <name>             Checkout (create if missing)
+  arch <target>             Set target arch (arm64, x86_64, etc.)
+  config [type]             make defconfig (or allnoconfig, etc.)
+  build [jobs] [targets]    Build (default: all cores, Image dtbs modules)
+  clean                     make distclean
+  reset                     git reset --hard origin/master (with confirm)
+  delete <branch>           Safe delete a local branch
+  exit                      Unmount volume
+  help                      This message
+
+Enjoy building Linux on macOS!
+EOF
+	[[ "$1" != "help" ]] && exit 1
+	;;
+esac
