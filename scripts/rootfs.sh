@@ -12,8 +12,8 @@ _is_stage1_ready() {
 }
 
 _confirm_rebuild() {
-	echo -e " [${YELLOW}INFO${NC}] $1 already exists."
-	echo -n " [?] Do you want to rebuild it (y/N)? "
+	echo -e "  [${YELLOW}INFO${NC}] $1 already exists."
+	echo -n "  [?] Do you want to rebuild it (y/N)? "
 	read -r response
 	[[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]
 }
@@ -31,18 +31,18 @@ prepare_rootfs_directory() {
 	fi
 
 	if _is_stage1_ready && ! _confirm_rebuild "Rootfs directory (stage 1)"; then
-		echo -e " [${YELLOW}SKIP${NC}] Using existing stage 1 rootfs."
+		echo -e "  [${YELLOW}SKIP${NC}] Using existing stage 1 rootfs."
 		return 0
 	fi
 
-	echo -e " [${YELLOW}ROOTFS${NC}] Preparing Debian root filesystem (stage 1) for arch=${arch}..."
+	echo -e "  [${YELLOW}ROOTFS${NC}] Preparing Debian root filesystem (stage 1) for arch=${arch}..."
 
 	# Clean old rootfs directory
 	sudo rm -rf "${ROOTFS_DIR}"
 	mkdir -p "${ROOTFS_DIR}"
 
 	# Run debootstrap stage 1 (--foreign)
-	echo -e " [${YELLOW}DEBOOTSTRAP${NC}] Running stage 1 (foreign)..."
+	echo -e "  [${YELLOW}DEBOOTSTRAP${NC}] Running stage 1 (foreign)..."
 	sudo DEBOOTSTRAP_DIR="${DEBOOTSTRAP_PATH}" fakeroot "${DEBOOTSTRAP_PATH}/debootstrap" \
 		--foreign \
 		--arch="${arch}" \
@@ -52,7 +52,7 @@ prepare_rootfs_directory() {
 		"${DEBIAN_MIRROR}"
 
 	if [ $? -ne 0 ]; then
-		echo -e " [${RED}FAIL${NC}] Debootstrap stage 1 failed."
+		echo -e "  [${RED}FAIL${NC}] Debootstrap stage 1 failed."
 		exit 1
 	fi
 
@@ -92,7 +92,7 @@ exec /bin/sh
 EOF
 
 	chmod +x "${ROOTFS_DIR}/init"
-	echo -e " [${GREEN}SUCCESS${NC}] Stage 1 rootfs prepared with smart /init."
+	echo -e "  [${GREEN}SUCCESS${NC}] Stage 1 rootfs prepared with smart /init."
 }
 
 # ─────────────────────────────────────────────────────────────
@@ -102,11 +102,11 @@ create_disk_image() {
 	prepare_rootfs_directory
 
 	if [ -f "${DISK_IMAGE}" ] && ! _confirm_rebuild "Disk image (${DISK_IMAGE})"; then
-		echo -e " [${YELLOW}SKIP${NC}] Using existing disk image."
+		echo -e "  [${YELLOW}SKIP${NC}] Using existing disk image."
 		return 0
 	fi
 
-	echo -e " [${YELLOW}DISK${NC}] Creating ext4 disk image (${DISK_SIZE})..."
+	echo -e "  [${YELLOW}DISK${NC}] Creating ext4 disk image (${DISK_SIZE})..."
 
 	# Remove old image if rebuilding
 	[ -f "${DISK_IMAGE}" ] && rm -f "${DISK_IMAGE}"
@@ -115,10 +115,10 @@ create_disk_image() {
 	mke2fs -t ext4 -E lazy_itable_init=0,lazy_journal_init=0 -d "${ROOTFS_DIR}" "${DISK_IMAGE}" "${DISK_SIZE}"
 
 	if [ $? -eq 0 ]; then
-		echo -e " [${GREEN}SUCCESS${NC}] Disk image created and populated: ${DISK_IMAGE}"
+		echo -e "  [${GREEN}SUCCESS${NC}] Disk image created and populated: ${DISK_IMAGE}"
 	else
-		echo -e " [${RED}FAIL${NC}] Failed to create disk image. Ensure 'e2fsprogs' is installed via Homebrew."
-		echo "   Run: brew install e2fsprogs"
+		echo -e "  [${RED}FAIL${NC}] Failed to create disk image. Ensure 'e2fsprogs' is installed via Homebrew."
+		echo "  Run: brew install e2fsprogs"
 		exit 1
 	fi
 }
