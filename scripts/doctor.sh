@@ -18,9 +18,45 @@ check_item() {
 }
 
 # ─────────────────────────────────────────────────────────────
+# Helper: Taps MacOS check
+# ─────────────────────────────────────────────────────────────
+taps_check() {
+	echo "Checking Homebrew taps:"
+
+	local REQUIRED_TAPS=(
+		messense/macos-cross-toolchains
+	)
+
+	local INSTALLED_TAPS
+	INSTALLED_TAPS=$(brew tap 2>/dev/null)
+
+	local missing=0
+
+	for tap in "${REQUIRED_TAPS[@]}"; do
+		if echo "$INSTALLED_TAPS" | grep -Fxq "$tap"; then
+			check_item "Tap: $tap" true
+		else
+			check_item "Tap: $tap" false
+			echo -e "${YELLOW}Fix:${NC} brew tap $tap"
+			((issues_found++))
+			missing=1
+		fi
+	done
+
+	echo
+	return $missing
+}
+
+# ─────────────────────────────────────────────────────────────
 # 1. Check Homebrew packages
 # ─────────────────────────────────────────────────────────────
 check_homebrew_packages() {
+	# Check required taps first
+	if ! taps_check; then
+		echo -e "${RED}Error:${NC} Missing required Homebrew taps. Aborting package check."
+		return 1
+	fi
+
 	echo "Checking required Homebrew packages:"
 	local REQUIRED=(
 		llvm
