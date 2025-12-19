@@ -69,6 +69,9 @@ check_homebrew_packages() {
 		fakeroot
 		e2fsprogs
 		wget
+		riscv64-elf-gdb
+		arm-none-eabi-gdb
+		aarch64-elf-gdb
 	)
 
 	# Get installed formulae (one per line)
