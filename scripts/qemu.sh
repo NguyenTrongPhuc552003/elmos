@@ -33,6 +33,14 @@ _configure_qemu_for_arch() {
 		QEMU_BIOS="" # EFI not needed for direct kernel boot on virt
 		;;
 
+	arm)
+		QEMU_BIN="qemu-system-arm"
+		QEMU_MACHINE="virt"
+		QEMU_CPU="cortex-a15" # Reliable and widely supported
+		QEMU_CONSOLE="ttyAMA0"
+		QEMU_BIOS="" # EFI not needed for direct kernel boot on virt
+		;;
+
 	*)
 		echo -e "  [${RED}ERROR${NC}] Unsupported TARGET_ARCH for QEMU: ${TARGET_ARCH}" >&2
 		exit 1
