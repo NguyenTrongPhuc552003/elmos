@@ -48,6 +48,7 @@ _execute_qemu() {
 	_configure_qemu_for_arch
 
 	local KERNEL_IMAGE="${KERNEL_DIR}/arch/${TARGET_ARCH}/boot/Image"
+	local VMLINUX="${KERNEL_DIR}/vmlinux"
 
 	# Validation
 	if ! command -v "$QEMU_BIN" >/dev/null 2>&1; then
@@ -68,7 +69,7 @@ _execute_qemu() {
 	fi
 
 	echo -e "  [${YELLOW}QEMU${NC}] Starting ${GREEN}${TARGET_ARCH}${NC} emulation with disk-based rootfs..."
-	[ -n "$GDB_FLAGS" ] && echo -e "  [${YELLOW}DEBUG${NC}] GDB stub enabled (-s -S). Connect with: gdb -ex \"target remote localhost:${QEMU_GDB_PORT}\""
+	[ -n "$GDB_FLAGS" ] && echo -e "  [${YELLOW}DEBUG${NC}] GDB stub enabled. Connect using port ${QEMU_GDB_PORT}"
 
 	# Base command
 	local QEMU_CMD=(
@@ -112,7 +113,45 @@ _execute_qemu() {
 }
 
 # ─────────────────────────────────────────────────────────────
-# 3. Unified QEMU runner – handles debug and verbose modes
+# 3. Check if debug info is enabled in kernel config
+# ─────────────────────────────────────────────────────────────
+_check_debug_info_enabled() {
+	local config_file="${KERNEL_DIR}/.config" # Use actual .config instead of defconfig
+
+	if [ ! -f "$config_file" ]; then
+		echo -e "  [${RED}ERROR${NC}] Kernel config not found: $config_file"
+		echo "  Run './run.sh config defconfig' or similar first."
+		return 1
+	fi
+
+	# Check if either:
+	# - CONFIG_DEBUG_KERNEL=y (parent: enables the whole Kernel debugging section)
+	# - OR CONFIG_DEBUG_INFO_DWARF5=y (the actual DWARF setting)
+	if grep -q "^CONFIG_DEBUG_KERNEL=y" "$config_file" ||
+		grep -q "^CONFIG_DEBUG_INFO_DWARF5=y" "$config_file"; then
+		return 0
+	fi
+
+	echo -e "  [${RED}ERROR${NC}] Kernel debugging symbols not properly enabled!"
+	echo "  Required: Kernel hacking → Kernel debugging must be enabled"
+	echo "            AND Debug information → Generate DWARF debug info"
+	echo
+	echo "  Enable via:"
+	echo "    ./run.sh config menuconfig"
+	echo "    → Kernel hacking"
+	echo "        → [*] Kernel debugging"
+	echo "        → Compile-time checks and compiler options"
+	echo "            → Debug information"
+	echo "                → [*] Generate DWARF Version 5 debug info (or toolchain default)"
+	echo
+	echo "  Alternatively, ensure at least one of these is set in .config:"
+	echo "    CONFIG_DEBUG_KERNEL=y"
+	echo "    CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT=y"
+	return 1
+}
+
+# ─────────────────────────────────────────────────────────────
+# 4. Unified QEMU runner – handles debug and verbose modes
 # ─────────────────────────────────────────────────────────────
 run_qemu() {
 	local debug_mode=""
@@ -123,6 +162,13 @@ run_qemu() {
 		-d | --debug)
 			debug_mode="yes"
 			shift
+			# Check if next arg is 0 or 1 (optional toggle)
+			if [[ "$1" =~ ^[01]$ ]]; then
+				debug_submode="$1"
+				shift
+			else
+				debug_submode="0" # default
+			fi
 			;;
 		-v | --verbose)
 			verbose_mode="yes"
@@ -130,45 +176,68 @@ run_qemu() {
 			;;
 		-h | --help)
 			cat <<EOF
-${GREEN}QEMU Launcher Help${NC}
-
 Usage: ./run.sh qemu [options]
 
 Options:
-  -d      	 Start QEMU in debug mode
-			 > Opens GDB stub on tcp::${QEMU_GDB_PORT}
-			 > Pauses CPU at startup (-S flag)
-			 > Connect with: riscv64-unknown-linux-gnu-gdb vmlinux
-					 (gdb) target remote localhost:${QEMU_GDB_PORT}
-					 (gdb) continue
-
-  -v, --verbose  Disable -nographic → shows QEMU graphical window
-            	 (useful for virtio-gpu testing or future framebuffer console)
-
-  -h, --help     Show this help message
-
-Examples:
-  ./run.sh qemu              Normal console boot
-  ./run.sh qemu -d           Debug mode (paused, waiting for GDB)
-  ./run.sh qemu -verbose     Boot with graphical window
-  ./run.sh qemu -d -verbose  Debug mode + graphical window
-  ./run.sh qemu -h           Show this help
-
+  -d    Start QEMU as a server and wait for GDB connection (Port ${QEMU_GDB_PORT})
+  -d 1  Launch cross-arch GDB and auto-connect to the server
+  -v    Enable graphical output (window mode)
 EOF
 			return 0
 			;;
 		*)
 			echo -e "  [${RED}ERROR${NC}] Unknown argument: $1"
-			echo "  Usage: ./run.sh qemu [-h] [-d] [-verbose]"
+			echo "  Use './run.sh qemu -h' for help."
 			return 1
 			;;
 		esac
 	done
 
-	if [ -n "$debug_mode" ]; then
-		echo -e " [${YELLOW}QEMU${NC}] Starting in DEBUG mode (GDB stub on port $QEMU_GDB_PORT, CPU paused)"
-		_execute_qemu "-s -S" "$verbose_mode"
-	else
+	# NORMAL BOOT
+	if [ -z "$debug_mode" ]; then
 		_execute_qemu "" "$verbose_mode"
+		return 0
+	fi
+
+	# DEBUG SERVER (Submode 0)
+	if [ "$debug_submode" = "0" ]; then
+		_check_debug_info_enabled || return 1
+		_execute_qemu "-s -S" "$verbose_mode"
+		return 0
+	fi
+
+	# GDB CLIENT (Submode 1)
+	if [ "$debug_submode" = "1" ]; then
+		local gdb_bin
+
+		# Determine cross-GDB binary based on TARGET_ARCH
+		case "$TARGET_ARCH" in
+		riscv) gdb_bin="riscv64-elf-gdb" ;;
+		arm64) gdb_bin="aarch64-elf-gdb" ;;
+		arm) gdb_bin="arm-none-eabi-gdb" ;;
+		*)
+			echo -e "  [${RED}ERROR${NC}] Unsupported TARGET_ARCH for GDB: ${TARGET_ARCH}" >&2
+			return 1
+			;;
+		esac
+
+		if ! command -v "$gdb_bin" >/dev/null 2>&1; then
+			echo -e "  [${RED}ERROR${NC}] Cross-GDB not found: $gdb_bin"
+			return 1
+		fi
+
+		local vmlinux="${KERNEL_DIR}/vmlinux"
+		[ ! -f "$vmlinux" ] && {
+			echo "  [ERROR] vmlinux missing."
+			return 1
+		}
+
+		echo -e "  [${GREEN}GDB${NC}] Connecting to localhost:${QEMU_GDB_PORT}..."
+
+		# Launch GDB with auto-attach commands
+		exec "$gdb_bin" "$vmlinux" \
+			-ex "target remote localhost:${QEMU_GDB_PORT}" \
+			-ex "layout src" \
+			-ex "break start_kernel"
 	fi
 }
