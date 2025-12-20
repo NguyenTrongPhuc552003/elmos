@@ -22,7 +22,7 @@ Our workarounds:
 - **Env tweaks**: `HOSTCFLAGS` exposes macOS SDK features without hardcoding.
 - **Script automation**: `run.sh` handles mounting, patching, and ARCH switching.
 
-This lets you build v6.18 RISC-V natively—faster clean builds than on Linux hosts, per benchmarks.
+This lets you build v6.18 ARM64 natively—faster clean builds than on Linux hosts, per benchmarks.
 
 ## Quick Start with ARM64 target
 
@@ -40,7 +40,7 @@ This lets you build v6.18 RISC-V natively—faster clean builds than on Linux ho
    cd kernel-dev
    chmod +x run.sh
    ./run.sh help    # How to use this script?
-   ./run.sh doctor  # Checks deps (installs fixes if needed)
+   ./run.sh doctor  # Checks deps and taps (installs fixes if needed)
    ```
 
 3. **Mount & Clone Kernel** (first time only):
@@ -65,20 +65,24 @@ This lets you build v6.18 RISC-V natively—faster clean builds than on Linux ho
 
    ```bash
    ./run.sh arch arm64  # You can choose riscv, arm, ...
-   ./run.sh config      # Default: defconfig, you can choose another
-   ./run.sh build       # Or ./run.sh build 8 for 8 threads, default: -j$(nproc)
+   ./run.sh config  # Default: defconfig, you can choose another
+   ./run.sh build   # Or ./run.sh build 8 for 8 threads, default: -j$(nproc)
+   ./run.sh rootfs  # Prepare & package Debian rootfs on an ext4 disk image   
    ```
 
 7. **Output**:
 
-   - `arch/riscv/boot/Image`: Bootable RISC-V kernel.
-   - Test in QEMU: `qemu-system-riscv64 -M virt -cpu rv64 -smp 4 -m 2G -kernel arch/riscv/boot/Image -nographic -append "console=ttyS0 root=/dev/vda ro"`
+   ```bash
+   /Volumes/kernel-dev
+   ├── disk.img                     # An ext4 disk image
+   ├── linux/arch/arm64/boot/Image  # Our final kernel image
+   └── rootfs                       # A minimal rootfs
+   ```
 
 8. **Launch in QEMU:**
    ```bash
-   ./run.sh rootfs   # Prepare & package Debian Initramfs
    ./run.sh qemu     # Start running our Image (default: -nographic)
-   ./run.sh qemu -d  # Or boot with GDB stub enabled (port: 2222)
+   ./run.sh qemu -d  # Or boot with GDB stub enabled (port: 2222)  [Experimental]
    ```
 
 Switch to RISC-V: `./run.sh arch riscv && ./run.sh config && ./run.sh build`.
@@ -99,7 +103,7 @@ Add these to `common.env` or export manually. Each fixes a specific macOS gap:
 - `-I${LIBELF_INCLUDE}` (e.g., `$(brew --prefix libelf)/include`): Links libelf for ELF parsing in host tools like `modpost`. Fixes "elf.h not found" during module alias generation.
 - `-D_UUID_T -D__GETHOSTUUID_H`: Suppresses `uuid_t` conflicts. macOS `<sys/types.h>` defines `uuid_t` as a struct; Linux expects `int`/`uint32_t` in `file2alias.c`. These undefine/redefine to match kernel expectations.
 - `-D_DARWIN_C_SOURCE`: Unlocks macOS 10.15+ APIs (e.g., advanced syscalls in `<unistd.h>`). Without it, Clang hides non-POSIX features during host compilation.
-- `-D_FILE_OFFSET_BITS=64`: Enables 64-bit file offsets (`off_t` as 64-bit). macOS defaults to this, but kernel host tools assume Linux's 32-bit fallback—prevents overflow in large initramfs.
+- `-D_FILE_OFFSET_BITS=64`: Enables 64-bit file offsets (`off_t` as 64-bit). macOS defaults to this, but kernel host tools assume Linux's 32-bit fallback—prevents overflow in large rootfs.
 
 Full example:
 
@@ -115,7 +119,7 @@ export HOSTCFLAGS="-I${MACOS_HEADERS} -I${LIBELF_INCLUDE} -D_UUID_T -D__GETHOSTU
 
 ## Repo Structure
 
-```tree
+```bash
 .
 ├── LICENSE             # MIT License
 ├── README.md           # This guide
@@ -134,8 +138,8 @@ export HOSTCFLAGS="-I${MACOS_HEADERS} -I${LIBELF_INCLUDE} -D_UUID_T -D__GETHOSTU
 │   ├── image.sh        # Handles sparse image mounting and unmounting.
 │   ├── patch.sh        # Handles git apply --3way for patch files.
 │   ├── repo.sh         # Handles git status, clone, update, reset, and reinitialize.
-│   ├── qemu.sh         # Launching QEMU with built initramfs.cpio and kernel Image
-│   └── rootfs.sh       # Initramfs/RootFS initialization using debootstrap tool
+│   ├── qemu.sh         # Launching QEMU with built disk.img and kernel Image
+│   └── rootfs.sh       # RootFS and disk.img initialization using debootstrap tool
 └── tools/
     └── debootstrap     # Debian bootstrap toolset
 ```
@@ -164,13 +168,22 @@ export HOSTCFLAGS="-I${MACOS_HEADERS} -I${LIBELF_INCLUDE} -D_UUID_T -D__GETHOSTU
 
 - [x] **v1.0.0**: Initial native kernel build success.
 - [x] **v1.1.0**: Modular scripts, automated debootstrap, and stable Initramfs boot.
-- [ ] **v2.0.0**: Persistent Storage Mode (**soon**) — Transitioning to persistent EXT4 disk images for faster booting.
+- [x] **v2.0.0**: **dev/rootfs Release** 
+  Persistent Storage Mode — Full transition to EXT4 disk images, one-time second-stage debootstrap via smart `/init`, faster and stable booting.
+
+- [ ] **v2.1.0**: Professional QEMU + GDB Integration **(soon)**  
+  One-command debugging experience via `./run.sh qemu -d`:
+  - Automatic cross-toolchain GDB selection (riscv64-elf-gdb / aarch64-elf-gdb / arm-none-eabi-gdb)
+  - Seamless macOS Terminal integration: GDB in foreground, QEMU in background window
+  - Proper debug symbol validation (`CONFIG_DEBUG_KERNEL` / `CONFIG_DEBUG_INFO_*`)
+  - Clean shutdown and resource management
+  - Architecture-aware and user-friendly workflow
 
 ## Credits & Inspiration
 
 - **Original Tutorial**: [Building Linux on macOS Natively](https://seiya.me/blog/building-linux-on-macos-natively) by Seiya Suzuki—fixed v6.17 issues (old make, sed, headers). Inspired our v6.18 extensions.
 - **Upstream**: [Clang Built Linux](https://clangbuiltlinux.github.io/) for LLVM guidance; [LKML Kbuild thread](https://lore.kernel.org/lkml/20241002091726.12345-1-masahiroy@kernel.org/) for v6.18 details.
-- **Author**: Phuc Nguyen (@NguyenTrongPhuc552003) — first native v6.18 RISC-V on macOS Tahoe.
+- **Author**: Phuc Nguyen (@NguyenTrongPhuc552003) — first native v6.18 RISC-V/ARM on macOS Tahoe.
 
 ## License
 
