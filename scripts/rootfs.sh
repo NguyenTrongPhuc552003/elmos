@@ -94,6 +94,15 @@ ip route add default via 10.0.2.2
 # DNS setup
 echo "nameserver 8.8.8.8" > /etc/resolv.conf
 
+# Mount the 9p share from macOS
+mkdir -p /mnt/modules
+mount -t 9p -o trans=virtio modules_mount /mnt/modules
+
+# Execute the sync script if it exists
+if [ -f /mnt/modules/guest_sync.sh ]; then
+    sh /mnt/modules/guest_sync.sh
+fi
+
 echo "System ready."
 
 # Drop to interactive shell
