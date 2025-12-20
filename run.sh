@@ -76,7 +76,7 @@ config)
 	run_config "$1"
 	;;
 rootfs)
-	package_initramfs
+	create_disk_image
 	;;
 build)
 	run_build "$@" # Pass all remaining arguments (jobs, targets)
@@ -85,12 +85,7 @@ clean)
 	run_clean
 	;;
 qemu)
-	# Check for a second argument
-	if [ "$2" = "-d" ]; then
-		run_qemu_gdb
-	else
-		run_qemu
-	fi
+	run_qemu "$@"
 	;;
 
 # --------------------------------------------------
@@ -117,7 +112,7 @@ help | *)
 	printf "    %-15s %s\n" "delete <name>" "Safely deletes a local branch."
 	echo
 	printf "  ${GREEN}Build Pipeline${NC}\n"
-	printf "    %-15s %s\n" "arch <target>" "Sets target architecture (e.g., arm64, x86_64)."
+	printf "    %-15s %s\n" "arch <target>" "Sets target architecture (e.g., riscv, arm64)."
 	printf "    %-15s %s\n" "patch <file>" "Applies a patch file (e.g., patches/v6.18/0001.patch)."
 	printf "    %-15s %s\n" "config [type]" "make defconfig or type (e.g., allnoconfig)."
 	printf "    %-15s %s\n" "rootfs" "Creates/packages minimal Debian Initramfs (debootstrap)."
