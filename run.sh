@@ -98,6 +98,18 @@ qemu)
 	;;
 
 # --------------------------------------------------
+# Version Info
+# --------------------------------------------------
+version)
+	echo "Linux Kernel on macOS - Build & Management Script"
+	printf "Version: ${PURPLE}${REPO_VERSION}${NC}\n"
+	printf "Copyright (C) ${RELEASE_YEAR} ${AUTHOR_NAME}\n"
+	printf "License: ${REPO_LICENSE}\n"
+	printf "Repository: <${GREEN}${REPO_LINK}${NC}>\n"
+	printf "Report: <${YELLOW}${REPO_LINK}/issues${NC}>\n"
+	;;
+
+# --------------------------------------------------
 # Help Menu
 # --------------------------------------------------
 help)
@@ -129,6 +141,9 @@ help)
 	echo
 	printf "  ${GREEN}Debugger Execution${NC}\n"
 	printf "    %-${HELPER_LENGTH}s %s\n" "qemu [-d]" "Runs or debugs the built kernel in QEMU (using current ARCH)."
+	echo
+	printf "  ${GREEN}Version Info${NC}\n"
+	printf "    %-${HELPER_LENGTH}s %s\n" "version" "Displays version and repository information."
 	echo
 	printf "  ${GREEN}Help Menu${NC}\n"
 	printf "    %-${HELPER_LENGTH}s %s\n" "help" "Displays this help menu."
