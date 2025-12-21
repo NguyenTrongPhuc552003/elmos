@@ -56,7 +56,7 @@ run_config() {
 
 	# Execute make command with required environment variables
 	# We use LLVM=1 and the cross-compiler prefix
-	if make ARCH="$TARGET_ARCH" LLVM=1 CROSS_COMPILE=llvm- "$config_type"; then
+	if make ARCH="$TARGET_ARCH" LLVM=1 CROSS_COMPILE="$CROSS_COMPILE" "$config_type"; then
 		echo -e "  [${GREEN}SUCCESS${NC}] Configuration complete."
 	else
 		echo -e "  [${RED}FAIL${NC}] Configuration failed. Check 'make ${config_type}' output."
@@ -92,7 +92,7 @@ run_build() {
 
 	# Execute build command
 	# Assuming 'make' in PATH is GNU make (via common.env)
-	if make -j"$jobs" ARCH="$TARGET_ARCH" LLVM=1 CROSS_COMPILE=llvm- $targets; then
+	if make -j"$jobs" ARCH="$TARGET_ARCH" LLVM=1 CROSS_COMPILE="$CROSS_COMPILE" $targets; then
 		echo -e "  [${GREEN}SUCCESS${NC}] Build complete!"
 	else
 		echo -e "  [${RED}FAIL${NC}] Build failed. Check logs."
