@@ -12,3 +12,6 @@
 *.order
 *.cmd
 *.tmp_versions/
+
+# Auto-generated kernel module scripts
+guesync.sh
