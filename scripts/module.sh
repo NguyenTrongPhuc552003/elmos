@@ -9,6 +9,9 @@ MOD_CONFIG="${MODULES_DIR}/module.cfg"
 # Load existing state if it exists
 if [ -f "$MOD_CONFIG" ]; then
 	source "$MOD_CONFIG"
+	# Convert the space-separated strings from the file into Bash arrays
+	MODULE_INS=($MODULE_INS)
+	MODULE_REM=($MODULE_REM)
 else
 	# Initialize empty arrays if no config exists
 	MODULE_INS=()
@@ -21,8 +24,9 @@ fi
 _save_mod_state() {
 	{
 		echo "# Auto-generated module state"
-		echo "MODULE_INS=($(printf "\"%s\" " "${MODULE_INS[@]}"))"
-		echo "MODULE_REM=($(printf "\"%s\" " "${MODULE_REM[@]}"))"
+		# Convert arrays to space-separated strings
+		echo "MODULE_INS=\"${MODULE_INS[*]}\""
+		echo "MODULE_REM=\"${MODULE_REM[*]}\""
 	} >"$MOD_CONFIG"
 }
 
@@ -34,6 +38,40 @@ _queue_contains() {
 	shift
 	for e; do [[ "$e" == "$match" ]] && return 0; done
 	return 1
+}
+
+# ─────────────────────────────────────────────────────────────
+# Internal: Manage the state of module queues
+# ─────────────────────────────────────────────────────────────
+_update_queue() {
+	local mode="$1" target="$2" targets=()
+
+	# 1. Expand targets: if empty or "*", find all directories with a Makefile
+	if [ -z "$target" ] || [ "$target" = "*" ]; then
+		for d in "${MODULES_DIR}"/*/; do [ -f "${d}Makefile" ] && targets+=("$(basename "$d")"); done
+	else
+		targets=("$target")
+	fi
+
+	for item in "${targets[@]}"; do
+		# Pointers to simplify logic: "primary" is the queue we add to, "secondary" is the one we remove from
+		if [ "$mode" = "insmod" ]; then
+			_queue_contains "$item" "${MODULE_INS[@]}" && continue
+			MODULE_INS+=("$item")
+			local tmp=()
+			for m in "${MODULE_REM[@]}"; do [[ "$m" != "$item" ]] && tmp+=("$m"); done
+			MODULE_REM=("${tmp[@]}")
+			echo -e "  [${GREEN}+${NC}] Queued for insmod: $item"
+		else
+			_queue_contains "$item" "${MODULE_REM[@]}" && continue
+			MODULE_REM+=("$item")
+			local tmp=()
+			for m in "${MODULE_INS[@]}"; do [[ "$m" != "$item" ]] && tmp+=("$m"); done
+			MODULE_INS=("${tmp[@]}")
+			echo -e "  [${RED}-${NC}] Queued for rmmod: $item"
+		fi
+	done
+	_save_mod_state
 }
 
 # ─────────────────────────────────────────────────────────────
@@ -213,45 +251,11 @@ EOF
 		;;
 
 	insmod)
-		local item="${target_mod:-*}"
-
-		if _queue_contains "$item" "${MODULE_INS[@]}"; then
-			echo -e "  [${YELLOW}!${NC}] $item is already in the insmod queue."
-		else
-			# 1. Add to insmod queue
-			MODULE_INS+=("$item")
-
-			# 2. (Optional) Remove from rmmod queue if it was there
-			local temp_rem=()
-			for m in "${MODULE_REM[@]}"; do
-				[[ "$m" != "$item" ]] && temp_rem+=("$m")
-			done
-			MODULE_REM=("${temp_rem[@]}")
-
-			_save_mod_state
-			echo -e "  [${GREEN}+${NC}] Queued for insmod: $item"
-		fi
+		_update_queue "insmod" "$target_mod"
 		;;
 
 	rmmod)
-		local item="${target_mod:-*}"
-
-		if _queue_contains "$item" "${MODULE_REM[@]}"; then
-			echo -e "  [${YELLOW}!${NC}] $item is already in the rmmod queue."
-		else
-			# 1. Add to rmmod queue
-			MODULE_REM+=("$item")
-
-			# 2. (Optional) Remove from insmod queue if it was there
-			local temp_ins=()
-			for m in "${MODULE_INS[@]}"; do
-				[[ "$m" != "$item" ]] && temp_ins+=("$m")
-			done
-			MODULE_INS=("${temp_ins[@]}")
-
-			_save_mod_state
-			echo -e "  [${RED}-${NC}] Queued for rmmod: $item"
-		fi
+		_update_queue "rmmod" "$target_mod"
 		;;
 
 	clean)
