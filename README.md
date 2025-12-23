@@ -207,7 +207,6 @@ export HOSTCFLAGS="-I${MACOS_HEADERS} -I${LIBELF_INCLUDE} -D_UUID_T -D__GETHOSTU
 ├── LICENSE             # MIT License
 ├── README.md           # This guide
 ├── common.env          # Env vars: PATH, HOSTCFLAGS, ANSI Colors, and sources all modular scripts.
-├── img.sparseimage     # 20GB case-sensitive APFS volume (hdiutil mount)
 ├── libraries/          # Shims: byteswap.h (Clang builtins), elf.h (libelf compat)
 │   └── asm/            # Symlinks to kernel uapi/asm-generic (bitsperlong.h, int-ll64.h, posix_types.h, types.h)
 ├── modules/            # Sample kernel modules (hello_world/)
