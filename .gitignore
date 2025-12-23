@@ -1,2 +1,17 @@
+# Allocated linux kernel workspace
 *.sparseimage
+
+# Configuration files
 *.cfg
+
+# Kernel build artifacts
+*.ko
+*.mod*
+*.o
+*.symvers
+*.order
+*.cmd
+*.tmp_versions/
+
+# Auto-generated kernel module scripts
+guesync.sh

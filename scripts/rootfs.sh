@@ -94,6 +94,18 @@ ip route add default via 10.0.2.2
 # DNS setup
 echo "nameserver 8.8.8.8" > /etc/resolv.conf
 
+# Mount the 9p share from macOS
+mkdir -p /mnt/modules
+mount -t 9p -o trans=virtio,version=9p2000.L modules_mount /mnt/modules
+
+# Execute module orchestration script if present
+if [ -f /mnt/modules/guesync.sh ]; then
+	echo "Running guest module synchronization script..."
+	/mnt/modules/guesync.sh
+else
+	echo "No module synchronization script found."
+fi
+
 echo "System ready."
 
 # Drop to interactive shell
