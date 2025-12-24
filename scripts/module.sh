@@ -167,28 +167,54 @@ _module_info() {
 # ─────────────────────────────────────────────────────────────
 # Design: Provides a dashboard of what is built and what is queued for QEMU.
 _module_status() {
+	local target_mod="$1"
+
 	echo -e "  [${GREEN}STATUS${NC}] Kernel Module Dashboard"
-	echo "  NAME             BUILT    QUEUE:INS    QUEUE:REM"
-	echo "  --------------------------------------------------"
+	# Updated header with fixed widths to accommodate color padding
+	printf "  %-20s %-12s %-12s %-12s\n" "NAME" "BUILT" "QUEUE:INS" "QUEUE:REM"
+	echo "  ------------------------------------------------------------"
 
 	for d in "${MODULES_DIR}"/*/; do
 		[ ! -d "$d" ] && continue
-		local name
-		name=$(basename "$d")
+		local name=$(basename "$d")
 
-		# Check if .ko exists
-		local built="[ ]"
-		[ -f "$d/${name}.ko" ] && built="[${GREEN}X${NC}]"
+		# 1. Filter: If a target_mod is specified, skip others
+		if [ -n "$target_mod" ] && [ "$target_mod" != "$name" ]; then
+			continue
+		fi
 
-		# Check if in INS queue
+		# 2. Check BUILT status
+		local built_status="[   ]"
+		local built_length=12
+
+		if [ -f "${d}${name}.ko" ]; then
+			built_status="[${GREEN} X ${NC}]"
+			built_length=29 # Corrected length to account for ANSI codes
+		fi
+
+		# 3. Check QUEUE status
 		local q_ins=" "
-		[[ " ${MODULE_INS[*]} " =~ " ${name} " ]] || [[ " ${MODULE_INS[*]} " =~ " * " ]] && q_ins="${GREEN}insmod${NC}"
-
-		# Check if in REM queue
 		local q_rem=" "
-		[[ " ${MODULE_REM[*]} " =~ " ${name} " ]] || [[ " ${MODULE_REM[*]} " =~ " * " ]] && q_rem="${RED}rmmod${NC}"
 
-		printf "  %-15s %-8s %-12s %-12s\n" "$name" "$built" "$q_ins" "$q_rem"
+		if _queue_contains "$name" "${MODULE_INS[@]}"; then
+			q_ins="${GREEN}insmod${NC}"
+		fi
+
+		if _queue_contains "$name" "${MODULE_REM[@]}"; then
+			q_rem="${RED}rmmod${NC}"
+		fi
+
+		# 4. Use echo -e with manual spacing for the formatted line
+		# Note: printf %-s counts ANSI codes as characters, so we print
+		# the name with printf and the status icons with echo -e for alignment.
+		printf "  %-20s " "$name"
+
+		# We pad the strings manually to ensure columns align regardless of color codes
+		local p_built=$(printf "%-${built_length}s" "$built_status")
+		local p_ins=$(printf "%-${ins_len}s" "$q_ins")
+		local p_rem=$(printf "%-${rem_len}s" "$q_rem")
+
+		echo -e "${p_built} ${p_ins} ${p_rem}"
 	done
 }
 
@@ -277,7 +303,7 @@ EOF
 		;;
 
 	status)
-		_module_status
+		_module_status "$target_mod"
 		;;
 
 	info)
