@@ -105,19 +105,61 @@ _module_item_action() {
 # ─────────────────────────────────────────────────────────────
 # Design: Scans the source code for MODULE_ macros to provide host-side modinfo.
 _module_info() {
-	local mod_name="$1"
-	local src_file="${MODULES_DIR}/${mod_name}/${mod_name}.c"
+	local target_mod="$1"
 
-	[ ! -f "$src_file" ] && {
-		echo -e "  [${RED}ERR${NC}] Source file not found: $mod_name.c"
-		return 1
-	}
+	if [ -n "$target_mod" ]; then
+		# Individual module view
+		local src_file="${MODULES_DIR}/${target_mod}/${target_mod}.c"
+		[ ! -f "$src_file" ] && {
+			echo -e "  [${RED}ERR${NC}] Source file not found: $target_mod.c"
+			return 1
+		}
 
-	echo -e "  [${GREEN}INFO${NC}] Metadata for module: ${YELLOW}${mod_name}${NC}"
-	echo "  --------------------------------------------------"
-	grep -E "MODULE_LICENSE|MODULE_AUTHOR|MODULE_DESCRIPTION" "$src_file" |
-		sed 's/MODULE_//g' | sed 's/("//g' | sed 's/");//g' | sed 's/)/: /' |
-		awk -F'(' '{printf "  %-12s %s\n", $1, $2}'
+		echo -e "  [${GREEN}INFO${NC}] Metadata for module: ${YELLOW}${target_mod}${NC}"
+		echo "  --------------------------------------------------"
+		grep -E "MODULE_LICENSE|MODULE_AUTHOR|MODULE_DESCRIPTION" "$src_file" |
+			sed -E 's/MODULE_([^ ]*)\("(.*)"\);/\1:\2/' |
+			awk -F':' '{printf "  %-15s %s\n", $1, $2}'
+	else
+		# Global table view
+		echo -e "  [${GREEN}INFO${NC}] Metadata for all available modules"
+		echo "  --------------------------------------------------------------------------------"
+		printf "  %-15s %-10s %-15s %-30s\n" "MODULE" "LICENSE" "AUTHOR" "DESCRIPTION"
+		echo "  --------------------------------------------------------------------------------"
+
+		for d in "${MODULES_DIR}"/*/; do
+			[ ! -d "$d" ] && continue
+			local name=$(basename "$d")
+			local src="${d}${name}.c"
+			[ ! -f "$src" ] && continue
+
+			# Optimization: Read only the last 20 lines where macros are constrained
+			# Use awk to format and wrap the description column
+			tail -n 20 "$src" | grep -E "MODULE_LICENSE|MODULE_AUTHOR|MODULE_DESCRIPTION" |
+				sed -E 's/MODULE_([^ ]*)\("(.*)"\);/\1:\2/' |
+				awk -v mod="$name" -F':' '
+					{ data[$1] = $2 }
+					END {
+						# Wrap description text at 35 characters for alignment
+						desc = data["DESCRIPTION"]
+						printf "  %-15s %-10s %-15s ", mod, data["LICENSE"], data["AUTHOR"]
+						
+						len = length(desc)
+						if (len <= 35) {
+							printf "%s\n", desc
+						} else {
+							printf "%s\n", substr(desc, 1, 35)
+							# Print remaining chunks aligned to the description column
+							start = 36
+							while (start <= len) {
+								printf "  %-15s %-10s %-15s %s\n", "", "", "", substr(desc, start, 35)
+								start += 35
+							}
+						}
+					}'
+			echo "  --------------------------------------------------------------------------------"
+		done
+	fi
 }
 
 # ─────────────────────────────────────────────────────────────
@@ -239,10 +281,6 @@ EOF
 		;;
 
 	info)
-		[ -z "$target_mod" ] && {
-			echo "Specify a module name."
-			return 1
-		}
 		_module_info "$target_mod"
 		;;
 
