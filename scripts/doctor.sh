@@ -93,46 +93,63 @@ check_homebrew_packages() {
 	if [ ${#missing[@]} -gt 0 ]; then
 		echo
 		echo -e "${YELLOW}Fix:${NC} brew install ${missing[*]}"
-		echo
 	fi
+	echo
 }
 
 # ─────────────────────────────────────────────────────────────
-# 2. Check custom headers directory and shims
+# 2. Check custom headers directory and shims (Dynamic Tree)
 # ─────────────────────────────────────────────────────────────
 check_custom_headers() {
+	local headers_dir="${SCRIPT_DIR}/libraries"
 	echo "Checking custom macOS kernel headers:"
-	local headers_dir="${MACOS_HEADERS:-$HOME/Documents/kernel-dev/linux/libraries}"
 
 	if [ ! -d "$headers_dir" ]; then
-		echo -e "  [${RED}FAIL${NC}] Directory not found: $headers_dir"
+		echo -e "  [${RED}FAIL${NC}] Directory missing: $headers_dir"
 		((issues_found++))
-		return
+		return 1
 	fi
 
-	check_item "Directory exists" true
+	# 1. We run tree twice: once for visual display, once for absolute paths.
+	# 2. 'sed $d' is used to delete the last line (the summary) safely on macOS.
+	local tree_visual
+	local tree_paths
+	tree_visual=$(tree -n "$headers_dir" | sed '$d')
+	tree_paths=$(tree -nf "$headers_dir" | sed '$d')
 
-	check_item "byteswap.h" [ -f "$headers_dir/byteswap.h" ] || ((issues_found++))
-	check_item "endian.h" [ -f "$headers_dir/endian.h" ] || ((issues_found++))
-	check_item "elf.h" [ -f "$headers_dir/elf.h" ] || ((issues_found++))
+	# 3. Use a while loop to read both streams line by line
+	while IFS= read -r v_line <&3 && IFS= read -r p_line <&4; do
 
-	# asm-generic symlinks
-	local asm_path="$headers_dir/asm"
-	local uapi_path="${KERNEL_DIR:-/Volumes/kernel-dev/linux}/include/uapi/asm-generic"
+		# Handle the root line (usually just 'libraries')
+		if [[ "$v_line" == "libraries" ]]; then
+			echo -e "  [${GREEN}OK${NC}] $v_line"
+			continue
+		fi
 
-	if [ -d "$asm_path" ] && [ -d "$uapi_path" ]; then
-		for h in bitsperlong.h int-ll64.h posix_types.h types.h; do
-			local link="$asm_path/$h"
-			if [ -L "$link" ] && [ "$(readlink "$link")" = "$uapi_path/$h" ]; then
-				check_item "asm/$h symlink" true
-			else
-				check_item "asm/$h symlink" false
+		# Extract the absolute path from the path line (last field)
+		# Strip symlink arrows to get the actual link path for validation
+		local full_path=$(echo "$p_line" | awk '{print $NF}' | sed 's|->.*$||')
+
+		local status="[${GREEN}OK${NC}]"
+
+		# 4. Validation Logic
+		if [ -L "$full_path" ]; then
+			# Check if the symlink target is actually reachable (exists)
+			if [ ! -e "$full_path" ]; then
+				status="[${RED}ER${NC}]"
 				((issues_found++))
 			fi
-		done
-	else
-		echo -e "  [${YELLOW}SKIP${NC}] asm symlinks (kernel source not mounted yet)"
-	fi
+		elif [ ! -e "$full_path" ]; then
+			status="[${RED}ER${NC}]"
+			((issues_found++))
+		fi
+
+		# 5. Output with cleaned-up visual line (removing absolute path prefix)
+		# Use | as delimiter in sed to handle slashes in $headers_dir
+		local clean_v_line=$(echo "$v_line" | sed "s|$headers_dir/||g")
+		echo -e "  $status $v_line"
+
+	done 3<<<"$tree_visual" 4<<<"$tree_paths"
 	echo
 }
 
