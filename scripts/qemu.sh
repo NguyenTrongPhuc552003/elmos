@@ -158,7 +158,7 @@ _execute_qemu() {
 	)
 
 	# Graphics mode
-	if [ "$VERBOSE_MODE" != "verbose" ]; then
+	if [ "$VERBOSE_MODE" != "yes" ]; then
 		QEMU_CMD+=(-nographic)
 	fi
 
