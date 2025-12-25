@@ -9,12 +9,11 @@ set -e
 # ──────────────────────────────────────────────────────────────────────────────
 # 1. Setup Environment
 # ──────────────────────────────────────────────────────────────────────────────
-# Define the script directory relative to this file
-export SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Local definitions
 export HELPER_LENGTH=16
 
 # Load environment variables, paths, and all function scripts
-source "${SCRIPT_DIR}/common.env"
+source "./common.env"
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 2. Command Dispatcher
