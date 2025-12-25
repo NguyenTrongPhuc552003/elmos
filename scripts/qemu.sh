@@ -214,6 +214,49 @@ _check_debug_info_enabled() {
 }
 
 # ─────────────────────────────────────────────────────────────
+# 5. Verify GPU and Virtual Terminal kernel configs
+# ─────────────────────────────────────────────────────────────
+_check_gpu_vt_enabled() {
+	local config_file="${KERNEL_DIR}/.config"
+	local missing_configs=()
+
+	# Basic check if .config exists
+	if [ ! -f "$config_file" ]; then
+		echo -e "  [${RED}ERROR${NC}] Kernel configuration (.config) not found."
+		echo "  Please run './run.sh config' first."
+		exit 1
+	fi
+
+	# List of required configurations for graphical console
+	local required=(
+		"CONFIG_DRM=y"
+		"CONFIG_DRM_VIRTIO_GPU=y"
+		"CONFIG_FB=y"
+		"CONFIG_FRAMEBUFFER_CONSOLE=y"
+	)
+
+	for cfg in "${required[@]}"; do
+		if ! grep -q "^${cfg}$" "$config_file"; then
+			missing_configs+=("$cfg")
+		fi
+	done
+
+	# If any configs are missing, block execution and advise the user
+	if [ ${#missing_configs[@]} -ne 0 ]; then
+		echo -e "  [${RED}ERROR${NC}] Missing kernel GPU/VT support for graphical mode:"
+		for missing in "${missing_configs[@]}"; do
+			echo "    - $missing"
+		done
+		echo
+		echo -e "  ${YELLOW}Action Required:${NC}"
+		echo "  Please run the following command to enable desktop support:"
+		echo -e "  ${GREEN}./run.sh config kvm_guest.config${NC}"
+		echo
+		exit 1
+	fi
+}
+
+# ─────────────────────────────────────────────────────────────
 # Unified QEMU runner – handles debug and verbose modes
 # ─────────────────────────────────────────────────────────────
 run_qemu() {
@@ -255,6 +298,11 @@ EOF
 			;;
 		esac
 	done
+
+	# Perform GPU check if verbose mode is requested
+	if [ "$verbose_mode" = "yes" ]; then
+		_check_gpu_vt_enabled
+	fi
 
 	# NORMAL BOOT
 	if [ -z "$debug_mode" ]; then
