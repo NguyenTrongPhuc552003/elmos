@@ -1,0 +1,168 @@
+# ELMOS - Embedded Linux on MacOS
+# Taskfile for building and installing the elmos CLI
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  BINARY: elmos
+  PREFIX: /usr/local
+  VERSION:
+    sh: git describe --tags --always --dirty 2>/dev/null || echo "dev"
+  COMMIT:
+    sh: git rev-parse --short HEAD 2>/dev/null || echo "unknown"
+  DATE:
+    sh: date -u +"%Y-%m-%dT%H:%M:%SZ"
+  LDFLAGS: >-
+    -X github.com/NguyenTrongPhuc552003/elmos/pkg/version.Version={{.VERSION}}
+    -X github.com/NguyenTrongPhuc552003/elmos/pkg/version.Commit={{.COMMIT}}
+    -X github.com/NguyenTrongPhuc552003/elmos/pkg/version.BuildDate={{.DATE}}
+  GOBIN:
+    sh: go env GOPATH
+
+tasks:
+  default:
+    desc: Build the elmos binary
+    cmds:
+      - task: build
+
+  build:
+    desc: Build the elmos binary
+    cmds:
+      - echo "Building {{.BINARY}}..."
+      - go build -ldflags "{{.LDFLAGS}}" -o {{.BINARY}} .
+    sources:
+      - "**/*.go"
+      - go.mod
+      - go.sum
+    generates:
+      - "{{.BINARY}}"
+
+  install:
+    desc: Install to GOPATH/pkg
+    deps: [build]
+    cmds:
+      - echo "Installing to {{.GOBIN}}/pkg..."
+      - cp {{.BINARY}} {{.GOBIN}}/pkg/
+
+  install:global:
+    desc: Install to /usr/local/bin (requires sudo)
+    deps: [build]
+    cmds:
+      - echo "Installing to {{.PREFIX}}/bin..."
+      - sudo cp {{.BINARY}} {{.PREFIX}}/bin/
+
+  uninstall:
+    desc: Remove from GOPATH/pkg
+    cmds:
+      - rm -f {{.GOBIN}}/pkg/{{.BINARY}}
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - rm -f {{.BINARY}}
+      - rm -f {{.BINARY}}-darwin-*
+      - rm -f coverage.out coverage.html
+      - go clean
+
+  # Development targets
+
+  deps:
+    desc: Download and tidy dependencies
+    cmds:
+      - go mod download
+      - go mod tidy
+
+  fmt:
+    desc: Format Go code
+    cmds:
+      - go fmt ./...
+
+  lint:
+    desc: Run linter (golangci-lint or go vet)
+    cmds:
+      - |
+        if command -v golangci-lint >/dev/null 2>&1; then
+          golangci-lint run
+        else
+          echo "golangci-lint not installed, running go vet..."
+          go vet ./...
+        fi
+
+  test:
+    desc: Run tests
+    cmds:
+      - go test -v ./...
+
+  test:cover:
+    desc: Run tests with coverage report
+    cmds:
+      - go test -v -cover -coverprofile=coverage.out ./...
+      - go tool cover -html=coverage.out -o coverage.html
+      - 'echo "Coverage report: coverage.html"'
+
+  # Release targets
+
+  release:
+    desc: Build for all supported platforms
+    cmds:
+      - echo "Building for darwin/arm64..."
+      - GOOS=darwin GOARCH=arm64 go build -ldflags "{{.LDFLAGS}}" -o {{.BINARY}}-darwin-arm64 .
+      - echo "Building for darwin/amd64..."
+      - GOOS=darwin GOARCH=amd64 go build -ldflags "{{.LDFLAGS}}" -o {{.BINARY}}-darwin-amd64 .
+
+  completions:
+    desc: Generate shell completions
+    deps: [build]
+    cmds:
+      - mkdir -p completions
+      - ./{{.BINARY}} completion bash > completions/elmos.bash
+      - ./{{.BINARY}} completion zsh > completions/_elmos
+      - ./{{.BINARY}} completion fish > completions/elmos.fish
+      - 'echo "Completions generated in completions/"'
+
+  homebrew-formula:
+    desc: Generate Homebrew formula
+    cmds:
+      - |
+        cat <<EOF
+        class Elmos < Formula
+          desc "Embedded Linux development on macOS - native kernel builds"
+          homepage "https://github.com/NguyenTrongPhuc552003/elmos"
+          version "{{.VERSION}}"
+          license "MIT"
+
+          depends_on "llvm"
+          depends_on "lld"
+          depends_on "gnu-sed"
+          depends_on "make"
+          depends_on "libelf"
+          depends_on "qemu"
+          depends_on "e2fsprogs"
+          depends_on "coreutils"
+
+          def install
+            bin.install "elmos"
+          end
+
+          test do
+            system "\#{bin}/elmos", "version"
+          end
+        end
+        EOF
+
+  # Quick aliases
+  b:
+    desc: Alias for build
+    cmds:
+      - task: build
+
+  t:
+    desc: Alias for test
+    cmds:
+      - task: test
+
+  c:
+    desc: Alias for clean
+    cmds:
+      - task: clean
