@@ -1,22 +1,27 @@
 package tui
 
 import (
+	"bytes"
 	"fmt"
+	"io"
+	"os/exec"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
+// CommandRunner is a function that executes an action and returns output
+type CommandRunner func(action string) (string, error)
+
 // MenuItem represents a single menu item
 type MenuItem struct {
 	Label       string
-	Category    string
 	Action      string
-	Status      string // "ready", "pending", "error", or ""
-	Description string // Description shown in right panel
+	Status      string
+	Description string
+	Command     string // Command to execute (for display)
 }
 
 // Category represents a menu category
@@ -28,22 +33,18 @@ type Category struct {
 
 // Styles
 var (
-	// Colors
-	accentColor    = lipgloss.Color("#7C3AED") // Purple
-	successColor   = lipgloss.Color("#10B981") // Green
-	warningColor   = lipgloss.Color("#F59E0B") // Amber
-	errorColor     = lipgloss.Color("#EF4444") // Red
-	dimColor       = lipgloss.Color("#6B7280") // Gray
-	highlightColor = lipgloss.Color("#A78BFA") // Light purple
-	bgColor        = lipgloss.Color("#1F2937") // Dark background
+	accentColor    = lipgloss.Color("#7C3AED")
+	successColor   = lipgloss.Color("#10B981")
+	warningColor   = lipgloss.Color("#F59E0B")
+	errorColor     = lipgloss.Color("#EF4444")
+	dimColor       = lipgloss.Color("#6B7280")
+	highlightColor = lipgloss.Color("#A78BFA")
 
-	// Box styles for left panel
 	leftPanelStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(accentColor).
 			Padding(0, 1)
 
-	// Box styles for right panel
 	rightPanelStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(dimColor).
@@ -74,22 +75,20 @@ var (
 	statusPendingStyle = lipgloss.NewStyle().Foreground(warningColor)
 	statusErrorStyle   = lipgloss.NewStyle().Foreground(errorColor)
 
-	footerStyle = lipgloss.NewStyle().
-			Foreground(dimColor)
+	footerStyle = lipgloss.NewStyle().Foreground(dimColor)
 
-	// Right panel styles
 	panelTitleStyle = lipgloss.NewStyle().
 			Bold(true).
-			Foreground(accentColor).
-			MarginBottom(1)
+			Foreground(accentColor)
 
 	descriptionStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("#9CA3AF"))
 
-	outputSuccessStyle = lipgloss.NewStyle().Foreground(successColor)
-	outputInfoStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#60A5FA"))
-	outputWarnStyle    = lipgloss.NewStyle().Foreground(warningColor)
-	outputErrorStyle   = lipgloss.NewStyle().Foreground(errorColor)
+	outputStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("#E5E7EB"))
+	runningStyle    = lipgloss.NewStyle().Foreground(warningColor).Bold(true)
+	successMsgStyle = lipgloss.NewStyle().Foreground(successColor)
+	errorMsgStyle   = lipgloss.NewStyle().Foreground(errorColor)
+	dimStyle        = lipgloss.NewStyle().Foreground(dimColor)
 )
 
 // FlatItem represents a flattened menu item for navigation
@@ -101,19 +100,26 @@ type FlatItem struct {
 	ItemIdx     int
 }
 
+// OutputLine represents a line in the output panel
+type OutputLine struct {
+	Text  string
+	Style lipgloss.Style
+}
+
 // MenuModel represents the TUI menu state
 type MenuModel struct {
-	categories     []Category
-	flatItems      []FlatItem
-	cursor         int
-	choice         string
-	quitting       bool
-	width          int
-	height         int
-	showHelp       bool
-	outputLines    []string
-	outputViewport viewport.Model
-	ready          bool
+	categories    []Category
+	flatItems     []FlatItem
+	cursor        int
+	choice        string
+	quitting      bool
+	width         int
+	height        int
+	outputLines   []OutputLine
+	isRunning     bool
+	lastAction    string
+	commandRunner CommandRunner
+	scrollOffset  int
 }
 
 // Key bindings
@@ -123,34 +129,35 @@ type keyMap struct {
 	Enter  key.Binding
 	Toggle key.Binding
 	Quit   key.Binding
-	Help   key.Binding
+	Clear  key.Binding
 }
 
 var keys = keyMap{
 	Up: key.NewBinding(
 		key.WithKeys("up", "k"),
-		key.WithHelp("↑/k", "up"),
 	),
 	Down: key.NewBinding(
 		key.WithKeys("down", "j"),
-		key.WithHelp("↓/j", "down"),
 	),
 	Enter: key.NewBinding(
 		key.WithKeys("enter"),
-		key.WithHelp("enter", "select"),
 	),
 	Toggle: key.NewBinding(
 		key.WithKeys("tab", " "),
-		key.WithHelp("tab", "toggle"),
 	),
 	Quit: key.NewBinding(
 		key.WithKeys("q", "ctrl+c"),
-		key.WithHelp("q", "quit"),
 	),
-	Help: key.NewBinding(
-		key.WithKeys("?"),
-		key.WithHelp("?", "help"),
+	Clear: key.NewBinding(
+		key.WithKeys("c"),
 	),
+}
+
+// CommandResultMsg is sent when a command completes
+type CommandResultMsg struct {
+	Output string
+	Err    error
+	Action string
 }
 
 // NewMenuModel creates a new menu model with categories
@@ -164,18 +171,21 @@ func NewMenuModel() MenuModel {
 					Label:       "Doctor",
 					Action:      "Doctor (Check Environment)",
 					Status:      "ready",
-					Description: "Check all dependencies and environment setup.\nVerifies: Homebrew, LLVM, QEMU, cross-compilers, headers.",
+					Description: "Check dependencies and environment",
+					Command:     "elmos doctor",
 				},
 				{
 					Label:       "Init Workspace",
 					Action:      "Init Workspace",
 					Status:      "pending",
-					Description: "Mount sparse image and clone Linux kernel.\nCreates a case-sensitive volume for kernel development.",
+					Description: "Mount image and clone kernel",
+					Command:     "elmos init",
 				},
 				{
 					Label:       "Configure",
 					Action:      "Configure (Arch, Jobs...)",
-					Description: "View and modify build configuration.\nSet architecture, parallel jobs, and other options.",
+					Description: "View/modify build configuration",
+					Command:     "elmos config show",
 				},
 			},
 		},
@@ -184,29 +194,34 @@ func NewMenuModel() MenuModel {
 			Expanded: true,
 			Items: []MenuItem{
 				{
-					Label:       "Kernel Config (defconfig)",
+					Label:       "Kernel Config",
 					Action:      "Kernel Config (defconfig)",
-					Description: "Generate default kernel configuration.\nRuns 'make defconfig' for the target architecture.",
+					Description: "Generate default kernel config",
+					Command:     "elmos kernel config",
 				},
 				{
 					Label:       "Kernel Menuconfig",
 					Action:      "Kernel Menuconfig (UI)",
-					Description: "Interactive kernel configuration.\nOpens the ncurses-based menuconfig interface.",
+					Description: "Interactive kernel configuration",
+					Command:     "elmos kernel config menuconfig",
 				},
 				{
 					Label:       "Build Kernel",
 					Action:      "Build Kernel",
-					Description: "Build kernel image, device trees, and modules.\nTargets: Image, dtbs, modules",
+					Description: "Build kernel image and modules",
+					Command:     "elmos build",
 				},
 				{
 					Label:       "Build Modules",
 					Action:      "Build Modules",
-					Description: "Build out-of-tree kernel modules.\nCompiles modules in the modules/ directory.",
+					Description: "Build out-of-tree modules",
+					Command:     "elmos module build",
 				},
 				{
 					Label:       "Build Apps",
 					Action:      "Build Apps",
-					Description: "Build userspace applications.\nCompiles apps in the apps/ directory for target arch.",
+					Description: "Build userspace applications",
+					Command:     "elmos app build",
 				},
 			},
 		},
@@ -217,33 +232,38 @@ func NewMenuModel() MenuModel {
 				{
 					Label:       "Run QEMU",
 					Action:      "Run QEMU",
-					Description: "Launch kernel in QEMU emulator.\nBoots the built kernel with the Debian rootfs.",
+					Description: "Launch kernel in QEMU",
+					Command:     "elmos qemu run",
 				},
 				{
 					Label:       "Run QEMU (Debug)",
 					Action:      "Run QEMU (Debug Mode)",
-					Description: "Launch QEMU with GDB stub enabled.\nConnects debugger on port 1234 for kernel debugging.",
+					Description: "Launch with GDB stub",
+					Command:     "elmos qemu debug",
 				},
 			},
 		},
 	}
 
-	vp := viewport.New(40, 15)
-	vp.Style = lipgloss.NewStyle()
-
 	m := MenuModel{
-		categories:     categories,
-		width:          100,
-		height:         24,
-		outputViewport: vp,
-		outputLines:    []string{},
+		categories:  categories,
+		width:       100,
+		height:      24,
+		outputLines: []OutputLine{},
 	}
 	m.buildFlatItems()
-	m.updateOutputPanel()
+	m.addOutputLine("Welcome to ELMOS TUI!", panelTitleStyle)
+	m.addOutputLine("", outputStyle)
+	m.addOutputLine("Navigate with ↑↓, press Enter to execute.", descriptionStyle)
+	m.addOutputLine("Press 'c' to clear output, 'q' to quit.", descriptionStyle)
 	return m
 }
 
-// buildFlatItems creates a flat list for navigation
+// SetCommandRunner sets the function to run commands
+func (m *MenuModel) SetCommandRunner(runner CommandRunner) {
+	m.commandRunner = runner
+}
+
 func (m *MenuModel) buildFlatItems() {
 	m.flatItems = nil
 	for catIdx := range m.categories {
@@ -267,32 +287,18 @@ func (m *MenuModel) buildFlatItems() {
 	}
 }
 
-// updateOutputPanel updates the right panel content based on current selection
-func (m *MenuModel) updateOutputPanel() {
-	if m.cursor >= len(m.flatItems) {
-		return
+func (m *MenuModel) addOutputLine(text string, style lipgloss.Style) {
+	m.outputLines = append(m.outputLines, OutputLine{Text: text, Style: style})
+	// Auto-scroll to bottom
+	maxVisible := m.height - 10
+	if len(m.outputLines) > maxVisible {
+		m.scrollOffset = len(m.outputLines) - maxVisible
 	}
+}
 
-	item := m.flatItems[m.cursor]
-	var content strings.Builder
-
-	if item.IsCategory {
-		// Show category info
-		content.WriteString(panelTitleStyle.Render(fmt.Sprintf("📁 %s", item.Category.Name)))
-		content.WriteString("\n\n")
-		content.WriteString(descriptionStyle.Render(fmt.Sprintf("Contains %d items.\nPress Enter or Tab to expand/collapse.", len(item.Category.Items))))
-	} else if item.Item != nil {
-		// Show item info
-		content.WriteString(panelTitleStyle.Render(fmt.Sprintf("▶ %s", item.Item.Label)))
-		content.WriteString("\n\n")
-		if item.Item.Description != "" {
-			content.WriteString(descriptionStyle.Render(item.Item.Description))
-		}
-		content.WriteString("\n\n")
-		content.WriteString(footerStyle.Render("Press Enter to execute"))
-	}
-
-	m.outputViewport.SetContent(content.String())
+func (m *MenuModel) clearOutput() {
+	m.outputLines = []OutputLine{}
+	m.scrollOffset = 0
 }
 
 func (m MenuModel) Init() tea.Cmd {
@@ -300,25 +306,42 @@ func (m MenuModel) Init() tea.Cmd {
 }
 
 func (m MenuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		return m, nil
 
-		// Update viewport size
-		leftWidth := 45
-		rightWidth := m.width - leftWidth - 6
-		if rightWidth < 30 {
-			rightWidth = 30
+	case CommandResultMsg:
+		m.isRunning = false
+		// Add output lines
+		lines := strings.Split(msg.Output, "\n")
+		for _, line := range lines {
+			if line != "" {
+				m.addOutputLine(line, outputStyle)
+			}
 		}
-		m.outputViewport.Width = rightWidth
-		m.outputViewport.Height = m.height - 8
-		m.ready = true
+		if msg.Err != nil {
+			m.addOutputLine(fmt.Sprintf("Error: %v", msg.Err), errorMsgStyle)
+			// Update status
+			m.updateItemStatus(msg.Action, "error")
+		} else {
+			m.addOutputLine("✓ Completed successfully", successMsgStyle)
+			m.updateItemStatus(msg.Action, "ready")
+		}
+		m.addOutputLine("", outputStyle)
 		return m, nil
 
 	case tea.KeyMsg:
+		if m.isRunning {
+			// Only allow quit while running
+			if key.Matches(msg, keys.Quit) {
+				m.quitting = true
+				return m, tea.Quit
+			}
+			return m, nil
+		}
+
 		switch {
 		case key.Matches(msg, keys.Quit):
 			m.quitting = true
@@ -327,14 +350,15 @@ func (m MenuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Up):
 			if m.cursor > 0 {
 				m.cursor--
-				m.updateOutputPanel()
 			}
 
 		case key.Matches(msg, keys.Down):
 			if m.cursor < len(m.flatItems)-1 {
 				m.cursor++
-				m.updateOutputPanel()
 			}
+
+		case key.Matches(msg, keys.Clear):
+			m.clearOutput()
 
 		case key.Matches(msg, keys.Toggle):
 			if m.cursor < len(m.flatItems) {
@@ -345,7 +369,6 @@ func (m MenuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if m.cursor >= len(m.flatItems) {
 						m.cursor = len(m.flatItems) - 1
 					}
-					m.updateOutputPanel()
 				}
 			}
 
@@ -355,20 +378,45 @@ func (m MenuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if item.IsCategory {
 					m.categories[item.CategoryIdx].Expanded = !m.categories[item.CategoryIdx].Expanded
 					m.buildFlatItems()
-					m.updateOutputPanel()
 				} else if item.Item != nil {
+					// Execute command
+					m.isRunning = true
+					m.lastAction = item.Item.Action
 					m.choice = item.Item.Action
-					return m, tea.Quit
+					m.addOutputLine(fmt.Sprintf("▶ Running: %s", item.Item.Label), runningStyle)
+					m.addOutputLine(fmt.Sprintf("  $ %s", item.Item.Command), dimStyle)
+					m.addOutputLine("", outputStyle)
+
+					// Trigger execution
+					return m, m.executeCommandCmd(item.Item.Action)
 				}
 			}
-
-		case key.Matches(msg, keys.Help):
-			m.showHelp = !m.showHelp
 		}
 	}
 
-	m.outputViewport, cmd = m.outputViewport.Update(msg)
-	return m, cmd
+	return m, nil
+}
+
+func (m *MenuModel) executeCommandCmd(action string) tea.Cmd {
+	return func() tea.Msg {
+		if m.commandRunner == nil {
+			return CommandResultMsg{Action: action, Err: fmt.Errorf("no command runner configured")}
+		}
+
+		output, err := m.commandRunner(action)
+		return CommandResultMsg{Action: action, Output: output, Err: err}
+	}
+}
+
+func (m *MenuModel) updateItemStatus(action string, status string) {
+	for catIdx := range m.categories {
+		for itemIdx := range m.categories[catIdx].Items {
+			if m.categories[catIdx].Items[itemIdx].Action == action {
+				m.categories[catIdx].Items[itemIdx].Status = status
+				return
+			}
+		}
+	}
 }
 
 func (m MenuModel) View() string {
@@ -376,22 +424,19 @@ func (m MenuModel) View() string {
 		return ""
 	}
 
-	// Calculate panel widths
-	leftWidth := 45
+	leftWidth := 40
 	rightWidth := m.width - leftWidth - 4
-	if rightWidth < 30 {
-		rightWidth = 30
+	if rightWidth < 35 {
+		rightWidth = 35
 	}
-	panelHeight := m.height - 4
+	panelHeight := m.height - 3
 
-	// Build left panel (menu)
+	// Left panel - Menu
 	var leftContent strings.Builder
 
-	// Title
 	leftContent.WriteString(titleStyle.Render("ELMOS"))
 	leftContent.WriteString("\n\n")
 
-	// Menu items
 	for i, flatItem := range m.flatItems {
 		isSelected := i == m.cursor
 
@@ -411,16 +456,15 @@ func (m MenuModel) View() string {
 			status := m.renderStatus(flatItem.Item.Status)
 			label := flatItem.Item.Label
 
-			// Truncate if too long
-			maxLen := leftWidth - 15
+			maxLen := leftWidth - 14
 			if len(label) > maxLen {
-				label = label[:maxLen-3] + "..."
+				label = label[:maxLen-2] + ".."
 			}
 
 			if isSelected {
-				line := fmt.Sprintf("  ▶ %s", label)
+				line := fmt.Sprintf("▶ %s", label)
 				if status != "" {
-					padding := leftWidth - 12 - len(line)
+					padding := leftWidth - 10 - len(line)
 					if padding < 1 {
 						padding = 1
 					}
@@ -428,9 +472,9 @@ func (m MenuModel) View() string {
 				}
 				leftContent.WriteString(selectedStyle.Render(line))
 			} else {
-				line := fmt.Sprintf("    %s", label)
+				line := fmt.Sprintf("  %s", label)
 				if status != "" {
-					padding := leftWidth - 12 - len(line)
+					padding := leftWidth - 10 - len(line)
 					if padding < 1 {
 						padding = 1
 					}
@@ -442,60 +486,75 @@ func (m MenuModel) View() string {
 		}
 	}
 
-	// Pad to fill height
+	// Pad menu
 	menuLines := strings.Count(leftContent.String(), "\n")
-	for i := menuLines; i < panelHeight-3; i++ {
+	for i := menuLines; i < panelHeight-2; i++ {
 		leftContent.WriteString("\n")
 	}
 
 	// Footer
-	leftContent.WriteString(footerStyle.Render("↑↓:Nav  ⏎:Select  q:Quit"))
-
-	// Build right panel (description/output)
-	var rightContent strings.Builder
-
-	// Right panel title
-	rightContent.WriteString(panelTitleStyle.Render("📋 Details"))
-	rightContent.WriteString("\n")
-	rightContent.WriteString(strings.Repeat("─", rightWidth-4))
-	rightContent.WriteString("\n\n")
-
-	// Get current item description
-	if m.cursor < len(m.flatItems) {
-		item := m.flatItems[m.cursor]
-		if item.IsCategory {
-			rightContent.WriteString(outputInfoStyle.Render(fmt.Sprintf("📁 Category: %s", item.Category.Name)))
-			rightContent.WriteString("\n\n")
-			rightContent.WriteString(descriptionStyle.Render(fmt.Sprintf("Contains %d items.", len(item.Category.Items))))
-			rightContent.WriteString("\n")
-			rightContent.WriteString(descriptionStyle.Render("Use Tab or Enter to expand/collapse."))
-		} else if item.Item != nil {
-			rightContent.WriteString(outputInfoStyle.Render(fmt.Sprintf("▶ %s", item.Item.Label)))
-			rightContent.WriteString("\n\n")
-			if item.Item.Description != "" {
-				// Word wrap description
-				lines := strings.Split(item.Item.Description, "\n")
-				for _, line := range lines {
-					rightContent.WriteString(descriptionStyle.Render(line))
-					rightContent.WriteString("\n")
-				}
-			}
-			rightContent.WriteString("\n")
-			rightContent.WriteString(footerStyle.Render("Press Enter to execute this action."))
-		}
+	if m.isRunning {
+		leftContent.WriteString(runningStyle.Render("⏳ Running..."))
+	} else {
+		leftContent.WriteString(footerStyle.Render("↑↓:Nav ⏎:Run c:Clear q:Quit"))
 	}
 
-	// Pad right panel
-	rightLines := strings.Count(rightContent.String(), "\n")
-	for i := rightLines; i < panelHeight-2; i++ {
+	// Right panel - Output
+	var rightContent strings.Builder
+
+	// Show current selection info at top
+	if m.cursor < len(m.flatItems) && !m.flatItems[m.cursor].IsCategory {
+		item := m.flatItems[m.cursor].Item
+		if item != nil {
+			rightContent.WriteString(panelTitleStyle.Render(item.Label))
+			rightContent.WriteString("\n")
+			rightContent.WriteString(descriptionStyle.Render(item.Description))
+			rightContent.WriteString("\n")
+			rightContent.WriteString(dimStyle.Render(fmt.Sprintf("$ %s", item.Command)))
+			rightContent.WriteString("\n")
+			rightContent.WriteString(strings.Repeat("─", rightWidth-4))
+			rightContent.WriteString("\n")
+		}
+	} else {
+		rightContent.WriteString(panelTitleStyle.Render("📋 Output"))
+		rightContent.WriteString("\n")
+		rightContent.WriteString(strings.Repeat("─", rightWidth-4))
 		rightContent.WriteString("\n")
 	}
 
-	// Apply panel styles
+	// Output lines
+	maxVisible := panelHeight - 8
+	start := m.scrollOffset
+	end := start + maxVisible
+	if end > len(m.outputLines) {
+		end = len(m.outputLines)
+	}
+
+	for i := start; i < end; i++ {
+		line := m.outputLines[i]
+		// Truncate long lines
+		text := line.Text
+		if len(text) > rightWidth-6 {
+			text = text[:rightWidth-9] + "..."
+		}
+		rightContent.WriteString(line.Style.Render(text))
+		rightContent.WriteString("\n")
+	}
+
+	// Pad output
+	outputLines := strings.Count(rightContent.String(), "\n")
+	for i := outputLines; i < panelHeight-1; i++ {
+		rightContent.WriteString("\n")
+	}
+
+	// Scroll indicator
+	if len(m.outputLines) > maxVisible {
+		rightContent.WriteString(dimStyle.Render(fmt.Sprintf("(%d/%d lines)", end, len(m.outputLines))))
+	}
+
 	left := leftPanelStyle.Width(leftWidth).Height(panelHeight).Render(leftContent.String())
 	right := rightPanelStyle.Width(rightWidth).Height(panelHeight).Render(rightContent.String())
 
-	// Join panels horizontally
 	return lipgloss.JoinHorizontal(lipgloss.Top, left, right)
 }
 
@@ -512,7 +571,20 @@ func (m MenuModel) renderStatus(status string) string {
 	}
 }
 
-// Choice returns the selected action
 func (m MenuModel) Choice() string {
 	return m.choice
+}
+
+// RunCommand runs the elmos command and captures output
+func RunCommand(name string, args ...string) (string, error) {
+	cmd := exec.Command(name, args...)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = io.MultiWriter(&stdout)
+	cmd.Stderr = io.MultiWriter(&stderr)
+	err := cmd.Run()
+	output := stdout.String()
+	if stderr.Len() > 0 {
+		output += "\n" + stderr.String()
+	}
+	return output, err
 }
