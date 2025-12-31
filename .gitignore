@@ -1,17 +1,25 @@
 # Allocated linux kernel workspace
 *.sparseimage
 
-# Configuration files
-*.cfg
+# Configuration files (kernel related)
+build.cfg
 
-# Kernel build artifacts
+# Kernel build artifacts (not Go)
 *.ko
-*.mod*
 *.o
 *.symvers
 *.order
 *.cmd
 *.tmp_versions/
 
+# Kernel module files (not Go)
+modules/**/*.mod
+modules/**/*.mod.c
+modules/**/*.mod.o
+
 # Auto-generated kernel module scripts
 guesync.sh
+module.cfg
+
+# Go build artifacts
+/elmos
