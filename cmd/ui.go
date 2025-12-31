@@ -3,7 +3,6 @@ package cmd
 
 import (
 	"fmt"
-	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
@@ -39,10 +38,6 @@ func runTUI() error {
 
 	// Dispatch based on selection
 	choice := menu.Choice()
-	// Strip "1. " prefix
-	if idx := strings.Index(choice, ". "); idx != -1 {
-		choice = choice[idx+2:]
-	}
 
 	printStep("Executing: %s", choice)
 
@@ -75,5 +70,3 @@ func runTUI() error {
 		return fmt.Errorf("unknown selection: %s", choice)
 	}
 }
-
-
