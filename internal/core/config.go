@@ -12,12 +12,12 @@ import (
 
 // Default values
 const (
-	DefaultImageSize   = "20G"
-	DefaultVolumeName  = "kernel-dev"
-	DefaultArch        = "arm64"
-	DefaultCrossPrefix = "llvm-"
-	DefaultMemory      = "2G"
-	DefaultGDBPort     = 1234
+	DefaultImageSize    = "20G"
+	DefaultVolumeName   = "kernel-dev"
+	DefaultArch         = "arm64"
+	DefaultCrossPrefix  = "llvm-"
+	DefaultMemory       = "2G"
+	DefaultGDBPort      = 1234
 	DefaultDebianMirror = "http://deb.debian.org/debian"
 )
 
@@ -99,9 +99,9 @@ func LoadConfig() (*Config, error) {
 	v.SetConfigType("yaml")
 
 	// Config search paths
-	v.AddConfigPath(".")                                     // Current directory
+	v.AddConfigPath(".")                                                  // Current directory
 	v.AddConfigPath(filepath.Join(os.Getenv("HOME"), ".config", "elmos")) // User config
-	v.AddConfigPath("/etc/elmos")                            // System config
+	v.AddConfigPath("/etc/elmos")                                         // System config
 
 	// Environment variables
 	v.SetEnvPrefix("ELMOS")

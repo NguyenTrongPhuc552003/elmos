@@ -86,13 +86,13 @@ func (ctx *Context) GetMakeEnv() []string {
 	// filter existing PATH from os.Environ to avoid duplicates if we want to be clean,
 	// checking if we should build a fresh map or just append.
 	// For simplicity and safety, we'll build a new list where valid keys are mostly preserved.
-	
+
 	var env []string
 	originalPath := os.Getenv("PATH")
-	
+
 	// Prepend GNU tools and LLVM to PATH
 	newPath := originalPath
-	
+
 	// GNU tools
 	gnuSed := GetBrewLibexecBin("gnu-sed")
 	if gnuSed != "" {
@@ -112,7 +112,7 @@ func (ctx *Context) GetMakeEnv() []string {
 	if lldBin != "" {
 		newPath = lldBin + string(os.PathListSeparator) + newPath
 	}
-	
+
 	// e2fsprogs (sbin)
 	e2fsBin := GetBrewSbin("e2fsprogs")
 	if e2fsBin != "" {
