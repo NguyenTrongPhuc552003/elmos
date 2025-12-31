@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -235,24 +234,24 @@ func checkDebugConfig() error {
 	if !ctx.HasConfig() {
 		return fmt.Errorf("kernel config not found")
 	}
-	
+
 	// We could grep the config file here, but for now we'll just warn
 	// if we can't easily parse it.
 	// Since we are in Go, we could read .config and check lines.
-	
+
 	configFile := filepath.Join(ctx.Config.Paths.KernelDir, ".config")
 	content, err := os.ReadFile(configFile)
 	if err != nil {
 		return err
 	}
-	
+
 	configStr := string(content)
-	if !strings.Contains(configStr, "CONFIG_DEBUG_KERNEL=y") && 
-	   !strings.Contains(configStr, "CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT=y") &&
-	   !strings.Contains(configStr, "CONFIG_DEBUG_INFO_DWARF5=y") {
+	if !strings.Contains(configStr, "CONFIG_DEBUG_KERNEL=y") &&
+		!strings.Contains(configStr, "CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT=y") &&
+		!strings.Contains(configStr, "CONFIG_DEBUG_INFO_DWARF5=y") {
 		return fmt.Errorf("kernel debugging not enabled in .config (need CONFIG_DEBUG_KERNEL and DWARF info)")
 	}
-	
+
 	return nil
 }
 
@@ -298,8 +297,4 @@ func runQEMUGDB() error {
 	cmd.Stderr = os.Stderr
 
 	return cmd.Run()
-}
-
-func getNumCPU() int {
-	return runtime.NumCPU()
 }

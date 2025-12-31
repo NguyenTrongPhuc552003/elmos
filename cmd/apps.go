@@ -290,19 +290,3 @@ func getToolchainPackage(arch string) string {
 	}
 	return "unknown"
 }
-
-// checkCrossToolchain checks if the cross-compiler toolchain is available
-func checkCrossToolchain(arch string) bool {
-	compilers := map[string]string{
-		"arm64": "aarch64-unknown-linux-gnu-gcc",
-		"riscv": "riscv64-unknown-linux-gnu-gcc",
-		"arm":   "arm-unknown-linux-gnueabihf-gcc",
-	}
-
-	if gcc, ok := compilers[arch]; ok {
-		_, err := exec.LookPath(gcc)
-		return err == nil
-	}
-	return false
-}
-

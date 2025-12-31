@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 
 	"github.com/NguyenTrongPhuc552003/elmos/internal/core"
 	"github.com/spf13/cobra"
@@ -164,6 +163,13 @@ func init() {
 
 func runBuild(jobs int, targets []string) error {
 	cfg := ctx.Config
+
+	// Validate build targets
+	for _, t := range targets {
+		if !validBuildTargets[t] {
+			return fmt.Errorf("invalid build target: %s", t)
+		}
+	}
 
 	// Check for .config
 	if !ctx.HasConfig() {
@@ -501,11 +507,4 @@ var validBuildTargets = map[string]bool{
 	"modules_prepare": true,
 	"all":             true,
 	"vmlinux":         true,
-}
-
-func parseJobs(s string) (int, error) {
-	if s == "" {
-		return 0, nil
-	}
-	return strconv.Atoi(s)
 }
