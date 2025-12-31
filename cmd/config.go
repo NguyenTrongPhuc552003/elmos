@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -225,10 +226,5 @@ func runConfigProfile(name string) error {
 
 func isValidArch(arch string) bool {
 	valid := []string{"arm64", "riscv", "arm", "x86_64", "x86"}
-	for _, a := range valid {
-		if arch == a {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(valid, arch)
 }

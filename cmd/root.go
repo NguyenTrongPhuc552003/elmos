@@ -22,11 +22,11 @@ var (
 	ctx *core.Context
 
 	// Styles
-	successStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))  // Green
-	errorStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))   // Red
-	warnStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("11"))  // Yellow
-	infoStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("12"))  // Blue
-	accentStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("13"))  // Purple
+	successStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("10")) // Green
+	errorStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))  // Red
+	warnStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("11")) // Yellow
+	infoStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("12")) // Blue
+	accentStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("13")) // Purple
 )
 
 // rootCmd represents the base command when called without any subcommands

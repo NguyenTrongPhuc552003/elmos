@@ -45,10 +45,3 @@ func (i Info) String() string {
 func (i Info) Short() string {
 	return i.Version
 }
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
