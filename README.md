@@ -11,29 +11,65 @@ Native Linux kernel development tools for macOS. Build, test, and debug Linux ke
 - 📦 **Module development** - Build out-of-tree kernel modules
 - 🖥️ **QEMU integration** - Run and debug kernels instantly
 - 🔧 **GDB support** - Cross-architecture debugging
-- 🎨 **Modern CLI** - Cobra-based with styled output
+- 🎨 **Interactive TUI** - Menuconfig-style interface (`elmos ui`)
 
 ## Quick Start
 
 ```bash
-# Install (from source)
-make build
-make install
+# Install dependencies
+brew install go-task
+
+# Build from source
+task build
 
 # Check environment
-elmos doctor
+./elmos doctor
 
-# Initialize workspace
-elmos init
+# Launch interactive TUI
+./elmos ui
 
-# Configure and build for ARM64
-elmos config set arch arm64
-elmos kernel config
-elmos build
+# Or use CLI directly:
+./elmos config set arch arm64
+./elmos kernel config
+./elmos build
+./elmos qemu run
+```
 
-# Create rootfs and run in QEMU
-elmos rootfs create
-elmos qemu run
+## Interactive TUI
+
+Run `elmos ui` for a menuconfig-style interactive menu:
+
+```
+┌────────────────────────────────────────────────────┐
+│  🔧 ELMOS - Embedded Linux on MacOS               │
+├────────────────────────────────────────────────────┤
+│  ▼ Setup                                           │
+│      Doctor (Check Environment)              [✓]   │
+│      Init Workspace                          [○]   │
+│      Configure (Arch, Jobs...)                     │
+│  ▼ Build                                           │
+│      Build Kernel                                  │
+│      Build Modules                                 │
+│  ▼ Run                                             │
+│      Run QEMU                                      │
+├────────────────────────────────────────────────────┤
+│  ↑↓: Navigate  Enter: Select  q: Quit  ?: Help    │
+└────────────────────────────────────────────────────┘
+```
+
+## Build System (Task)
+
+Uses [Task](https://taskfile.dev) instead of Make:
+
+```bash
+task --list          # Show all targets
+task build           # Build elmos binary
+task clean           # Clean artifacts
+task deps            # Download dependencies
+task fmt             # Format code
+task lint            # Run linter
+task test            # Run tests
+task release         # Multi-platform builds
 ```
 
 ## Commands
@@ -41,6 +77,7 @@ elmos qemu run
 | Command                          | Description                              |
 | -------------------------------- | ---------------------------------------- |
 | `elmos doctor`                   | Check dependencies and environment       |
+| `elmos ui`                       | Launch interactive TUI menu              |
 | `elmos init`                     | Mount workspace and clone kernel         |
 | `elmos image mount/unmount`      | Manage sparse disk image                 |
 | `elmos repo checkout <tag>`      | Checkout kernel version                  |
@@ -52,7 +89,6 @@ elmos qemu run
 | `elmos rootfs create`            | Create Debian rootfs                     |
 | `elmos qemu run`                 | Run kernel in QEMU                       |
 | `elmos qemu debug`               | Run with GDB stub                        |
-| `elmos patch apply <file>`       | Apply kernel patches                     |
 
 ## Configuration
 
@@ -85,11 +121,9 @@ Apply profiles: `elmos config profile riscv-dev`
 
 ## Dependencies
 
-Install via Homebrew:
-
 ```bash
 brew tap messense/macos-cross-toolchains
-brew install llvm lld gnu-sed make libelf git qemu fakeroot e2fsprogs coreutils wget
+brew install llvm lld gnu-sed make libelf git qemu fakeroot e2fsprogs coreutils wget go-task
 ```
 
 ## Project Structure
@@ -97,47 +131,15 @@ brew install llvm lld gnu-sed make libelf git qemu fakeroot e2fsprogs coreutils 
 ```
 .
 ├── apps/           # Userspace applications
-├── libraries/      # macOS compatibility headers (elf.h, byteswap.h)
+├── libraries/      # macOS compatibility headers
 ├── modules/        # Kernel modules
-│   ├── hello-world/
-│   └── ...
 ├── patches/        # Kernel patches by version
-│   └── v6.18/
 ├── cmd/            # CLI commands
 ├── internal/       # Core Go packages
+│   └── tui/        # Interactive TUI (Bubbletea)
 ├── pkg/            # Public Go packages
-├── go.mod          # Go module
-├── Makefile        # Build automation
+├── Taskfile.yml    # Build automation (Task)
 └── elmos.yaml      # Configuration (optional)
-```
-
-## Kernel Modules
-
-```bash
-# Create new module
-elmos module new my-driver
-
-# Build modules
-elmos module build my-driver
-
-# Check status
-elmos module status
-
-# Prepare headers for building
-elmos module headers
-```
-
-## Userspace Apps
-
-```bash
-# Create new app
-elmos app new my-app
-
-# Build for target architecture
-elmos app build my-app
-
-# List available apps
-elmos app list
 ```
 
 ## Debugging
