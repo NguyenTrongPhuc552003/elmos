@@ -43,6 +43,8 @@ var requiredPackages = []RequiredPackage{
 	{"e2fsprogs", "ext4 filesystem tools", true},
 	{"wget", "File downloader", false},
 	{"coreutils", "GNU core utilities", true},
+	{"go", "Go programming language", true},
+	{"go-task", "Go task runner", true},
 }
 
 // requiredTaps lists required Homebrew taps
