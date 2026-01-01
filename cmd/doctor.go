@@ -225,7 +225,7 @@ func checkCrossGDB() {
 	}{
 		{"RISC-V", "riscv64-elf-gdb"},
 		{"ARM64", "aarch64-unknown-linux-gnu-gdb"},
-		{"ARM32", "arm-none-eabi-gdb"},
+		{"ARM32", "arm-unknown-linux-gnueabihf-gdb"},
 	}
 
 	for _, gdb := range gdbs {
@@ -244,7 +244,7 @@ func checkCrossGCC() {
 	}{
 		{"RISC-V", "riscv64-elf-gcc"},
 		{"ARM64", "aarch64-unknown-linux-gnu-gcc"},
-		{"ARM32", "arm-none-eabi-gcc"},
+		{"ARM32", "arm-unknown-linux-gnueabihf-gcc"},
 	}
 
 	for _, gcc := range gccs {
