@@ -148,10 +148,14 @@ Examples:
 			jobs = ctx.Config.Build.Jobs
 		}
 
-		// Get targets or use defaults
+		// Get targets or use defaults (ARM32 needs zImage instead of Image)
 		targets := args
 		if len(targets) == 0 {
-			targets = []string{"Image", "dtbs", "modules"}
+			if ctx.Config.Build.Arch == "arm" {
+				targets = []string{"zImage", "dtbs", "modules"}
+			} else {
+				targets = []string{"Image", "dtbs", "modules"}
+			}
 		}
 
 		return runBuild(jobs, targets)
@@ -503,6 +507,7 @@ exec /bin/sh
 // Validate targets
 var validBuildTargets = map[string]bool{
 	"Image":           true,
+	"zImage":          true, // ARM32
 	"dtbs":            true,
 	"modules":         true,
 	"modules_prepare": true,
