@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/spf13/cobra"
 )
@@ -145,18 +147,33 @@ func runQEMU(debug, graphical bool) error {
 		args = append(args, "-bios", "default")
 	}
 
-	// Disk and networking
-	args = append(args,
-		"-drive", fmt.Sprintf("file=%s,format=raw,if=virtio", cfg.Paths.DiskImage),
-		"-device", "virtio-net-device,netdev=net0",
-		"-netdev", "user,id=net0,hostfwd=tcp::2222-:22",
-	)
-
-	// 9p share for modules
-	args = append(args,
-		"-fsdev", fmt.Sprintf("local,id=moddev,path=%s,security_model=none", cfg.Paths.ModulesDir),
-		"-device", "virtio-9p-pci,fsdev=moddev,mount_tag=modules_mount",
-	)
+	// Disk and networking - use explicit device for ARM compatibility
+	if cfg.Build.Arch == "arm" {
+		// ARM32 needs explicit virtio-blk-device (not PCI)
+		args = append(args,
+			"-drive", fmt.Sprintf("file=%s,format=raw,if=none,id=hd0", cfg.Paths.DiskImage),
+			"-device", "virtio-blk-device,drive=hd0",
+			"-device", "virtio-net-device,netdev=net0",
+			"-netdev", "user,id=net0,hostfwd=tcp::2222-:22",
+		)
+		// 9p share - use mmio transport for ARM32
+		args = append(args,
+			"-fsdev", fmt.Sprintf("local,id=moddev,path=%s,security_model=none", cfg.Paths.ModulesDir),
+			"-device", "virtio-9p-device,fsdev=moddev,mount_tag=modules_mount",
+		)
+	} else {
+		// ARM64 and RISC-V can use PCI variants
+		args = append(args,
+			"-drive", fmt.Sprintf("file=%s,format=raw,if=virtio", cfg.Paths.DiskImage),
+			"-device", "virtio-net-device,netdev=net0",
+			"-netdev", "user,id=net0,hostfwd=tcp::2222-:22",
+		)
+		// 9p share for modules
+		args = append(args,
+			"-fsdev", fmt.Sprintf("local,id=moddev,path=%s,security_model=none", cfg.Paths.ModulesDir),
+			"-device", "virtio-9p-pci,fsdev=moddev,mount_tag=modules_mount",
+		)
+	}
 
 	// Boot parameters
 	appendStr := "root=/dev/vda rw init=/init earlycon"
@@ -167,12 +184,22 @@ func runQEMU(debug, graphical bool) error {
 		if err := checkGraphicalConfigs(); err != nil {
 			return err
 		}
-		args = append(args,
-			"-display", "cocoa",
-			"-device", "virtio-gpu-pci",
-			"-device", "virtio-keyboard-pci",
-			"-device", "virtio-mouse-pci",
-		)
+		args = append(args, "-display", "cocoa")
+
+		// ARM32 needs non-PCI virtio devices
+		if cfg.Build.Arch == "arm" {
+			args = append(args,
+				"-device", "virtio-gpu-device",
+				"-device", "virtio-keyboard-device",
+				"-device", "virtio-mouse-device",
+			)
+		} else {
+			args = append(args,
+				"-device", "virtio-gpu-pci",
+				"-device", "virtio-keyboard-pci",
+				"-device", "virtio-mouse-pci",
+			)
+		}
 		appendStr += " console=tty0"
 	} else {
 		args = append(args,
@@ -196,7 +223,25 @@ func runQEMU(debug, graphical bool) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	return cmd.Run()
+	// Set up signal handling
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	// Execute in separate goroutine
+	done := make(chan error)
+	go func() {
+		done <- cmd.Run()
+	}()
+
+	// Wait for either completion or signal
+	select {
+	case err := <-done:
+		return err
+	case <-sigChan:
+		printInfo("Received interrupt, stopping QEMU...")
+		cmd.Process.Signal(syscall.SIGTERM)
+		return nil
+	}
 }
 
 func prepareModulesSync() error {
@@ -261,14 +306,14 @@ func runQEMUGDB() error {
 	// Check debug config first
 	if err := checkDebugConfig(); err != nil {
 		printWarn("Debug config check failed: %v", err)
-		printInfo("Tip: Enable 'Kernel compilation' -> 'Debug info' in menuconfig")
+		printInfo("Tip: Enable 'Kernel hacking' -> 'Kernel debugging' in menuconfig")
 	}
 
 	// Determine GDB binary
 	gdbBinaries := map[string]string{
 		"riscv": "riscv64-elf-gdb",
-		"arm64": "aarch64-elf-gdb",
-		"arm":   "arm-none-eabi-gdb",
+		"arm64": "aarch64-unknown-linux-gnu-gdb",
+		"arm":   "arm-unknown-linux-gnueabihf-gdb",
 	}
 
 	gdbBin, ok := gdbBinaries[cfg.Build.Arch]
@@ -276,7 +321,9 @@ func runQEMUGDB() error {
 		return fmt.Errorf("unsupported architecture for GDB: %s", cfg.Build.Arch)
 	}
 
-	if _, err := exec.LookPath(gdbBin); err != nil {
+	// Get full path - syscall.Exec requires absolute path
+	gdbPath, err := exec.LookPath(gdbBin)
+	if err != nil {
 		return fmt.Errorf("cross-GDB not found: %s", gdbBin)
 	}
 
@@ -286,15 +333,20 @@ func runQEMUGDB() error {
 	}
 
 	printStep("Connecting to localhost:%d...", cfg.QEMU.GDBPort)
+	printInfo("Using GDB: %s", gdbPath)
+	printInfo("Ctrl+C will interrupt target, 'quit' to exit GDB")
 
-	cmd := exec.Command(gdbBin, vmlinux,
+	// Build GDB args
+	args := []string{
+		gdbPath,
+		vmlinux,
 		"-ex", fmt.Sprintf("target remote localhost:%d", cfg.QEMU.GDBPort),
 		"-ex", "layout src",
 		"-ex", "break start_kernel",
-	)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	}
 
-	return cmd.Run()
+	// Use syscall.Exec to replace current process with GDB
+	// This gives GDB full control of the terminal and signal handling
+	env := os.Environ()
+	return syscall.Exec(gdbPath, args, env)
 }
