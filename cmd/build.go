@@ -70,6 +70,7 @@ func runKernelConfig(configType string) error {
 	)
 	cmd.Dir = cfg.Paths.KernelDir
 	cmd.Env = ctx.GetMakeEnv()
+	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 

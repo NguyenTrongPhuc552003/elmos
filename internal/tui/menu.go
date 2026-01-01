@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -21,7 +22,9 @@ type MenuItem struct {
 	Action      string
 	Status      string
 	Description string
-	Command     string // Command to execute (for display)
+	Command     string   // Command to execute (for display)
+	Interactive bool     // If true, verify using tea.ExecProcess
+	Args        []string // Arguments for interactive command
 }
 
 // Category represents a menu category
@@ -120,6 +123,7 @@ type MenuModel struct {
 	lastAction    string
 	commandRunner CommandRunner
 	scrollOffset  int
+	execPath      string
 }
 
 // Key bindings
@@ -162,6 +166,9 @@ type CommandResultMsg struct {
 
 // NewMenuModel creates a new menu model with categories
 func NewMenuModel() MenuModel {
+	// Get executable path for self-execution
+	exe, _ := os.Executable()
+
 	categories := []Category{
 		{
 			Name:     "Setup",
@@ -204,6 +211,8 @@ func NewMenuModel() MenuModel {
 					Action:      "Kernel Menuconfig (UI)",
 					Description: "Interactive kernel configuration",
 					Command:     "elmos kernel config menuconfig",
+					Interactive: true,
+					Args:        []string{"kernel", "config", "menuconfig"},
 				},
 				{
 					Label:       "Build Kernel",
@@ -240,6 +249,8 @@ func NewMenuModel() MenuModel {
 					Action:      "Run QEMU (Debug Mode)",
 					Description: "Launch with GDB stub",
 					Command:     "elmos qemu debug",
+					Interactive: true,
+					Args:        []string{"qemu", "debug"},
 				},
 			},
 		},
@@ -250,6 +261,7 @@ func NewMenuModel() MenuModel {
 		width:       100,
 		height:      24,
 		outputLines: []OutputLine{},
+		execPath:    exe,
 	}
 	m.buildFlatItems()
 	m.addOutputLine("Welcome to ELMOS TUI!", panelTitleStyle)
@@ -379,6 +391,21 @@ func (m MenuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.categories[item.CategoryIdx].Expanded = !m.categories[item.CategoryIdx].Expanded
 					m.buildFlatItems()
 				} else if item.Item != nil {
+					// Check for interactive command
+					if item.Item.Interactive {
+						c := exec.Command(m.execPath, item.Item.Args...)
+						c.Stdin = os.Stdin
+						c.Stdout = os.Stdout
+						c.Stderr = os.Stderr
+						return m, tea.ExecProcess(c, func(err error) tea.Msg {
+							return CommandResultMsg{
+								Action: item.Item.Action,
+								Err:    err,
+								Output: "Interactive session finished.",
+							}
+						})
+					}
+
 					// Execute command
 					m.isRunning = true
 					m.lastAction = item.Item.Action
