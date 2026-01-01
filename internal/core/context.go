@@ -66,7 +66,14 @@ func (ctx *Context) HasConfig() bool {
 // GetKernelImage returns the path to the built kernel image for the current arch
 func (ctx *Context) GetKernelImage() string {
 	arch := ctx.Config.Build.Arch
-	return filepath.Join(ctx.KernelDir, "arch", arch, "boot", "Image")
+
+	// ARM32 uses zImage, others use Image
+	imageName := "Image"
+	if arch == "arm" {
+		imageName = "zImage"
+	}
+
+	return filepath.Join(ctx.KernelDir, "arch", arch, "boot", imageName)
 }
 
 // GetVmlinux returns the path to vmlinux (for debugging)
