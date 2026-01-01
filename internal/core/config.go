@@ -59,6 +59,7 @@ type BuildConfig struct {
 type QEMUConfig struct {
 	Memory  string `mapstructure:"memory"`
 	GDBPort int    `mapstructure:"gdb_port"`
+	SSHPort int    `mapstructure:"ssh_port"`
 	SMP     int    `mapstructure:"smp"`
 }
 
@@ -152,6 +153,7 @@ func setDefaults(v *viper.Viper) {
 	// QEMU defaults
 	v.SetDefault("qemu.memory", DefaultMemory)
 	v.SetDefault("qemu.gdb_port", DefaultGDBPort)
+	v.SetDefault("qemu.ssh_port", 2222)
 	v.SetDefault("qemu.smp", runtime.NumCPU())
 
 	// Paths defaults
