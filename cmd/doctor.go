@@ -224,7 +224,7 @@ func checkCrossGDB() {
 		bin  string
 	}{
 		{"RISC-V", "riscv64-elf-gdb"},
-		{"ARM64", "aarch64-elf-gdb"},
+		{"ARM64", "aarch64-unknown-linux-gnu-gdb"},
 		{"ARM32", "arm-none-eabi-gdb"},
 	}
 
@@ -243,7 +243,7 @@ func checkCrossGCC() {
 		bin  string
 	}{
 		{"RISC-V", "riscv64-elf-gcc"},
-		{"ARM64", "aarch64-elf-gcc"},
+		{"ARM64", "aarch64-unknown-linux-gnu-gcc"},
 		{"ARM32", "arm-none-eabi-gcc"},
 	}
 
