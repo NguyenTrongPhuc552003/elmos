@@ -2,7 +2,10 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -90,6 +93,11 @@ func runDoctor() error {
 	printStep("Checking custom headers...")
 	issuesFound += checkHeaders()
 	fmt.Println()
+
+	// Offer to fix missing elf.h - if fixed, decrement issue count
+	if fixMissingElfH() {
+		issuesFound--
+	}
 
 	// Check architecture-specific GDB
 	printStep("Checking cross-debuggers...")
@@ -216,6 +224,70 @@ func checkHeaders() int {
 	}
 
 	return issues
+}
+
+// fixMissingElfH downloads elf.h from glibc if it's missing
+// Returns true if it successfully fixed a missing elf.h
+func fixMissingElfH() bool {
+	cfg := core.GetConfig()
+	headersDir := cfg.Paths.LibrariesDir
+	elfPath := filepath.Join(headersDir, "elf.h")
+
+	// Check if elf.h already exists
+	if _, err := os.Stat(elfPath); err == nil {
+		return false
+	}
+
+	// Prompt user
+	fmt.Print("elf.h missing — download from glibc? (Y/n): ")
+	reader := bufio.NewReader(os.Stdin)
+	choice, _ := reader.ReadString('\n')
+	choice = strings.TrimSpace(strings.ToLower(choice))
+
+	if choice == "n" || choice == "no" {
+		return false
+	}
+
+	// Download from glibc
+	glibcVersion := "2.42"
+	url := fmt.Sprintf("https://raw.githubusercontent.com/bminor/glibc/glibc-%s/elf/elf.h", glibcVersion)
+
+	// Ensure directory exists
+	if err := os.MkdirAll(headersDir, 0755); err != nil {
+		printError("Failed to create directory: %v", err)
+		return false
+	}
+
+	printStep("Downloading elf.h from glibc %s...", glibcVersion)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		printError("Download failed: %v", err)
+		return false
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		printError("Download failed: HTTP %d", resp.StatusCode)
+		return false
+	}
+
+	out, err := os.Create(elfPath)
+	if err != nil {
+		printError("Failed to create file: %v", err)
+		return false
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, resp.Body)
+	if err != nil {
+		printError("Failed to write file: %v", err)
+		return false
+	}
+
+	printSuccess("elf.h downloaded successfully")
+	fmt.Println()
+	return true
 }
 
 func checkCrossGDB() {
