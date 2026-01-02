@@ -5,10 +5,10 @@ package main
 import (
 	"os"
 
-	"github.com/NguyenTrongPhuc552003/elmos/internal/app"
-	"github.com/NguyenTrongPhuc552003/elmos/internal/config"
-	"github.com/NguyenTrongPhuc552003/elmos/internal/infra/executor"
-	"github.com/NguyenTrongPhuc552003/elmos/internal/infra/filesystem"
+	"github.com/NguyenTrongPhuc552003/elmos/core/app"
+	"github.com/NguyenTrongPhuc552003/elmos/core/config"
+	"github.com/NguyenTrongPhuc552003/elmos/core/infra/executor"
+	"github.com/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
 )
 
 func main() {
