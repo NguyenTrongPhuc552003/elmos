@@ -72,11 +72,16 @@ var ValidBuildTargets = map[string]bool{
 // KernelConfigTypes lists valid kernel configuration types.
 var KernelConfigTypes = []string{
 	"defconfig",
+	"tinyconfig",
+	"kvm_guest.config",
 	"menuconfig",
 	"xconfig",
 	"nconfig",
 	"oldconfig",
+	"olddefconfig",
 	"allnoconfig",
 	"allyesconfig",
 	"allmodconfig",
+	"localmodconfig",
+	"localyesconfig",
 }
