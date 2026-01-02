@@ -8,17 +8,17 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/NguyenTrongPhuc552003/elmos/internal/config"
-	elcontext "github.com/NguyenTrongPhuc552003/elmos/internal/context"
-	"github.com/NguyenTrongPhuc552003/elmos/internal/domain/builder"
-	"github.com/NguyenTrongPhuc552003/elmos/internal/domain/doctor"
-	"github.com/NguyenTrongPhuc552003/elmos/internal/domain/emulator"
-	"github.com/NguyenTrongPhuc552003/elmos/internal/domain/patch"
-	"github.com/NguyenTrongPhuc552003/elmos/internal/domain/rootfs"
-	"github.com/NguyenTrongPhuc552003/elmos/internal/infra/executor"
-	"github.com/NguyenTrongPhuc552003/elmos/internal/infra/filesystem"
-	"github.com/NguyenTrongPhuc552003/elmos/internal/ui"
-	"github.com/NguyenTrongPhuc552003/elmos/internal/ui/tui"
+	"github.com/NguyenTrongPhuc552003/elmos/core/config"
+	elcontext "github.com/NguyenTrongPhuc552003/elmos/core/context"
+	"github.com/NguyenTrongPhuc552003/elmos/core/domain/builder"
+	"github.com/NguyenTrongPhuc552003/elmos/core/domain/doctor"
+	"github.com/NguyenTrongPhuc552003/elmos/core/domain/emulator"
+	"github.com/NguyenTrongPhuc552003/elmos/core/domain/patch"
+	"github.com/NguyenTrongPhuc552003/elmos/core/domain/rootfs"
+	"github.com/NguyenTrongPhuc552003/elmos/core/infra/executor"
+	"github.com/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
+	"github.com/NguyenTrongPhuc552003/elmos/core/ui"
+	"github.com/NguyenTrongPhuc552003/elmos/core/ui/tui"
 	"github.com/NguyenTrongPhuc552003/elmos/pkg/version"
 )
 
