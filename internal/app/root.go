@@ -66,17 +66,15 @@ func (a *App) BuildRootCommand() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:   "elmos",
 		Short: "Embedded Linux on MacOS - Native kernel build tools",
-		Long: `ELMOS (Embedded Linux on MacOS) provides native Linux kernel build tools 
-for macOS, targeting RISC-V, ARM64, and more architectures.
+		Long: `ELMOS provides native Linux kernel build tools for macOS.
 
 Common workflow:
-  elmos init                # Initialize workspace (mount volume, clone kernel)
-  elmos doctor              # Check dependencies
-  elmos config set arch arm64  # Set target architecture
-  elmos kernel config       # Configure kernel
-  elmos build               # Build kernel
-  elmos qemu run            # Test in QEMU
-  elmos tui                 # Launch interactive TUI`,
+  elmos init              # Initialize workspace
+  elmos doctor            # Check dependencies
+  elmos kernel config     # Configure kernel
+  elmos build             # Build kernel
+  elmos qemu run          # Test in QEMU
+  elmos tui               # Launch interactive TUI`,
 		Version: version.Get().String(),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if cmd.Name() == "version" || cmd.Name() == "help" || cmd.Name() == "completion" || cmd.Name() == "tui" || cmd.Name() == "init" {
@@ -108,8 +106,7 @@ Common workflow:
 
 func (a *App) buildVersionCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "version",
-		Short: "Print version information",
+		Use: "version", Short: "Print version information",
 		Run: func(cmd *cobra.Command, args []string) {
 			info := version.Get()
 			a.Printer.Print("ELMOS - Embedded Linux on MacOS")
@@ -124,8 +121,7 @@ func (a *App) buildVersionCommand() *cobra.Command {
 
 func (a *App) buildTUICommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "tui",
-		Short: "Launch interactive Text User Interface",
+		Use: "tui", Short: "Launch interactive Text User Interface",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return tui.Run()
 		},
@@ -134,136 +130,96 @@ func (a *App) buildTUICommand() *cobra.Command {
 
 func (a *App) buildInitCommand() *cobra.Command {
 	initCmd := &cobra.Command{
-		Use:   "init",
-		Short: "Initialize workspace (mount volume and clone kernel)",
-		Long: `Initialize the ELMOS workspace by:
-1. Creating a sparse disk image if it doesn't exist
-2. Mounting the volume
-3. Optionally cloning the Linux kernel source`,
+		Use: "init", Short: "Initialize workspace (mount volume and clone kernel)",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return a.initWorkspace(cmd)
+			if !a.FS.Exists(a.Config.Image.Path) {
+				a.Printer.Step("Creating sparse disk image...")
+				if err := a.Exec.Run(cmd.Context(), "hdiutil", "create",
+					"-size", a.Config.Image.Size,
+					"-fs", "Case-sensitive APFS",
+					"-volname", a.Config.Image.VolumeName,
+					"-type", "SPARSE",
+					a.Config.Image.Path,
+				); err != nil {
+					return fmt.Errorf("failed to create disk image: %w", err)
+				}
+				a.Printer.Success("Disk image created!")
+			}
+			if !a.Context.IsMounted() {
+				a.Printer.Step("Mounting volume...")
+				if err := a.Exec.Run(cmd.Context(), "hdiutil", "attach", a.Config.Image.Path); err != nil {
+					return fmt.Errorf("failed to mount: %w", err)
+				}
+			}
+			a.Printer.Success("Workspace initialized! Volume mounted at %s", a.Config.Image.MountPoint)
+			return nil
 		},
 	}
 
 	mountCmd := &cobra.Command{
-		Use:   "mount",
-		Short: "Mount the sparse disk image",
+		Use: "mount", Short: "Mount the sparse disk image",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return a.mountVolume(cmd)
+			if a.Context.IsMounted() {
+				a.Printer.Info("Volume already mounted at %s", a.Config.Image.MountPoint)
+				return nil
+			}
+			a.Printer.Step("Mounting volume...")
+			if err := a.Exec.Run(cmd.Context(), "hdiutil", "attach", a.Config.Image.Path); err != nil {
+				return fmt.Errorf("failed to mount: %w", err)
+			}
+			a.Printer.Success("Volume mounted at %s", a.Config.Image.MountPoint)
+			return nil
 		},
 	}
 
 	unmountCmd := &cobra.Command{
-		Use:   "unmount",
-		Short: "Unmount the sparse disk image",
+		Use: "unmount", Short: "Unmount the sparse disk image",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return a.unmountVolume(cmd)
+			if !a.Context.IsMounted() {
+				a.Printer.Info("Volume not mounted")
+				return nil
+			}
+			a.Printer.Step("Unmounting volume...")
+			if err := a.Exec.Run(cmd.Context(), "hdiutil", "detach", a.Config.Image.MountPoint); err != nil {
+				return fmt.Errorf("failed to unmount: %w", err)
+			}
+			a.Printer.Success("Volume unmounted")
+			return nil
 		},
 	}
 
 	cloneCmd := &cobra.Command{
-		Use:   "clone [git-url]",
-		Short: "Clone the Linux kernel source",
-		Long:  `Clone the Linux kernel source into the mounted volume. Defaults to torvalds/linux.`,
+		Use: "clone [git-url]", Short: "Clone the Linux kernel source",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := a.Context.EnsureMounted(); err != nil {
+				return err
+			}
+			if a.Context.KernelExists() {
+				a.Printer.Info("Kernel source already exists at %s", a.Config.Paths.KernelDir)
+				return nil
+			}
 			url := "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git"
 			if len(args) > 0 {
 				url = args[0]
 			}
-			return a.cloneKernel(cmd, url)
+			a.Printer.Step("Cloning kernel from %s...", url)
+			if err := a.Exec.Run(cmd.Context(), "git", "clone", "--depth=1", url, a.Config.Paths.KernelDir); err != nil {
+				return fmt.Errorf("failed to clone: %w", err)
+			}
+			a.Printer.Success("Kernel cloned to %s", a.Config.Paths.KernelDir)
+			return nil
 		},
 	}
 
-	initCmd.AddCommand(mountCmd)
-	initCmd.AddCommand(unmountCmd)
-	initCmd.AddCommand(cloneCmd)
+	initCmd.AddCommand(mountCmd, unmountCmd, cloneCmd)
 	return initCmd
 }
 
-func (a *App) initWorkspace(cmd *cobra.Command) error {
-	// Create image if needed
-	if !a.FS.Exists(a.Config.Image.Path) {
-		a.Printer.Step("Creating sparse disk image...")
-		if err := a.Exec.Run(cmd.Context(), "hdiutil", "create",
-			"-size", a.Config.Image.Size,
-			"-fs", "Case-sensitive APFS",
-			"-volname", a.Config.Image.VolumeName,
-			"-type", "SPARSE",
-			a.Config.Image.Path,
-		); err != nil {
-			return fmt.Errorf("failed to create disk image: %w", err)
-		}
-		a.Printer.Success("Disk image created!")
-	}
-
-	// Mount if needed
-	if !a.Context.IsMounted() {
-		if err := a.mountVolume(cmd); err != nil {
-			return err
-		}
-	}
-
-	a.Printer.Success("Workspace initialized! Volume mounted at %s", a.Config.Image.MountPoint)
-	return nil
-}
-
-func (a *App) mountVolume(cmd *cobra.Command) error {
-	if a.Context.IsMounted() {
-		a.Printer.Info("Volume already mounted at %s", a.Config.Image.MountPoint)
-		return nil
-	}
-
-	a.Printer.Step("Mounting volume...")
-	if err := a.Exec.Run(cmd.Context(), "hdiutil", "attach", a.Config.Image.Path); err != nil {
-		return fmt.Errorf("failed to mount: %w", err)
-	}
-	a.Printer.Success("Volume mounted at %s", a.Config.Image.MountPoint)
-	return nil
-}
-
-func (a *App) unmountVolume(cmd *cobra.Command) error {
-	if !a.Context.IsMounted() {
-		a.Printer.Info("Volume not mounted")
-		return nil
-	}
-
-	a.Printer.Step("Unmounting volume...")
-	if err := a.Exec.Run(cmd.Context(), "hdiutil", "detach", a.Config.Image.MountPoint); err != nil {
-		return fmt.Errorf("failed to unmount: %w", err)
-	}
-	a.Printer.Success("Volume unmounted")
-	return nil
-}
-
-func (a *App) cloneKernel(cmd *cobra.Command, url string) error {
-	if err := a.Context.EnsureMounted(); err != nil {
-		return err
-	}
-
-	if a.Context.KernelExists() {
-		a.Printer.Info("Kernel source already exists at %s", a.Config.Paths.KernelDir)
-		return nil
-	}
-
-	a.Printer.Step("Cloning kernel from %s...", url)
-	a.Printer.Info("This may take a while...")
-
-	if err := a.Exec.Run(cmd.Context(), "git", "clone", "--depth=1", url, a.Config.Paths.KernelDir); err != nil {
-		return fmt.Errorf("failed to clone: %w", err)
-	}
-	a.Printer.Success("Kernel cloned to %s", a.Config.Paths.KernelDir)
-	return nil
-}
-
 func (a *App) buildConfigCommand() *cobra.Command {
-	configCmd := &cobra.Command{
-		Use:   "config",
-		Short: "Manage elmos configuration",
-	}
+	configCmd := &cobra.Command{Use: "config", Short: "Manage elmos configuration"}
 
 	showCmd := &cobra.Command{
-		Use:   "show",
-		Short: "Show current configuration",
+		Use: "show", Short: "Show current configuration",
 		Run: func(cmd *cobra.Command, args []string) {
 			a.Printer.Print("Current Configuration:")
 			a.Printer.Print("  Architecture:  %s", a.Config.Build.Arch)
@@ -276,19 +232,13 @@ func (a *App) buildConfigCommand() *cobra.Command {
 	}
 
 	setCmd := &cobra.Command{
-		Use:   "set [key] [value]",
-		Short: "Set a configuration value",
-		Long: `Set a configuration value. Valid keys:
-  arch      - Target architecture (arm64, arm, riscv)
-  jobs      - Number of parallel build jobs
-  memory    - QEMU memory allocation`,
-		Args: cobra.ExactArgs(2),
+		Use: "set [key] [value]", Short: "Set a configuration value", Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			key, value := args[0], args[1]
 			switch key {
 			case "arch":
 				if !config.IsValidArch(value) {
-					return fmt.Errorf("invalid architecture: %s (valid: arm64, arm, riscv)", value)
+					return fmt.Errorf("invalid architecture: %s", value)
 				}
 				a.Config.Build.Arch = value
 			case "jobs":
@@ -302,8 +252,6 @@ func (a *App) buildConfigCommand() *cobra.Command {
 			default:
 				return fmt.Errorf("unknown key: %s", key)
 			}
-
-			// Save config
 			configPath := filepath.Join(a.Config.Paths.ProjectRoot, "elmos.yaml")
 			if err := a.Config.Save(configPath); err != nil {
 				return err
@@ -314,35 +262,19 @@ func (a *App) buildConfigCommand() *cobra.Command {
 	}
 
 	initCfgCmd := &cobra.Command{
-		Use:   "init",
-		Short: "Initialize configuration file with defaults",
+		Use: "init", Short: "Initialize configuration file with defaults",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cwd, _ := os.Getwd()
 			configPath := filepath.Join(cwd, "elmos.yaml")
-
 			if a.FS.Exists(configPath) {
 				a.Printer.Warn("Configuration file already exists: %s", configPath)
 				return nil
 			}
-
-			// Create default config - paths will be auto-resolved
 			cfg := &config.Config{
-				Build: config.BuildConfig{
-					Arch:         "arm64",
-					LLVM:         true,
-					CrossCompile: "llvm-",
-				},
-				Image: config.ImageConfig{
-					Size:       "20G",
-					VolumeName: "kernel-dev",
-				},
-				QEMU: config.QEMUConfig{
-					Memory:  "2G",
-					GDBPort: 1234,
-					SSHPort: 2222,
-				},
+				Build: config.BuildConfig{Arch: "arm64", LLVM: true, CrossCompile: "llvm-"},
+				Image: config.ImageConfig{Size: "20G", VolumeName: "kernel-dev"},
+				QEMU:  config.QEMUConfig{Memory: "2G", GDBPort: 1234, SSHPort: 2222},
 			}
-
 			if err := cfg.Save(configPath); err != nil {
 				return err
 			}
@@ -351,22 +283,17 @@ func (a *App) buildConfigCommand() *cobra.Command {
 		},
 	}
 
-	configCmd.AddCommand(showCmd)
-	configCmd.AddCommand(setCmd)
-	configCmd.AddCommand(initCfgCmd)
+	configCmd.AddCommand(showCmd, setCmd, initCfgCmd)
 	return configCmd
 }
 
 func (a *App) buildDoctorCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "doctor",
-		Short: "Check environment and dependencies",
+		Use: "doctor", Short: "Check environment and dependencies",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			a.Printer.Info("ELMOS Doctor - Environment Check")
 			a.Printer.Print("")
-
 			results, issues := a.HealthChecker.CheckAll(cmd.Context())
-
 			currentSection := ""
 			for _, r := range results {
 				section := getSection(r.Name)
@@ -374,7 +301,6 @@ func (a *App) buildDoctorCommand() *cobra.Command {
 					a.Printer.Step("Checking %s...", section)
 					currentSection = section
 				}
-
 				if r.Passed {
 					a.Printer.Print("  ✓ %s", r.Name)
 				} else if r.Required {
@@ -383,7 +309,6 @@ func (a *App) buildDoctorCommand() *cobra.Command {
 					a.Printer.Print("  ○ %s - optional", r.Name)
 				}
 			}
-
 			if a.AutoFixer.CanFixElfH() {
 				a.Printer.Print("")
 				a.Printer.Step("Downloading missing elf.h...")
@@ -394,7 +319,6 @@ func (a *App) buildDoctorCommand() *cobra.Command {
 					issues--
 				}
 			}
-
 			a.Printer.Print("")
 			if issues == 0 {
 				a.Printer.Success("All checks passed!")
@@ -409,18 +333,15 @@ func (a *App) buildDoctorCommand() *cobra.Command {
 func (a *App) buildBuildCommand() *cobra.Command {
 	var jobs int
 	cmd := &cobra.Command{
-		Use:   "build [targets...]",
-		Short: "Build the Linux kernel",
+		Use: "build [targets...]", Short: "Build the Linux kernel",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := a.Context.EnsureMounted(); err != nil {
 				return err
 			}
-
 			targets := args
 			if len(targets) == 0 {
 				targets = a.KernelBuilder.GetDefaultTargets()
 			}
-
 			a.Printer.Step("Building kernel for %s...", a.Config.Build.Arch)
 			if err := a.KernelBuilder.Build(cmd.Context(), builder.BuildOptions{Jobs: jobs, Targets: targets}); err != nil {
 				return err
@@ -437,8 +358,7 @@ func (a *App) buildKernelCommand() *cobra.Command {
 	kernelCmd := &cobra.Command{Use: "kernel", Short: "Kernel configuration commands"}
 
 	configCmd := &cobra.Command{
-		Use:   "config [type]",
-		Short: "Configure the kernel",
+		Use: "config [type]", Short: "Configure the kernel",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := a.Context.EnsureMounted(); err != nil {
 				return err
@@ -457,8 +377,7 @@ func (a *App) buildKernelCommand() *cobra.Command {
 	}
 
 	cleanCmd := &cobra.Command{
-		Use:   "clean",
-		Short: "Clean kernel build artifacts",
+		Use: "clean", Short: "Clean kernel build artifacts",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := a.Context.EnsureMounted(); err != nil {
 				return err
@@ -532,7 +451,26 @@ func (a *App) buildModuleCommand() *cobra.Command {
 		},
 	}
 
-	modCmd.AddCommand(buildCmd, listCmd, newCmd)
+	cleanCmd := &cobra.Command{
+		Use: "clean [name]", Short: "Clean module build artifacts",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := a.Context.EnsureMounted(); err != nil {
+				return err
+			}
+			name := ""
+			if len(args) > 0 {
+				name = args[0]
+			}
+			a.Printer.Step("Cleaning modules...")
+			if err := a.ModuleBuilder.Clean(cmd.Context(), name); err != nil {
+				return err
+			}
+			a.Printer.Success("Modules cleaned!")
+			return nil
+		},
+	}
+
+	modCmd.AddCommand(buildCmd, listCmd, newCmd, cleanCmd)
 	return modCmd
 }
 
@@ -589,7 +527,23 @@ func (a *App) buildAppsCommand() *cobra.Command {
 		},
 	}
 
-	appCmd.AddCommand(buildCmd, listCmd, newCmd)
+	cleanCmd := &cobra.Command{
+		Use: "clean [name]", Short: "Clean app build artifacts",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			name := ""
+			if len(args) > 0 {
+				name = args[0]
+			}
+			a.Printer.Step("Cleaning apps...")
+			if err := a.AppBuilder.Clean(cmd.Context(), name); err != nil {
+				return err
+			}
+			a.Printer.Success("Apps cleaned!")
+			return nil
+		},
+	}
+
+	appCmd.AddCommand(buildCmd, listCmd, newCmd, cleanCmd)
 	return appCmd
 }
 
@@ -610,7 +564,7 @@ func (a *App) buildQEMUCommand() *cobra.Command {
 	runCmd.Flags().BoolVarP(&graphical, "graphical", "g", false, "Graphical mode")
 
 	debugCmd := &cobra.Command{
-		Use: "debug", Short: "Debug kernel",
+		Use: "debug", Short: "Debug kernel with GDB server",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := a.Context.EnsureMounted(); err != nil {
 				return err
@@ -621,7 +575,7 @@ func (a *App) buildQEMUCommand() *cobra.Command {
 	}
 
 	gdbCmd := &cobra.Command{
-		Use: "gdb", Short: "Connect GDB",
+		Use: "gdb", Short: "Connect GDB to QEMU",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return a.QEMURunner.ConnectGDB()
 		},
