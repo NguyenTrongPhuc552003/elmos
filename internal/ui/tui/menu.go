@@ -248,13 +248,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor++
 			}
 		case key.Matches(msg, keys.PageUp):
-			m.viewport.ViewUp()
+			m.viewport.PageUp()
 		case key.Matches(msg, keys.PageDown):
-			m.viewport.ViewDown()
+			m.viewport.PageDown()
 		case key.Matches(msg, keys.ScrollUp):
-			m.viewport.LineUp(3)
+			m.viewport.ScrollUp(1)
 		case key.Matches(msg, keys.ScrollDown):
-			m.viewport.LineDown(3)
+			m.viewport.ScrollDown(1)
 		case key.Matches(msg, keys.Clear):
 			m.logLines = make([]string, 0)
 			m.refreshViewport()
@@ -446,7 +446,7 @@ func (m Model) View() string {
 		left.WriteString(lipgloss.NewStyle().Foreground(darkGrey).Render("  ← Back (Esc)") + "\n\n")
 	}
 	for i, item := range m.currentMenu {
-		prefix := "  "
+		var prefix string
 		if len(item.Children) > 0 {
 			prefix = "▸ "
 		} else if item.Interactive {
