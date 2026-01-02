@@ -1,26 +1,8 @@
 build:
     arch: arm64
-    jobs: 12
     llvm: true
     crosscompile: llvm-
-image:
-    path: ""
-    volumename: kernel-dev
-    size: 20G
-    mountpoint: /Volumes/kernel-dev
-paths:
-    projectroot: ""
-    kerneldir: /Volumes/kernel-dev/linux
-    modulesdir: ""
-    appsdir: ""
-    librariesdir: ""
-    patchesdir: ""
-    rootfsdir: /Volumes/kernel-dev/rootfs
-    diskimage: /Volumes/kernel-dev/disk.img
-    debianmirror: http://deb.debian.org/debian
-profiles: {}
 qemu:
     memory: 2G
     gdbport: 1234
     sshport: 2222
-    smp: 12
