@@ -39,6 +39,7 @@ type App struct {
 	Printer       *ui.Printer
 	Verbose       bool
 	Interactive   bool
+	ConfigFile    string
 }
 
 // New creates a new App with all dependencies wired up.
@@ -80,6 +81,15 @@ Common workflow:
 			if cmd.Name() == "version" || cmd.Name() == "help" || cmd.Name() == "completion" || cmd.Name() == "tui" || cmd.Name() == "init" {
 				return nil
 			}
+			// Reload config if custom path is provided
+			if a.ConfigFile != "" {
+				newCfg, err := config.Load(a.ConfigFile)
+				if err != nil {
+					return err
+				}
+				// update the struct contents so pointers passed to builders remain valid
+				*a.Config = *newCfg
+			}
 			a.Context.Verbose = a.Verbose
 			return nil
 		},
@@ -87,6 +97,7 @@ Common workflow:
 
 	rootCmd.PersistentFlags().BoolVarP(&a.Verbose, "verbose", "v", false, "verbose output")
 	rootCmd.PersistentFlags().BoolVarP(&a.Interactive, "interactive", "i", false, "enable interactive TUI mode")
+	rootCmd.PersistentFlags().StringVar(&a.ConfigFile, "config", "", "config file (default is elmos.yaml)")
 
 	rootCmd.AddCommand(a.buildVersionCommand())
 	rootCmd.AddCommand(a.buildTUICommand())
@@ -228,6 +239,7 @@ func (a *App) buildConfigCommand() *cobra.Command {
 			a.Printer.Print("  Memory:        %s", a.Config.QEMU.Memory)
 			a.Printer.Print("  Project Root:  %s", a.Config.Paths.ProjectRoot)
 			a.Printer.Print("  Volume:        %s", a.Config.Image.MountPoint)
+			a.Printer.Print("  Config File:   %s", a.Config.ConfigFile)
 		},
 	}
 
@@ -252,7 +264,11 @@ func (a *App) buildConfigCommand() *cobra.Command {
 			default:
 				return fmt.Errorf("unknown key: %s", key)
 			}
-			configPath := filepath.Join(a.Config.Paths.ProjectRoot, "elmos.yaml")
+			configPath := a.Config.ConfigFile
+			if configPath == "" {
+				// Default to project root if loaded from default/env
+				configPath = filepath.Join(a.Config.Paths.ProjectRoot, "elmos.yaml")
+			}
 			if err := a.Config.Save(configPath); err != nil {
 				return err
 			}
@@ -264,8 +280,11 @@ func (a *App) buildConfigCommand() *cobra.Command {
 	initCfgCmd := &cobra.Command{
 		Use: "init", Short: "Initialize configuration file with defaults",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cwd, _ := os.Getwd()
-			configPath := filepath.Join(cwd, "elmos.yaml")
+			configPath := a.ConfigFile
+			if configPath == "" {
+				cwd, _ := os.Getwd()
+				configPath = filepath.Join(cwd, "elmos.yaml")
+			}
 			if a.FS.Exists(configPath) {
 				a.Printer.Warn("Configuration file already exists: %s", configPath)
 				return nil

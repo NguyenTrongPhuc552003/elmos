@@ -17,7 +17,7 @@ func main() {
 	fs := filesystem.NewOSFileSystem()
 
 	// Load configuration
-	cfg, err := config.Load()
+	cfg, err := config.Load("")
 	if err != nil {
 		// Continue with defaults on error
 		cfg = config.Get()

@@ -6,13 +6,15 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"sync"
 
 	"github.com/spf13/viper"
 )
 
 // Config holds the application configuration.
 type Config struct {
+	// ConfigFile is the path to the loaded configuration file
+	ConfigFile string `yaml:"-"`
+
 	// Image settings
 	Image ImageConfig `mapstructure:"image"`
 
@@ -75,58 +77,69 @@ type ProfileConfig struct {
 }
 
 var (
-	configOnce     sync.Once
 	configInstance *Config
 )
 
 // Load loads configuration from files and environment.
 // This is the preferred method for new code using dependency injection.
-func Load() (*Config, error) {
+func Load(configPath string) (*Config, error) {
 	var loadErr error
+	var cfg *Config
 
-	configOnce.Do(func() {
-		v := viper.New()
+	v := viper.New()
 
-		// Set config name and paths
+	if configPath != "" {
+		// Use specific config file
+		v.SetConfigFile(configPath)
+	} else {
+		// Set config name and search paths
 		v.SetConfigName("elmos")
 		v.SetConfigType("yaml")
-
-		// Config search paths
 		v.AddConfigPath(".")                                                  // Current directory
 		v.AddConfigPath(filepath.Join(os.Getenv("HOME"), ".config", "elmos")) // User config
 		v.AddConfigPath("/etc/elmos")                                         // System config
+	}
 
-		// Environment variables
-		v.SetEnvPrefix("ELMOS")
-		v.AutomaticEnv()
+	// Environment variables
+	v.SetEnvPrefix("ELMOS")
+	v.AutomaticEnv()
 
-		// Set defaults
-		setDefaults(v)
+	// Set defaults
+	setDefaults(v)
 
-		// Read config file (ignore errors - use defaults)
-		_ = v.ReadInConfig()
-
-		// Unmarshal into struct
-		cfg := &Config{}
-		if err := v.Unmarshal(cfg); err != nil {
-			// Even if unmarshal fails, continue with defaults
-			cfg = &Config{}
+	// Read config file
+	if err := v.ReadInConfig(); err != nil {
+		// If specific file provided, error out. Otherwise ignore if not found.
+		if configPath != "" {
+			loadErr = fmt.Errorf("failed to read config file %s: %w", configPath, err)
+		} else if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			// If it's not a "not found" error, report it
+			loadErr = fmt.Errorf("error reading config file: %w", err)
 		}
+	}
 
-		// Apply computed defaults
-		applyComputedDefaults(cfg)
+	// Unmarshal into struct
+	cfg = &Config{}
+	if err := v.Unmarshal(cfg); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	}
 
-		configInstance = cfg
-	})
+	// Apply computed defaults
+	applyComputedDefaults(cfg)
 
-	return configInstance, loadErr
+	// Save which file was used
+	cfg.ConfigFile = v.ConfigFileUsed()
+
+	// Update singleton
+	configInstance = cfg
+	return cfg, loadErr
 }
 
 // Get returns the current configuration.
 // If Load() hasn't been called, it will be called automatically.
 func Get() *Config {
 	if configInstance == nil {
-		cfg, _ := Load()
+		cfg, _ := Load("")
 		return cfg
 	}
 	return configInstance
@@ -134,7 +147,6 @@ func Get() *Config {
 
 // Reset clears the cached configuration (for testing).
 func Reset() {
-	configOnce = sync.Once{}
 	configInstance = nil
 }
 
