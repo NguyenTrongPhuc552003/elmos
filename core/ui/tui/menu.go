@@ -131,14 +131,17 @@ func buildMenuStructure() []MenuItem {
 			{Label: "Doctor", Desc: "Check environment", Action: "doctor:check", Command: "elmos doctor"},
 		}},
 		{Label: "Kernel", Desc: "Configure and build Linux kernel", Children: []MenuItem{
-			{Label: "Status", Desc: "Show kernel source status", Action: "kernel:status", Command: "elmos kernel status"},
-			{Label: "Clone Source", Desc: "Download kernel source", Action: "kernel:clone", Command: "elmos kernel clone"},
-			{Label: "Default Config", Desc: "Standard defconfig", Action: "kernel:defconfig", Command: "elmos kernel config"},
-			{Label: "Tiny Config", Desc: "Minimal kernel", Action: "kernel:tinyconfig", Command: "elmos kernel config tinyconfig"},
-			{Label: "KVM Guest", Desc: "Optimized for VMs", Action: "kernel:kvmconfig", Command: "elmos kernel config kvm_guest.config"},
-			{Label: "Menu Config", Desc: "Interactive ncurses", Action: "kernel:menuconfig", Command: "elmos kernel config menuconfig", Interactive: true, Args: []string{"kernel", "config", "menuconfig"}},
-			{Label: "Build", Desc: "Compile the kernel", Action: "kernel:build", Command: "elmos build"},
-			{Label: "Clean", Desc: "Remove build artifacts", Action: "kernel:clean", Command: "elmos kernel clean"},
+			{Label: "Status", Desc: "Show kernel status", Action: "kernel:status", Command: "elmos kernel status"},
+			{Label: "Clone", Desc: "Download source", Action: "kernel:clone", Command: "elmos kernel clone"},
+			{Label: "Pull", Desc: "Update source", Action: "kernel:pull", Command: "elmos kernel pull"},
+			{Label: "Branch", Desc: "List branches/tags", Action: "kernel:branch:list", Command: "elmos kernel branch"},
+			{Label: "Switch", Desc: "Switch branch/tag", Action: "kernel:branch:switch", Command: "elmos kernel branch <ref>", NeedsInput: true, InputPrompt: "Branch or tag:", InputPlaceholder: "v6.7"},
+			{Label: "Reset", Desc: "Reclone completely", Action: "kernel:reset", Command: "elmos kernel reset"},
+			{Label: "Config", Desc: "Standard defconfig", Action: "kernel:defconfig", Command: "elmos kernel config"},
+			{Label: "TinyConfig", Desc: "Minimal kernel", Action: "kernel:tinyconfig", Command: "elmos kernel config tinyconfig"},
+			{Label: "MenuConfig", Desc: "Interactive config", Action: "kernel:menuconfig", Command: "elmos kernel config menuconfig", Interactive: true, Args: []string{"kernel", "config", "menuconfig"}},
+			{Label: "Build", Desc: "Compile kernel", Action: "kernel:build", Command: "elmos build"},
+			{Label: "Clean", Desc: "Remove artifacts", Action: "kernel:clean", Command: "elmos kernel clean"},
 		}},
 		{Label: "Modules", Desc: "Manage kernel modules", Children: []MenuItem{
 			{Label: "List", Desc: "Show available modules", Action: "module:list", Command: "elmos module list"},
@@ -385,6 +388,14 @@ func (m *Model) actionToArgs(action, inputValue string) []string {
 		return []string{"kernel", "status"}
 	case "kernel:clone":
 		return []string{"kernel", "clone"}
+	case "kernel:pull":
+		return []string{"kernel", "pull"}
+	case "kernel:branch:list":
+		return []string{"kernel", "branch"}
+	case "kernel:branch:switch":
+		return []string{"kernel", "branch", inputValue}
+	case "kernel:reset":
+		return []string{"kernel", "reset"}
 	case "kernel:defconfig":
 		return []string{"kernel", "config"}
 	case "kernel:tinyconfig":
