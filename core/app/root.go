@@ -405,7 +405,54 @@ func (a *App) buildKernelCommand() *cobra.Command {
 		},
 	}
 
-	kernelCmd.AddCommand(configCmd, cleanCmd, cloneCmd)
+	statusCmd := &cobra.Command{
+		Use: "status", Short: "Show kernel source status",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := a.Context.EnsureMounted(); err != nil {
+				return err
+			}
+
+			if !a.Context.KernelExists() {
+				a.Printer.Info("Kernel source not found at %s", a.Config.Paths.KernelDir)
+				a.Printer.Print("  Run 'elmos kernel clone' to download kernel source")
+				return nil
+			}
+
+			a.Printer.Success("Kernel source found at %s", a.Config.Paths.KernelDir)
+			a.Printer.Print("")
+
+			// Get git info
+			a.Printer.Step("Git info:")
+			branch, err := a.Exec.Output(cmd.Context(), "git", "-C", a.Config.Paths.KernelDir, "branch", "--show-current")
+			if err == nil {
+				a.Printer.Print("  Branch: %s", strings.TrimSpace(string(branch)))
+			}
+			commit, err := a.Exec.Output(cmd.Context(), "git", "-C", a.Config.Paths.KernelDir, "log", "-1", "--format=%h %s")
+			if err == nil {
+				a.Printer.Print("  Commit: %s", strings.TrimSpace(string(commit)))
+			}
+
+			// Check kernel config
+			a.Printer.Print("")
+			a.Printer.Step("Build status:")
+			if a.Context.HasConfig() {
+				a.Printer.Print("  ✓ Kernel configured (.config exists)")
+			} else {
+				a.Printer.Print("  ○ Not configured (run 'elmos kernel config')")
+			}
+
+			// Check kernel image
+			if a.Context.HasKernelImage() {
+				a.Printer.Print("  ✓ Kernel image built")
+			} else {
+				a.Printer.Print("  ○ Kernel not built (run 'elmos build')")
+			}
+
+			return nil
+		},
+	}
+
+	kernelCmd.AddCommand(configCmd, cleanCmd, cloneCmd, statusCmd)
 	return kernelCmd
 }
 
