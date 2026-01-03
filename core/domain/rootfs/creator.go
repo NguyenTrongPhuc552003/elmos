@@ -60,15 +60,19 @@ func (c *Creator) Create(ctx context.Context, opts CreateOptions) error {
 		return fmt.Errorf("failed to format disk image: %w", err)
 	}
 
-	// Create mount point
-	if err := c.fs.MkdirAll(rootfsDir, 0755); err != nil {
+	// Clean old rootfs directory (must use sudo since debootstrap creates root-owned files)
+	if c.fs.Exists(rootfsDir) {
+		if err := c.exec.Run(ctx, "sudo", "rm", "-rf", rootfsDir); err != nil {
+			return fmt.Errorf("failed to clean old rootfs: %w", err)
+		}
+	}
+
+	// Create fresh rootfs directory
+	if err := c.exec.Run(ctx, "mkdir", "-p", rootfsDir); err != nil {
 		return fmt.Errorf("failed to create rootfs directory: %w", err)
 	}
 
-	// Mount the image (requires fuse-ext2 on macOS)
-	// This is a simplified version - actual mounting is complex on macOS
-
-	// For now, we'll use fakeroot + debootstrap approach
+	// Get Debian architecture for the target
 	arch := c.getDebianArch()
 
 	// Run debootstrap with DEBOOTSTRAP_DIR set
