@@ -3,6 +3,7 @@ package context
 
 import (
 	gocontext "context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -36,12 +37,19 @@ func New(cfg *config.Config, exec executor.Executor, fs filesystem.FileSystem) *
 func (ctx *Context) IsMounted() bool {
 	mountPoint := ctx.Config.Image.MountPoint
 
-	// Check if mount point exists and is a directory
+	// Check if the directory exists first
 	if !ctx.FS.IsDir(mountPoint) {
-		return false
+		// It might be mounted at a different location (e.g. with " 1" suffix)
+		// Fallback to checking hdiutil info for the volume name
+		out, err := ctx.Exec.Output(gocontext.Background(), "hdiutil", "info")
+		if err != nil {
+			return false
+		}
+		// Check if our volume name is in the output
+		return strings.Contains(string(out), "/Volumes/"+ctx.Config.Image.VolumeName)
 	}
 
-	// Use mount command to verify
+	// Verify it's actually a mount point using 'mount'
 	out, err := ctx.Exec.Output(gocontext.Background(), "mount")
 	if err != nil {
 		return false
@@ -56,6 +64,41 @@ func (ctx *Context) EnsureMounted() error {
 		return ImageError("kernel volume not mounted", ErrNotMounted)
 	}
 	return nil
+}
+
+// GetMountPoint returns the actual mount point path of the kernel volume.
+// This handles cases where the volume is mounted at a different location (e.g. " 1" suffix).
+func (ctx *Context) GetActualMountPoint() (string, error) {
+	mountPoint := ctx.Config.Image.MountPoint
+
+	// Fast path: if configured path exists
+	if ctx.FS.IsDir(mountPoint) {
+		return mountPoint, nil
+	}
+
+	// Slow path: check hdiutil info
+	out, err := ctx.Exec.Output(gocontext.Background(), "hdiutil", "info")
+	if err != nil {
+		return "", err
+	}
+
+	// Look for the volume name
+	volumeSuffix := "/Volumes/" + ctx.Config.Image.VolumeName
+	outputStr := string(out)
+
+	lines := strings.Split(outputStr, "\n")
+	for _, line := range lines {
+		if idx := strings.Index(line, volumeSuffix); idx != -1 {
+			// Extract the full path from this line
+			// Format is typically: /dev/diskXsY  UUID  /Volumes/VolumeName 1
+			// We take everything after the UUID or just the last part?
+			// hdiutil output is tabular but separated by tabs/spaces.
+			// Let's find the substring starting with /Volumes/
+			return strings.TrimSpace(line[idx:]), nil
+		}
+	}
+
+	return "", fmt.Errorf("volume not found")
 }
 
 // KernelExists checks if the kernel source directory exists.
