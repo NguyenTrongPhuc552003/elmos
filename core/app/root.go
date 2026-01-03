@@ -102,7 +102,7 @@ Common workflow:
 	rootCmd.AddCommand(a.buildTUICommand())
 	rootCmd.AddCommand(a.buildInitCommand())
 	rootCmd.AddCommand(a.buildExitCommand())
-	rootCmd.AddCommand(a.buildConfigCommand())
+	rootCmd.AddCommand(a.buildArchCommand())
 	rootCmd.AddCommand(a.buildDoctorCommand())
 	rootCmd.AddCommand(a.buildBuildCommand())
 	rootCmd.AddCommand(a.buildKernelCommand())
@@ -198,84 +198,73 @@ func (a *App) buildExitCommand() *cobra.Command {
 	}
 }
 
-func (a *App) buildConfigCommand() *cobra.Command {
-	configCmd := &cobra.Command{Use: "config", Short: "Manage elmos configuration"}
+func (a *App) buildArchCommand() *cobra.Command {
+	archCmd := &cobra.Command{
+		Use: "arch [target]", Short: "Set or show target architecture",
+		Long: `Manage target architecture for cross-compilation.
 
-	showCmd := &cobra.Command{
-		Use: "show", Short: "Show current configuration",
-		Run: func(cmd *cobra.Command, args []string) {
-			a.Printer.Print("Current Configuration:")
-			a.Printer.Print("  Architecture:  %s", a.Config.Build.Arch)
-			a.Printer.Print("  Jobs:          %d", a.Config.Build.Jobs)
-			a.Printer.Print("  LLVM:          %v", a.Config.Build.LLVM)
-			a.Printer.Print("  Memory:        %s", a.Config.QEMU.Memory)
-			a.Printer.Print("  Project Root:  %s", a.Config.Paths.ProjectRoot)
-			a.Printer.Print("  Volume:        %s", a.Config.Image.MountPoint)
-			a.Printer.Print("  Config File:   %s", a.Config.ConfigFile)
-		},
-	}
-
-	setCmd := &cobra.Command{
-		Use: "set [key] [value]", Short: "Set a configuration value", Args: cobra.ExactArgs(2),
+Examples:
+  elmos arch           # Show current config (or init if none)
+  elmos arch arm64     # Set architecture to arm64
+  elmos arch show      # Show detailed configuration`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			key, value := args[0], args[1]
-			switch key {
-			case "arch":
-				if !config.IsValidArch(value) {
-					return fmt.Errorf("invalid architecture: %s", value)
+			if len(args) == 0 {
+				// No args = show or init
+				if a.Config.ConfigFile == "" {
+					// Init default config
+					cwd, _ := os.Getwd()
+					configPath := filepath.Join(cwd, "elmos.yaml")
+					if !a.FS.Exists(configPath) {
+						cfg := &config.Config{
+							Build: config.BuildConfig{Arch: "arm64", LLVM: true, CrossCompile: "llvm-"},
+							Image: config.ImageConfig{Size: "20G", VolumeName: "kernel-dev"},
+							QEMU:  config.QEMUConfig{Memory: "2G", GDBPort: 1234, SSHPort: 2222},
+						}
+						if err := cfg.Save(configPath); err != nil {
+							return err
+						}
+						a.Printer.Success("Initialized config: %s", configPath)
+						return nil
+					}
 				}
-				a.Config.Build.Arch = value
-			case "jobs":
-				var jobs int
-				if _, err := fmt.Sscanf(value, "%d", &jobs); err != nil {
-					return fmt.Errorf("invalid jobs value: %s", value)
-				}
-				a.Config.Build.Jobs = jobs
-			case "memory":
-				a.Config.QEMU.Memory = value
-			default:
-				return fmt.Errorf("unknown key: %s", key)
+				// Show current arch
+				a.Printer.Print("Architecture: %s", a.Config.Build.Arch)
+				return nil
 			}
+
+			target := args[0]
+
+			// Handle "show" subcommand
+			if target == "show" {
+				a.Printer.Print("Current Configuration:")
+				a.Printer.Print("  Architecture:  %s", a.Config.Build.Arch)
+				a.Printer.Print("  Jobs:          %d", a.Config.Build.Jobs)
+				a.Printer.Print("  LLVM:          %v", a.Config.Build.LLVM)
+				a.Printer.Print("  Memory:        %s", a.Config.QEMU.Memory)
+				a.Printer.Print("  Project Root:  %s", a.Config.Paths.ProjectRoot)
+				a.Printer.Print("  Volume:        %s", a.Config.Image.MountPoint)
+				a.Printer.Print("  Config File:   %s", a.Config.ConfigFile)
+				return nil
+			}
+
+			// Set architecture
+			if !config.IsValidArch(target) {
+				return fmt.Errorf("invalid architecture: %s (use: arm64, arm, riscv)", target)
+			}
+			a.Config.Build.Arch = target
 			configPath := a.Config.ConfigFile
 			if configPath == "" {
-				// Default to project root if loaded from default/env
 				configPath = filepath.Join(a.Config.Paths.ProjectRoot, "elmos.yaml")
 			}
 			if err := a.Config.Save(configPath); err != nil {
 				return err
 			}
-			a.Printer.Success("Set %s = %s", key, value)
+			a.Printer.Success("Architecture set to: %s", target)
 			return nil
 		},
 	}
 
-	initCfgCmd := &cobra.Command{
-		Use: "init", Short: "Initialize configuration file with defaults",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			configPath := a.ConfigFile
-			if configPath == "" {
-				cwd, _ := os.Getwd()
-				configPath = filepath.Join(cwd, "elmos.yaml")
-			}
-			if a.FS.Exists(configPath) {
-				a.Printer.Warn("Configuration file already exists: %s", configPath)
-				return nil
-			}
-			cfg := &config.Config{
-				Build: config.BuildConfig{Arch: "arm64", LLVM: true, CrossCompile: "llvm-"},
-				Image: config.ImageConfig{Size: "20G", VolumeName: "kernel-dev"},
-				QEMU:  config.QEMUConfig{Memory: "2G", GDBPort: 1234, SSHPort: 2222},
-			}
-			if err := cfg.Save(configPath); err != nil {
-				return err
-			}
-			a.Printer.Success("Created configuration file: %s", configPath)
-			return nil
-		},
-	}
-
-	configCmd.AddCommand(showCmd, setCmd, initCfgCmd)
-	return configCmd
+	return archCmd
 }
 
 func (a *App) buildDoctorCommand() *cobra.Command {
