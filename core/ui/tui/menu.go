@@ -127,51 +127,43 @@ func buildMenuStructure() []MenuItem {
 		{Label: "Workspace", Desc: "Initialize and manage workspace", Children: []MenuItem{
 			{Label: "Initialize", Desc: "Create image & mount", Action: "init:workspace", Command: "elmos init"},
 			{Label: "Status", Desc: "Show workspace status", Action: "workspace:status", Command: "elmos status"},
-			{Label: "Exit Workspace", Desc: "Unmount & cleanup", Action: "workspace:exit", Command: "elmos exit"},
+			{Label: "Exit", Desc: "Unmount & cleanup", Action: "workspace:exit", Command: "elmos exit"},
 			{Label: "Doctor", Desc: "Check environment", Action: "doctor:check", Command: "elmos doctor"},
+		}},
+		{Label: "Arch", Desc: "Set target architecture", Children: []MenuItem{
+			{Label: "Show", Desc: "Show current config", Action: "arch:show", Command: "elmos arch show"},
+			{Label: "Set", Desc: "Set architecture", Action: "arch:set", Command: "elmos arch <target>", NeedsInput: true, InputPrompt: "Architecture (arm64/arm/riscv):", InputPlaceholder: "arm64"},
 		}},
 		{Label: "Kernel", Desc: "Configure and build Linux kernel", Children: []MenuItem{
 			{Label: "Status", Desc: "Show kernel status", Action: "kernel:status", Command: "elmos kernel status"},
 			{Label: "Clone", Desc: "Download source", Action: "kernel:clone", Command: "elmos kernel clone"},
 			{Label: "Pull", Desc: "Update source", Action: "kernel:pull", Command: "elmos kernel pull"},
-			{Label: "Branch", Desc: "List branches/tags", Action: "kernel:branch:list", Command: "elmos kernel branch"},
-			{Label: "Switch", Desc: "Switch branch/tag", Action: "kernel:branch:switch", Command: "elmos kernel branch <ref>", NeedsInput: true, InputPrompt: "Branch or tag:", InputPlaceholder: "v6.7"},
-			{Label: "Reset", Desc: "Reclone completely", Action: "kernel:reset", Command: "elmos kernel reset"},
-			{Label: "Config", Desc: "Standard defconfig", Action: "kernel:defconfig", Command: "elmos kernel config"},
-			{Label: "TinyConfig", Desc: "Minimal kernel", Action: "kernel:tinyconfig", Command: "elmos kernel config tinyconfig"},
-			{Label: "MenuConfig", Desc: "Interactive config", Action: "kernel:menuconfig", Command: "elmos kernel config menuconfig", Interactive: true, Args: []string{"kernel", "config", "menuconfig"}},
+			{Label: "Branch", Desc: "List/switch refs", Action: "kernel:branch:list", Command: "elmos kernel branch"},
+			{Label: "Switch", Desc: "Checkout ref", Action: "kernel:branch:switch", Command: "elmos kernel branch <ref>", NeedsInput: true, InputPrompt: "Branch or tag:", InputPlaceholder: "v6.7"},
+			{Label: "Reset", Desc: "Reclone source", Action: "kernel:reset", Command: "elmos kernel reset"},
+			{Label: "Config", Desc: "Configure kernel", Action: "kernel:config", Command: "elmos kernel config <type>", NeedsInput: true, InputPrompt: "Config (defconfig/tinyconfig/menuconfig):", InputPlaceholder: "defconfig"},
 			{Label: "Build", Desc: "Compile kernel", Action: "kernel:build", Command: "elmos build"},
 			{Label: "Clean", Desc: "Remove artifacts", Action: "kernel:clean", Command: "elmos kernel clean"},
 		}},
 		{Label: "Modules", Desc: "Manage kernel modules", Children: []MenuItem{
-			{Label: "List", Desc: "Show available modules", Action: "module:list", Command: "elmos module list"},
-			{Label: "Build All", Desc: "Compile all modules", Action: "module:build", Command: "elmos module build"},
-			{Label: "Build One", Desc: "Compile specific module", Action: "module:build:one", Command: "elmos module build <name>", NeedsInput: true, InputPrompt: "Module name:", InputPlaceholder: "my_module"},
-			{Label: "Create New", Desc: "Generate module template", Action: "module:new", Command: "elmos module new <name>", NeedsInput: true, InputPrompt: "New module name:", InputPlaceholder: "hello_world"},
-			{Label: "Clean", Desc: "Remove module binaries", Action: "module:clean", Command: "elmos module clean"},
+			{Label: "List", Desc: "Show modules", Action: "module:list", Command: "elmos module list"},
+			{Label: "Build", Desc: "Build module(s)", Action: "module:build", Command: "elmos module build [name]", NeedsInput: true, InputPrompt: "Module (blank=all):", InputPlaceholder: ""},
+			{Label: "New", Desc: "Create module", Action: "module:new", Command: "elmos module new <name>", NeedsInput: true, InputPrompt: "Module name:", InputPlaceholder: "hello_world"},
+			{Label: "Clean", Desc: "Remove binaries", Action: "module:clean", Command: "elmos module clean"},
 		}},
-		{Label: "Apps", Desc: "Manage userspace applications", Children: []MenuItem{
-			{Label: "List", Desc: "Show available apps", Action: "app:list", Command: "elmos app list"},
-			{Label: "Build All", Desc: "Compile all apps", Action: "app:build", Command: "elmos app build"},
-			{Label: "Build One", Desc: "Compile specific app", Action: "app:build:one", Command: "elmos app build <name>", NeedsInput: true, InputPrompt: "App name:", InputPlaceholder: "my_app"},
-			{Label: "Create New", Desc: "Generate app template", Action: "app:new", Command: "elmos app new <name>", NeedsInput: true, InputPrompt: "New app name:", InputPlaceholder: "hello_app"},
-			{Label: "Clean", Desc: "Remove app binaries", Action: "app:clean", Command: "elmos app clean"},
+		{Label: "Apps", Desc: "Manage userspace apps", Children: []MenuItem{
+			{Label: "List", Desc: "Show apps", Action: "app:list", Command: "elmos app list"},
+			{Label: "Build", Desc: "Build app(s)", Action: "app:build", Command: "elmos app build [name]", NeedsInput: true, InputPrompt: "App (blank=all):", InputPlaceholder: ""},
+			{Label: "New", Desc: "Create app", Action: "app:new", Command: "elmos app new <name>", NeedsInput: true, InputPrompt: "App name:", InputPlaceholder: "hello_app"},
+			{Label: "Clean", Desc: "Remove binaries", Action: "app:clean", Command: "elmos app clean"},
 		}},
 		{Label: "QEMU", Desc: "Run kernel in emulator", Children: []MenuItem{
-			{Label: "Run (Console)", Desc: "Boot in terminal", Action: "qemu:run", Command: "elmos qemu run", Interactive: true, Args: []string{"qemu", "run"}},
-			{Label: "Run (GUI)", Desc: "Boot with display", Action: "qemu:graphical", Command: "elmos qemu run -g", Interactive: true, Args: []string{"qemu", "run", "-g"}},
-			{Label: "Debug Mode", Desc: "Start GDB server", Action: "qemu:debug", Command: "elmos qemu debug", Interactive: true, Args: []string{"qemu", "debug"}},
+			{Label: "Run", Desc: "Boot kernel", Action: "qemu:run", Command: "elmos qemu run", Interactive: true, Args: []string{"qemu", "run"}},
+			{Label: "Debug", Desc: "With GDB server", Action: "qemu:debug", Command: "elmos qemu debug", Interactive: true, Args: []string{"qemu", "debug"}},
 		}},
-		{Label: "GDB", Desc: "Connect debugger to QEMU", Action: "gdb:connect", Command: "elmos gdb"},
-		{Label: "RootFS", Desc: "Create root filesystem", Children: []MenuItem{
-			{Label: "Create (5G)", Desc: "Default size rootfs", Action: "rootfs:create", Command: "elmos rootfs create"},
-			{Label: "Create Custom", Desc: "Specify size (e.g. 10G)", Action: "rootfs:create:custom", Command: "elmos rootfs create -s <size>", NeedsInput: true, InputPrompt: "Size (e.g. 10G):", InputPlaceholder: "10G"},
-		}},
-		{Label: "Config", Desc: "Manage settings", Children: []MenuItem{
-			{Label: "Show", Desc: "Display current settings", Action: "config:show", Command: "elmos config show"},
-			{Label: "Set Architecture", Desc: "arm64, arm, riscv", Action: "config:arch", Command: "elmos config set arch <arch>", NeedsInput: true, InputPrompt: "Architecture (arm64/arm/riscv):", InputPlaceholder: "arm64"},
-			{Label: "Set Build Jobs", Desc: "Parallel compilation", Action: "config:jobs", Command: "elmos config set jobs <n>", NeedsInput: true, InputPrompt: "Number of jobs:", InputPlaceholder: "8"},
-			{Label: "Set QEMU Memory", Desc: "Memory allocation", Action: "config:memory", Command: "elmos config set memory <size>", NeedsInput: true, InputPrompt: "Memory (e.g. 2G):", InputPlaceholder: "2G"},
+		{Label: "GDB", Desc: "Connect debugger", Action: "gdb:connect", Command: "elmos gdb"},
+		{Label: "RootFS", Desc: "Create filesystem", Children: []MenuItem{
+			{Label: "Create", Desc: "Create rootfs", Action: "rootfs:create", Command: "elmos rootfs create -s <size>", NeedsInput: true, InputPrompt: "Size (e.g. 5G):", InputPlaceholder: "5G"},
 		}},
 		{Label: "Doctor", Desc: "Check environment", Action: "doctor:check", Command: "elmos doctor"},
 	}
@@ -384,6 +376,10 @@ func (m *Model) actionToArgs(action, inputValue string) []string {
 		return []string{"exit"}
 	case "gdb:connect":
 		return []string{"gdb"}
+	case "arch:show":
+		return []string{"arch", "show"}
+	case "arch:set":
+		return []string{"arch", inputValue}
 	case "kernel:status":
 		return []string{"kernel", "status"}
 	case "kernel:clone":
@@ -396,12 +392,11 @@ func (m *Model) actionToArgs(action, inputValue string) []string {
 		return []string{"kernel", "branch", inputValue}
 	case "kernel:reset":
 		return []string{"kernel", "reset"}
-	case "kernel:defconfig":
-		return []string{"kernel", "config"}
-	case "kernel:tinyconfig":
-		return []string{"kernel", "config", "tinyconfig"}
-	case "kernel:kvmconfig":
-		return []string{"kernel", "config", "kvm_guest.config"}
+	case "kernel:config":
+		if inputValue == "" || inputValue == "defconfig" {
+			return []string{"kernel", "config"}
+		}
+		return []string{"kernel", "config", inputValue}
 	case "kernel:build":
 		return []string{"build"}
 	case "kernel:clean":
@@ -409,8 +404,9 @@ func (m *Model) actionToArgs(action, inputValue string) []string {
 	case "module:list":
 		return []string{"module", "list"}
 	case "module:build":
-		return []string{"module", "build"}
-	case "module:build:one":
+		if inputValue == "" {
+			return []string{"module", "build"}
+		}
 		return []string{"module", "build", inputValue}
 	case "module:new":
 		return []string{"module", "new", inputValue}
@@ -419,8 +415,9 @@ func (m *Model) actionToArgs(action, inputValue string) []string {
 	case "app:list":
 		return []string{"app", "list"}
 	case "app:build":
-		return []string{"app", "build"}
-	case "app:build:one":
+		if inputValue == "" {
+			return []string{"app", "build"}
+		}
 		return []string{"app", "build", inputValue}
 	case "app:new":
 		return []string{"app", "new", inputValue}
