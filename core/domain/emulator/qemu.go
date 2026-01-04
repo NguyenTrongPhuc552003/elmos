@@ -72,7 +72,7 @@ func (q *QEMURunner) Run(ctx context.Context, opts RunOptions) error {
 	args := q.buildArgs(archCfg, kernelImage, opts)
 
 	// Execute QEMU
-	return q.executeQEMU(ctx, archCfg.QEMUBinary, args, opts.Debug)
+	return q.executeQEMU(ctx, archCfg.QEMUBinary, args)
 }
 
 // Debug starts QEMU in debug mode and waits for GDB connection.
@@ -180,7 +180,7 @@ func (q *QEMURunner) buildArgs(archCfg *elconfig.ArchConfig, kernelImage string,
 }
 
 // executeQEMU runs the QEMU binary with signal handling.
-func (q *QEMURunner) executeQEMU(ctx context.Context, binary string, args []string, debug bool) error {
+func (q *QEMURunner) executeQEMU(ctx context.Context, binary string, args []string) error {
 	// For now, we need to use the shell executor's direct run
 	// since we need interactive stdin/stdout
 	shellExec, ok := q.exec.(*executor.ShellExecutor)
