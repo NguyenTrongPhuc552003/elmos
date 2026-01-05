@@ -3,6 +3,7 @@ package config
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -80,6 +81,24 @@ var (
 	configInstance *Config
 )
 
+// copyFile copies a file from src to dst.
+func copyFile(src, dst string) error {
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	dstFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer dstFile.Close()
+
+	_, err = io.Copy(dstFile, srcFile)
+	return err
+}
+
 // Load loads configuration from files and environment.
 // This is the preferred method for new code using dependency injection.
 func Load(configPath string) (*Config, error) {
@@ -98,6 +117,19 @@ func Load(configPath string) (*Config, error) {
 		v.AddConfigPath(".")                                                  // Current directory
 		v.AddConfigPath(filepath.Join(os.Getenv("HOME"), ".config", "elmos")) // User config
 		v.AddConfigPath("/etc/elmos")                                         // System config
+
+		// Auto-create elmos.yaml from elmos.yaml.example if it doesn't exist
+		cwd, _ := os.Getwd()
+		configFile := filepath.Join(cwd, "elmos.yaml")
+		exampleFile := filepath.Join(cwd, "elmos.yaml.example")
+		if _, err := os.Stat(configFile); os.IsNotExist(err) {
+			if _, err := os.Stat(exampleFile); err == nil {
+				// Copy example to config
+				if err := copyFile(exampleFile, configFile); err == nil {
+					// Successfully created config from example
+				}
+			}
+		}
 	}
 
 	// Environment variables
