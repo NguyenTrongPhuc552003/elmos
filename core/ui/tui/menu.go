@@ -142,7 +142,7 @@ func buildMenuStructure() []MenuItem {
 			{Label: "Switch", Desc: "Checkout ref", Action: "kernel:branch:switch", Command: "elmos kernel branch <ref>", NeedsInput: true, InputPrompt: "Branch or tag:", InputPlaceholder: "v6.7"},
 			{Label: "Reset", Desc: "Reclone source", Action: "kernel:reset", Command: "elmos kernel reset"},
 			{Label: "Config", Desc: "Configure kernel", Action: "kernel:config", Command: "elmos kernel config <type>", NeedsInput: true, InputPrompt: "Config (defconfig/tinyconfig/menuconfig):", InputPlaceholder: "defconfig"},
-			{Label: "Build", Desc: "Compile kernel", Action: "kernel:build", Command: "elmos build"},
+			{Label: "Build", Desc: "Compile kernel", Action: "kernel:build", Command: "elmos kernel build"},
 			{Label: "Clean", Desc: "Remove artifacts", Action: "kernel:clean", Command: "elmos kernel clean"},
 		}},
 		{Label: "Modules", Desc: "Manage kernel modules", Children: []MenuItem{
@@ -398,7 +398,7 @@ func (m *Model) actionToArgs(action, inputValue string) []string {
 		}
 		return []string{"kernel", "config", inputValue}
 	case "kernel:build":
-		return []string{"build"}
+		return []string{"kernel", "build"}
 	case "kernel:clean":
 		return []string{"kernel", "clean"}
 	case "module:list":
