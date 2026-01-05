@@ -42,25 +42,7 @@ func (c *Creator) Create(ctx context.Context, opts CreateOptions) error {
 	diskImage := c.cfg.Paths.DiskImage
 	rootfsDir := c.cfg.Paths.RootfsDir
 
-	// Create disk image using dd
-	sizeNum := size[:len(size)-1]
-	sizeUnit := "1G"
-	if size[len(size)-1] == 'M' {
-		sizeUnit = "1M"
-	}
-
-	// Create sparse file
-	if err := c.exec.Run(ctx, "dd", "if=/dev/zero", "of="+diskImage,
-		"bs="+sizeUnit, "count=0", "seek="+sizeNum); err != nil {
-		return fmt.Errorf("failed to create disk image: %w", err)
-	}
-
-	// Format as ext4
-	if err := c.exec.Run(ctx, "mkfs.ext4", "-F", diskImage); err != nil {
-		return fmt.Errorf("failed to format disk image: %w", err)
-	}
-
-	// Clean old rootfs directory (must use sudo since debootstrap creates root-owned files)
+	// Step 1: Clean old rootfs directory (must use sudo since debootstrap creates root-owned files)
 	if c.fs.Exists(rootfsDir) {
 		if err := c.exec.Run(ctx, "sudo", "rm", "-rf", rootfsDir); err != nil {
 			return fmt.Errorf("failed to clean old rootfs: %w", err)
@@ -72,10 +54,8 @@ func (c *Creator) Create(ctx context.Context, opts CreateOptions) error {
 		return fmt.Errorf("failed to create rootfs directory: %w", err)
 	}
 
-	// Get Debian architecture for the target
+	// Step 2: Get Debian architecture and run debootstrap
 	arch := c.getDebianArch()
-
-	// Run debootstrap with DEBOOTSTRAP_DIR set
 	debootstrapDir := filepath.Join(c.cfg.Paths.ProjectRoot, "tools", "debootstrap")
 	debootstrapPath := filepath.Join(debootstrapDir, "debootstrap")
 	if !c.fs.Exists(debootstrapPath) {
@@ -83,9 +63,8 @@ func (c *Creator) Create(ctx context.Context, opts CreateOptions) error {
 	}
 
 	// Execute debootstrap with DEBOOTSTRAP_DIR set via env command
-	// Using env to pass the variable avoids sudo stripping it
 	if err := c.exec.Run(ctx,
-		"sudo", "env", "DEBOOTSTRAP_DIR="+debootstrapDir,
+		"sudo", "-E", "DEBOOTSTRAP_DIR="+debootstrapDir,
 		"fakeroot", debootstrapPath,
 		"--foreign",
 		"--arch="+arch,
@@ -97,13 +76,28 @@ func (c *Creator) Create(ctx context.Context, opts CreateOptions) error {
 		return fmt.Errorf("debootstrap failed: %w", err)
 	}
 
-	// Create init script
+	// Step 3: Create init script in rootfs directory
 	if err := c.createInitScript(rootfsDir); err != nil {
 		return fmt.Errorf("failed to create init script: %w", err)
 	}
 
-	// Copy rootfs to disk image using e2cp tools
-	// This is simplified - actual implementation would be more complex
+	// Step 4: Remove old disk image if exists
+	if c.fs.Exists(diskImage) {
+		if err := c.exec.Run(ctx, "rm", "-f", diskImage); err != nil {
+			return fmt.Errorf("failed to remove old disk image: %w", err)
+		}
+	}
+
+	// Step 5: Create ext4 disk image and populate it from rootfs directory using mke2fs -d
+	// This directly creates the disk image with the rootfs contents
+	if err := c.exec.Run(ctx,
+		"mke2fs", "-t", "ext4",
+		"-E", "lazy_itable_init=0,lazy_journal_init=0",
+		"-d", rootfsDir,
+		diskImage, size,
+	); err != nil {
+		return fmt.Errorf("failed to create disk image: %w", err)
+	}
 
 	return nil
 }
@@ -126,46 +120,14 @@ func (c *Creator) getDebianArch() string {
 func (c *Creator) createInitScript(rootfsDir string) error {
 	initPath := filepath.Join(rootfsDir, "init")
 
-	content := `#!/bin/sh
-# elmos init script
+	// Read init script from scripts/init file
+	scriptPath := filepath.Join(c.cfg.Paths.ProjectRoot, "scripts", "init")
+	content, err := c.fs.ReadFile(scriptPath)
+	if err != nil {
+		return fmt.Errorf("failed to read init script from %s: %w", scriptPath, err)
+	}
 
-echo "Booting Debian root filesystem..."
-
-# Mount essential filesystems
-mount -t proc proc /proc
-mount -t sysfs sysfs /sys
-mount -t devtmpfs devtmpfs /dev
-
-# Create pts
-mkdir -p /dev/pts
-mount -t devpts devpts /dev/pts
-
-# Setup root filesystem if needed
-if [ ! -f /etc/passwd ]; then
-    echo "Setting up root filesystem..."
-    echo "root:x:0:0:root:/root:/bin/sh" > /etc/passwd
-    echo "root::0:0:::::" > /etc/shadow
-    mkdir -p /root
-fi
-
-echo "Root filesystem already set up."
-
-# Mount 9p shared modules directory
-mkdir -p /mnt/modules
-mount -t 9p -o trans=virtio modules_mount /mnt/modules 2>/dev/null || true
-
-# Run module sync if available
-if [ -x /mnt/modules/guesync.sh ]; then
-    /mnt/modules/guesync.sh
-fi
-
-echo "System ready."
-
-# Start shell
-exec /bin/sh
-`
-
-	if err := c.fs.WriteFile(initPath, []byte(content), 0755); err != nil {
+	if err := c.fs.WriteFile(initPath, content, 0755); err != nil {
 		return err
 	}
 
