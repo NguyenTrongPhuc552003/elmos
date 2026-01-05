@@ -90,6 +90,47 @@ func (b *KernelBuilder) Configure(ctx context.Context, configType string) error 
 
 	// Run make with proper environment
 	env := b.ctx.GetMakeEnv()
+	if err := b.exec.RunWithEnv(ctx, env, "make", args...); err != nil {
+		return err
+	}
+
+	// For kvm_guest.config, force graphics options to be built-in (=y)
+	if configType == "kvm_guest.config" {
+		if err := b.forceGraphicsConfig(ctx); err != nil {
+			return fmt.Errorf("failed to enable graphics options: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// forceGraphicsConfig forces graphics-related options to be built-in for QEMU GUI.
+func (b *KernelBuilder) forceGraphicsConfig(ctx context.Context) error {
+	scriptPath := filepath.Join(b.cfg.Paths.KernelDir, "scripts", "config")
+	configFile := filepath.Join(b.cfg.Paths.KernelDir, ".config")
+
+	// Use scripts/config to force graphics options to =y (built-in)
+	options := []string{
+		"--enable", "CONFIG_DRM",
+		"--enable", "CONFIG_DRM_VIRTIO_GPU",
+		"--enable", "CONFIG_FB",
+		"--enable", "CONFIG_FRAMEBUFFER_CONSOLE",
+	}
+
+	configArgs := append([]string{"--file", configFile}, options...)
+	if err := b.exec.Run(ctx, scriptPath, configArgs...); err != nil {
+		return fmt.Errorf("scripts/config failed: %w", err)
+	}
+
+	// Run olddefconfig to finalize the config
+	args := []string{
+		"-C", b.cfg.Paths.KernelDir,
+		fmt.Sprintf("ARCH=%s", b.cfg.Build.Arch),
+		"LLVM=1",
+		"olddefconfig",
+	}
+
+	env := b.ctx.GetMakeEnv()
 	return b.exec.RunWithEnv(ctx, env, "make", args...)
 }
 
