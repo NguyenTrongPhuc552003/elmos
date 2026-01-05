@@ -104,7 +104,6 @@ Common workflow:
 	rootCmd.AddCommand(a.buildExitCommand())
 	rootCmd.AddCommand(a.buildArchCommand())
 	rootCmd.AddCommand(a.buildDoctorCommand())
-	rootCmd.AddCommand(a.buildBuildCommand())
 	rootCmd.AddCommand(a.buildKernelCommand())
 	rootCmd.AddCommand(a.buildModuleCommand())
 	rootCmd.AddCommand(a.buildAppsCommand())
@@ -310,30 +309,6 @@ func (a *App) buildDoctorCommand() *cobra.Command {
 	}
 }
 
-func (a *App) buildBuildCommand() *cobra.Command {
-	var jobs int
-	cmd := &cobra.Command{
-		Use: "build [targets...]", Short: "Build the Linux kernel",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := a.Context.EnsureMounted(); err != nil {
-				return err
-			}
-			targets := args
-			if len(targets) == 0 {
-				targets = a.KernelBuilder.GetDefaultTargets()
-			}
-			a.Printer.Step("Building kernel for %s...", a.Config.Build.Arch)
-			if err := a.KernelBuilder.Build(cmd.Context(), builder.BuildOptions{Jobs: jobs, Targets: targets}); err != nil {
-				return err
-			}
-			a.Printer.Success("Build complete!")
-			return nil
-		},
-	}
-	cmd.Flags().IntVarP(&jobs, "jobs", "j", 0, "Number of parallel build jobs")
-	return cmd
-}
-
 func (a *App) buildKernelCommand() *cobra.Command {
 	kernelCmd := &cobra.Command{Use: "kernel", Short: "Kernel configuration commands"}
 
@@ -537,7 +512,28 @@ Examples:
 		},
 	}
 
-	kernelCmd.AddCommand(configCmd, cleanCmd, cloneCmd, statusCmd, resetCmd, branchCmd, pullCmd)
+	var jobs int
+	buildCmd := &cobra.Command{
+		Use: "build [targets...]", Short: "Build the Linux kernel",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := a.Context.EnsureMounted(); err != nil {
+				return err
+			}
+			targets := args
+			if len(targets) == 0 {
+				targets = a.KernelBuilder.GetDefaultTargets()
+			}
+			a.Printer.Step("Building kernel for %s...", a.Config.Build.Arch)
+			if err := a.KernelBuilder.Build(cmd.Context(), builder.BuildOptions{Jobs: jobs, Targets: targets}); err != nil {
+				return err
+			}
+			a.Printer.Success("Build complete!")
+			return nil
+		},
+	}
+	buildCmd.Flags().IntVarP(&jobs, "jobs", "j", 0, "Number of parallel build jobs")
+
+	kernelCmd.AddCommand(configCmd, cleanCmd, cloneCmd, statusCmd, resetCmd, branchCmd, pullCmd, buildCmd)
 	return kernelCmd
 }
 
