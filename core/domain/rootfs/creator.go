@@ -4,6 +4,7 @@ package rootfs
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	elconfig "github.com/NguyenTrongPhuc552003/elmos/core/config"
@@ -88,10 +89,15 @@ func (c *Creator) Create(ctx context.Context, opts CreateOptions) error {
 		}
 	}
 
+	// Step 4.5: Fix apt list filenames (host debootstrap may include protocol prefix, guest might not expect it)
+	if err := c.fixAptLists(rootfsDir); err != nil {
+		fmt.Printf("Warning: failed to fix apt lists: %v\n", err)
+	}
+
 	// Step 5: Create ext4 disk image and populate it from rootfs directory using mke2fs -d
-	// This directly creates the disk image with the rootfs contents
+	// Using sudo since debootstrap created root-owned files that mke2fs needs to copy
 	if err := c.exec.Run(ctx,
-		"mke2fs", "-t", "ext4",
+		"sudo", "mke2fs", "-t", "ext4",
 		"-E", "lazy_itable_init=0,lazy_journal_init=0",
 		"-d", rootfsDir,
 		diskImage, size,
@@ -99,6 +105,40 @@ func (c *Creator) Create(ctx context.Context, opts CreateOptions) error {
 		return fmt.Errorf("failed to create disk image: %w", err)
 	}
 
+	return nil
+}
+
+// fixAptLists smoothes over differences between debootstrap versions by symlinking
+// http:__ prefix files to their non-prefixed counterparts.
+func (c *Creator) fixAptLists(rootfsDir string) error {
+	listsDir := filepath.Join(rootfsDir, "var", "lib", "apt", "lists")
+	entries, err := os.ReadDir(listsDir)
+	if err != nil {
+		return nil // Directory might not exist yet, ignore
+	}
+
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() {
+			continue
+		}
+
+		newName := name
+		if len(name) > 7 && name[:7] == "http:__" {
+			newName = name[7:]
+		} else if len(name) > 8 && name[:8] == "https:__" {
+			newName = name[8:]
+		}
+
+		if newName != name {
+			newPath := filepath.Join(listsDir, newName)
+			// Create symlink if it doesn't match
+			// We need to use sudo because the directory is owned by root (created by sudo debootstrap)
+			// Use absolute path for target to be safe, or just filename if relative
+			// Here we use just name because they are in the same directory
+			_ = c.exec.Run(context.Background(), "sudo", "ln", "-sf", name, newPath)
+		}
+	}
 	return nil
 }
 
