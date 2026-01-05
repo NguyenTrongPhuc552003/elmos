@@ -34,3 +34,7 @@ apps/*/[!.]*
 
 # Task cache
 .task/
+
+# IDE
+.idea
+.vscode
