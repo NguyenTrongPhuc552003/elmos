@@ -175,6 +175,16 @@ func (m Model) handleInputMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.logLines = append(m.logLines, lipgloss.NewStyle().Foreground(cyan).Render("  ▶ "+cmdStr))
 			m.refreshViewport()
 
+			// Check if the resulting command is interactive
+			if m.isInteractiveCommand(m.inputAction, value) {
+				args := m.actionToArgs(m.inputAction, value)
+				c := exec.Command(m.execPath, args...)
+				c.Stdin, c.Stdout, c.Stderr = os.Stdin, os.Stdout, os.Stderr
+				return m, tea.ExecProcess(c, func(err error) tea.Msg {
+					return CommandDoneMsg{Action: m.inputAction, Err: err}
+				})
+			}
+
 			m.isRunning = true
 			m.currentTask = m.inputPrompt + " " + value
 			return m, m.runCommand(m.inputAction, value)
@@ -300,4 +310,14 @@ func (m *Model) actionToArgs(action, inputValue string) []string {
 	default:
 		return []string{}
 	}
+
+}
+
+// isInteractiveCommand checks if a command from input mode should be run interactively.
+func (m *Model) isInteractiveCommand(action, value string) bool {
+	if action == "kernel:config" {
+		// menuconfig, nconfig, xconfig, gconfig need a TTY
+		return value == "menuconfig" || value == "nconfig" || value == "xconfig" || value == "gconfig"
+	}
+	return false
 }
