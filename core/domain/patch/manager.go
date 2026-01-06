@@ -12,13 +12,6 @@ import (
 	"github.com/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
 )
 
-// PatchInfo contains information about a patch file.
-type PatchInfo struct {
-	Name    string
-	Path    string
-	Version string
-}
-
 // Manager handles kernel patch operations.
 type Manager struct {
 	exec executor.Executor
