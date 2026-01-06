@@ -279,10 +279,14 @@ func (m *Model) actionToArgs(action, inputValue string) []string {
 		return []string{"app", "new", inputValue}
 	case "app:clean":
 		return []string{"app", "clean"}
+	case "rootfs:status":
+		return []string{"rootfs", "status"}
 	case "rootfs:create":
 		return []string{"rootfs", "create"}
 	case "rootfs:create:custom":
 		return []string{"rootfs", "create", "-s", inputValue}
+	case "rootfs:clean":
+		return []string{"rootfs", "clean"}
 	case "config:show":
 		return []string{"config", "show"}
 	case "config:arch":
