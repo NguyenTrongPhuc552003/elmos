@@ -39,7 +39,8 @@ func BuildInit(ctx *Context) *cobra.Command {
 
 // BuildExit creates the exit command for unmounting the workspace.
 func BuildExit(ctx *Context) *cobra.Command {
-	return &cobra.Command{
+	var force bool
+	cmd := &cobra.Command{
 		Use:   "exit",
 		Short: "Exit workspace (unmount volume)",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -53,11 +54,21 @@ func BuildExit(ctx *Context) *cobra.Command {
 				// Fallback to config path if detection fails but IsMounted passed
 				mountPoint = ctx.Config.Image.MountPoint
 			}
-			if err := ctx.Exec.Run(cmd.Context(), "hdiutil", "detach", mountPoint); err != nil {
+
+			// Prepare args
+			runArgs := []string{"detach", mountPoint}
+			if force {
+				runArgs = append(runArgs, "-force")
+			}
+
+			if err := ctx.Exec.Run(cmd.Context(), "hdiutil", runArgs...); err != nil {
 				return fmt.Errorf("failed to unmount: %w", err)
 			}
 			ctx.Printer.Success("Volume unmounted from %s", mountPoint)
 			return nil
 		},
 	}
+	cmd.Flags().BoolVarP(&force, "force", "f", false, "Force unmount (needed if resource is busy)")
+	return cmd
 }
+
