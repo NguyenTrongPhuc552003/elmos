@@ -47,7 +47,6 @@ func buildMenuStructure() []MenuItem {
 			{Label: "Initialize", Desc: "Create image & mount", Action: "init:workspace", Command: "elmos init"},
 			{Label: "Status", Desc: "Show workspace status", Action: "workspace:status", Command: "elmos status"},
 			{Label: "Exit", Desc: "Unmount & cleanup", Action: "workspace:exit", Command: "elmos exit"},
-			{Label: "Doctor", Desc: "Check environment", Action: "doctor:check", Command: "elmos doctor"},
 		}},
 		{Label: "Arch", Desc: "Set target architecture", Children: []MenuItem{
 			{Label: "Show", Desc: "Show current config", Action: "arch:show", Command: "elmos arch show"},
