@@ -28,11 +28,6 @@ func NewCreator(exec executor.Executor, fs filesystem.FileSystem, cfg *elconfig.
 	}
 }
 
-// CreateOptions contains options for creating a rootfs.
-type CreateOptions struct {
-	Size string // Disk image size, e.g., "5G"
-}
-
 // Create creates an ext4 disk image with Debian rootfs.
 func (c *Creator) Create(ctx context.Context, opts CreateOptions) error {
 	size := opts.Size
