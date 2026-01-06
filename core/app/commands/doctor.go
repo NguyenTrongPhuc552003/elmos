@@ -51,29 +51,28 @@ func BuildDoctor(ctx *Context) *cobra.Command {
 
 // getSection extracts section name from a check name.
 func getSection(name string) string {
-	sections := map[string]string{
-		"clang":         "LLVM Toolchain",
-		"llvm":          "LLVM Toolchain",
-		"lld":           "LLVM Toolchain",
-		"llvm-objcopy":  "LLVM Toolchain",
-		"llvm-objdump":  "LLVM Toolchain",
-		"llvm-ar":       "LLVM Toolchain",
-		"llvm-nm":       "LLVM Toolchain",
-		"llvm-strip":    "LLVM Toolchain",
-		"llvm-readelf":  "LLVM Toolchain",
-		"gsed":          "GNU Tools",
-		"gstat":         "GNU Tools",
-		"gmake":         "GNU Tools",
-		"hdiutil":       "macOS Tools",
-		"mke2fs":        "Filesystem Tools",
-		"kernel volume": "Workspace",
-		"kernel source": "Workspace",
-		".config":       "Workspace",
+	// Match exact names first
+	if name == "Homebrew" {
+		return "Package Manager"
 	}
-	for key, section := range sections {
-		if len(name) >= len(key) && name[:len(key)] == key {
-			return section
+
+	// Match prefixes
+	prefixSections := []struct {
+		prefix  string
+		section string
+	}{
+		{"Tap:", "Homebrew Taps"},
+		{"Package:", "Homebrew Packages"},
+		{"Header:", "Custom Headers"},
+		{"GDB:", "Cross Debuggers"},
+		{"GCC:", "Cross Compilers"},
+	}
+
+	for _, ps := range prefixSections {
+		if len(name) >= len(ps.prefix) && name[:len(ps.prefix)] == ps.prefix {
+			return ps.section
 		}
 	}
+
 	return "Other"
 }
