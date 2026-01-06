@@ -22,13 +22,13 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer srcFile.Close()
+	defer func() { _ = srcFile.Close() }()
 
 	dstFile, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
-	defer dstFile.Close()
+	defer func() { _ = dstFile.Close() }()
 
 	_, err = io.Copy(dstFile, srcFile)
 	return err
@@ -59,10 +59,8 @@ func Load(configPath string) (*Config, error) {
 		exampleFile := filepath.Join(cwd, "elmos.yaml.example")
 		if _, err := os.Stat(configFile); os.IsNotExist(err) {
 			if _, err := os.Stat(exampleFile); err == nil {
-				// Copy example to config
-				if err := copyFile(exampleFile, configFile); err == nil {
-					// Successfully created config from example
-				}
+				// Copy example to config (ignore error, non-critical)
+				_ = copyFile(exampleFile, configFile)
 			}
 		}
 	}
