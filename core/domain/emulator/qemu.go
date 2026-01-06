@@ -15,12 +15,6 @@ import (
 	"github.com/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
 )
 
-// RunOptions contains options for running QEMU.
-type RunOptions struct {
-	Debug     bool // Enable GDB stub
-	Graphical bool // Use graphical display instead of serial console
-}
-
 // QEMURunner orchestrates QEMU execution.
 type QEMURunner struct {
 	exec executor.Executor
