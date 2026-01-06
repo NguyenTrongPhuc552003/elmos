@@ -19,7 +19,7 @@ Our workarounds:
 
 - **Patch `gen_init_cpio`**: Replace `copy_file_range()` with `copyfile(COPYFILE_DATA)` on macOS.
 - **Custom headers**: Minimal `elf.h`/`byteswap.h` shims using Clang builtins. `asm/` symlinks to kernel uapi/asm-generic.
-- **Modern CLI**: Go-based `elmos` command replaces shell scripts with styled output and configuration management.
+- **Modern CLI**: Go-based `elmos` command replaces shell scripts with styled output, interactive TUI, and robust configuration management.
 
 ## Quick Start
 
@@ -42,7 +42,7 @@ task build
 ### 3. Check Environment
 
 ```bash
-./elmos doctor  # Checks deps and taps
+./elmos doctor  # Checks deps, taps, headers, and toolchains
 ```
 
 ### 4. Initialize Workspace
@@ -54,53 +54,67 @@ task build
 ### 5. Configure & Build
 
 ```bash
-./elmos config set arch arm64     # Or: riscv, arm
-./elmos kernel config             # Default: defconfig
-./elmos build                     # Build Image, dtbs, modules
+./elmos arch arm64                # Or: riscv, arm
+./elmos kernel config menuconfig  # Interactive configuration (works in TUI too!)
+./elmos kernel build              # Build Image, dtbs, modules
 ```
 
 ### 6. Create RootFS & Run
 
 ```bash
-./elmos rootfs create             # Debian rootfs in ext4 disk image
+./elmos rootfs create             # Debian rootfs in ext4 disk image (debootstrap)
+./elmos rootfs status             # Check rootfs/disk image status
 ./elmos qemu run                  # Boot in QEMU
 ./elmos qemu debug                # With GDB stub (port 1234)
 ```
 
 ## Interactive TUI
 
-Run `elmos ui` for a menuconfig-style interface:
+Run `elmos tui` for a rich, interactive interface:
 
 ```
 ┌────────────────────────────────────────────────────┐
 │  ELMOS - Embedded Linux on MacOS                   │
 ├────────────────────────────────────────────────────┤
-│  ▼ Setup                                           │
-│      Doctor (Check Environment)              [✓]   │
-│      Init Workspace                          [○]   │
-│      Configure (Arch, Jobs...)                     │
-│  ▼ Build                                           │
-│      Build Kernel                                  │
-│      Build Modules                                 │
+│  ▼ Workspace                                       │
+│      Initialize                              [○]   │
+│      Status                                  [✓]   │
+│      Exit                                          │
+│  ▼ Kernel                                          │
+│      Config (menuconfig supported)                 │
+│      Build                                         │
+│  ▼ RootFS                                          │
+│      Status                                        │
+│      Create                                        │
+│      Clean                                         │
 ├────────────────────────────────────────────────────┤
 │  ↑↓: Navigate  Enter: Select  q: Quit  ?: Help     │
 └────────────────────────────────────────────────────┘
 ```
 
-## Kernel Modules
+**New**: The TUI supports interactive commands like `menuconfig` directly within the interface!
+
+## Repo Structure
+
+Following Linux kernel architecture principles:
 
 ```bash
-# Prepare kernel headers (IMPORTANT)
-./elmos build modules_prepare
-
-# Build a module
-./elmos module build hello-world
-
-# Build all modules
-./elmos module build
-
-# Check status
-./elmos module status
+.
+├── apps/                 # Userspace applications
+├── core/                 # Core domain logic
+│   ├── app/              # CLI application & command wiring
+│   ├── config/           # Configuration management
+│   ├── domain/           # Business logic (kernel, rootfs, emulator)
+│   ├── infra/            # Infrastructure (filesystem, executor, homebrew)
+│   └── ui/               # User Interface (TUI, styles, rendering)
+├── libraries/            # Shims: byteswap.h, elf.h, asm/
+├── modules/              # Sample kernel modules
+├── patches/              # Versioned patches (v6.18/)
+├── pkg/                  # Shared packages
+├── scripts/              # Helper scripts
+├── tools/                # debootstrap tool
+├── Taskfile.yml          # Build automation
+└── elmos.yaml            # Runtime configuration
 ```
 
 ## Key Workarounds Explained
@@ -114,7 +128,6 @@ Run `elmos ui` for a menuconfig-style interface:
 ### 2. HOSTCFLAGS Breakdown
 
 The CLI automatically sets these for macOS compatibility:
-
 - `-I${MACOS_HEADERS}`: Custom shims for missing Linux headers (`elf.h`, `byteswap.h`)
 - `-I${LIBELF_INCLUDE}`: Links libelf for ELF parsing in host tools
 - `-D_UUID_T -D__GETHOSTUUID_H`: Suppresses `uuid_t` conflicts
@@ -124,10 +137,9 @@ The CLI automatically sets these for macOS compatibility:
 ### 3. Kernel Module Headers on macOS
 
 macOS has no `linux-headers` package. The CLI handles this:
-
 ```bash
-./elmos build modules_prepare  # Generates all necessary headers
-./elmos module build my-driver # Now works
+./elmos kernel build modules_prepare  # Generates all necessary headers
+./elmos module build my-driver        # Now works
 ```
 
 ## Build System (Task)
@@ -139,26 +151,8 @@ task --list     # Show all targets
 task build      # Build elmos binary
 task clean      # Clean artifacts
 task deps       # Download dependencies
-task test       # Run tests
-task release    # Multi-platform builds
-```
-
-## Repo Structure
-
-```bash
-.
-├── apps/           # Userspace applications
-├── cmd/            # CLI commands (Go)
-├── core/       # Core packages
-│   ├── core/       # Config, context
-│   └── tui/        # Interactive menu (Bubbletea)
-├── libraries/      # Shims: byteswap.h, elf.h, asm/
-├── modules/        # Sample kernel modules
-├── patches/        # Versioned patches (v6.18/)
-├── pkg/            # Public packages
-├── tools/          # debootstrap
-├── Taskfile.yml    # Build automation
-└── elmos.yaml      # Configuration (optional)
+task fmt        # Format code
+task lint       # Lint code
 ```
 
 ## Troubleshooting
