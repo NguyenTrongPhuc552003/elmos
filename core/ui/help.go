@@ -150,7 +150,7 @@ func customHelpFunc(cmd *cobra.Command, args []string) {
 		out.WriteString("\n")
 	}
 
-	fmt.Fprint(cmd.OutOrStdout(), out.String())
+	_, _ = fmt.Fprint(cmd.OutOrStdout(), out.String())
 }
 
 func customUsageFunc(cmd *cobra.Command) error {
