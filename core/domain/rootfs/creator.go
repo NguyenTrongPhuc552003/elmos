@@ -168,3 +168,57 @@ func (c *Creator) createInitScript(rootfsDir string) error {
 
 	return nil
 }
+
+// RootfsInfo contains information about the rootfs.
+type RootfsInfo struct {
+	DiskImageExists bool
+	DiskImagePath   string
+	DiskImageSize   int64
+	RootfsDirExists bool
+	RootfsDirPath   string
+	Architecture    string
+}
+
+// Status returns information about the current rootfs.
+func (c *Creator) Status() (*RootfsInfo, error) {
+	info := &RootfsInfo{
+		DiskImagePath: c.cfg.Paths.DiskImage,
+		RootfsDirPath: c.cfg.Paths.RootfsDir,
+		Architecture:  c.getDebianArch(),
+	}
+
+	info.DiskImageExists = c.fs.Exists(c.cfg.Paths.DiskImage)
+	info.RootfsDirExists = c.fs.Exists(c.cfg.Paths.RootfsDir)
+
+	if info.DiskImageExists {
+		if fi, err := os.Stat(c.cfg.Paths.DiskImage); err == nil {
+			info.DiskImageSize = fi.Size()
+		}
+	}
+
+	return info, nil
+}
+
+// Clean removes the rootfs directory and disk image.
+func (c *Creator) Clean(ctx context.Context) error {
+	// Remove disk image
+	if c.fs.Exists(c.cfg.Paths.DiskImage) {
+		if err := c.exec.Run(ctx, "rm", "-f", c.cfg.Paths.DiskImage); err != nil {
+			return fmt.Errorf("failed to remove disk image: %w", err)
+		}
+	}
+
+	// Remove rootfs directory (needs sudo due to root-owned files)
+	if c.fs.Exists(c.cfg.Paths.RootfsDir) {
+		if err := c.exec.Run(ctx, "sudo", "rm", "-rf", c.cfg.Paths.RootfsDir); err != nil {
+			return fmt.Errorf("failed to remove rootfs directory: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// Exists returns true if the rootfs disk image exists.
+func (c *Creator) Exists() bool {
+	return c.fs.Exists(c.cfg.Paths.DiskImage)
+}
