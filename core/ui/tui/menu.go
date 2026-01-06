@@ -80,8 +80,10 @@ func buildMenuStructure() []MenuItem {
 			{Label: "Debug", Desc: "With GDB server", Action: "qemu:debug", Command: "elmos qemu debug", Interactive: true, Args: []string{"qemu", "debug"}},
 		}},
 		{Label: "GDB", Desc: "Connect debugger", Action: "gdb:connect", Command: "elmos gdb"},
-		{Label: "RootFS", Desc: "Create filesystem", Children: []MenuItem{
+		{Label: "RootFS", Desc: "Manage root filesystem", Children: []MenuItem{
+			{Label: "Status", Desc: "Show rootfs status", Action: "rootfs:status", Command: "elmos rootfs status"},
 			{Label: "Create", Desc: "Create rootfs", Action: "rootfs:create", Command: "elmos rootfs create -s <size>", NeedsInput: true, InputPrompt: "Size (e.g. 5G):", InputPlaceholder: "5G"},
+			{Label: "Clean", Desc: "Remove rootfs", Action: "rootfs:clean", Command: "elmos rootfs clean"},
 		}},
 		{Label: "Doctor", Desc: "Check environment", Action: "doctor:check", Command: "elmos doctor"},
 	}
