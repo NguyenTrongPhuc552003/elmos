@@ -2,10 +2,14 @@
 package builder
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
+	"text/template"
 
+	"github.com/NguyenTrongPhuc552003/elmos/assets"
 	elconfig "github.com/NguyenTrongPhuc552003/elmos/core/config"
 	"github.com/NguyenTrongPhuc552003/elmos/core/infra/executor"
 	"github.com/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
@@ -195,41 +199,60 @@ func (a *AppBuilder) CreateApp(name string) error {
 		return err
 	}
 
-	// Create source file
-	srcContent := fmt.Sprintf(`/*
- * %s - Userspace application
- * Cross-compiled for embedded Linux
- */
+	// Convert name to valid C identifier (replace dashes with underscores)
+	cName := strings.ReplaceAll(name, "-", "_")
 
-#include <stdio.h>
-#include <stdlib.h>
+	// Template data
+	data := struct {
+		Name  string
+		CName string
+	}{
+		Name:  name,
+		CName: cName,
+	}
 
-int main(int argc, char *argv[])
-{
-    printf("%s: Hello from embedded Linux!\n");
-    return 0;
-}
-`, name, name)
+	// Load and execute source template
+	srcTmpl, err := assets.GetAppTemplate()
+	if err != nil {
+		return fmt.Errorf("failed to load app template: %w", err)
+	}
 
-	srcPath := filepath.Join(appPath, name+".c")
+	srcContent, err := executeTemplate("app.c", string(srcTmpl), data)
+	if err != nil {
+		return fmt.Errorf("failed to execute app template: %w", err)
+	}
+
+	srcPath := filepath.Join(appPath, cName+".c")
 	if err := a.fs.WriteFile(srcPath, []byte(srcContent), 0644); err != nil {
 		return err
 	}
 
-	// Create Makefile
-	makeContent := fmt.Sprintf(`# %s Makefile
-CC ?= clang
-CFLAGS ?= -Wall -Wextra -static
+	// Load and execute Makefile template
+	makeTmpl, err := assets.GetAppMakefile()
+	if err != nil {
+		return fmt.Errorf("failed to load makefile template: %w", err)
+	}
 
-%s: %s.c
-	$(CC) $(CFLAGS) -o $@ $<
-
-clean:
-	rm -f %s
-
-.PHONY: clean
-`, name, name, name, name)
+	makeContent, err := executeTemplate("Makefile", string(makeTmpl), data)
+	if err != nil {
+		return fmt.Errorf("failed to execute makefile template: %w", err)
+	}
 
 	makePath := filepath.Join(appPath, "Makefile")
 	return a.fs.WriteFile(makePath, []byte(makeContent), 0644)
+}
+
+// executeTemplate executes a Go template with the given data.
+func executeTemplate(name, tmplContent string, data interface{}) (string, error) {
+	tmpl, err := template.New(name).Parse(tmplContent)
+	if err != nil {
+		return "", err
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return "", err
+	}
+
+	return buf.String(), nil
 }
