@@ -27,7 +27,7 @@ func TestNewKernelBuilder(t *testing.T) {
 	kb := NewKernelBuilder(nil, nil, cfg, nil)
 
 	if kb == nil {
-		t.Error("NewKernelBuilder returned nil")
+		t.Fatal("NewKernelBuilder returned nil")
 	}
 	if kb.cfg != cfg {
 		t.Error("KernelBuilder.cfg not set correctly")
