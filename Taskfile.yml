@@ -90,14 +90,26 @@ tasks:
         fi
 
   test:
-    desc: Run tests
+    desc: Run tests (with colors if gotestsum installed)
     cmds:
-      - go test -v ./...
+      - |
+        GOTESTSUM="$(go env GOPATH)/bin/gotestsum"
+        if [ -x "$GOTESTSUM" ]; then
+          $GOTESTSUM --format testdox ./...
+        else
+          go test -v ./...
+        fi
 
   test:cover:
-    desc: Run tests with coverage report
+    desc: Run tests with coverage (with colors if gotestsum installed)
     cmds:
-      - go test -v -cover -coverprofile=coverage.out ./...
+      - |
+        GOTESTSUM="$(go env GOPATH)/bin/gotestsum"
+        if [ -x "$GOTESTSUM" ]; then
+          $GOTESTSUM --format testdox -- -cover -coverprofile=coverage.out ./...
+        else
+          go test -v -cover -coverprofile=coverage.out ./...
+        fi
       - go tool cover -html=coverage.out -o coverage.html
       - 'echo "Coverage report: coverage.html"'
 
