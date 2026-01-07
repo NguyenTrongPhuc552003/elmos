@@ -38,3 +38,7 @@ apps/*/[!.]*
 # IDE
 .idea
 .vscode
+
+# Test coverage
+coverage.out
+coverage.html
