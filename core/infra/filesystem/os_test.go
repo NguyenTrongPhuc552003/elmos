@@ -123,14 +123,14 @@ func TestOSFileSystemCreateOpen(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
-	f.Close()
+	_ = f.Close()
 
 	// Open file
 	f, err = fs.Open(tmpFile)
 	if err != nil {
 		t.Fatalf("Open() error: %v", err)
 	}
-	f.Close()
+	_ = f.Close()
 }
 
 func TestOSFileSystemRemove(t *testing.T) {
@@ -140,7 +140,9 @@ func TestOSFileSystemRemove(t *testing.T) {
 	tmpFile := filepath.Join(tmpDir, "remove_test.txt")
 
 	// Create file
-	os.WriteFile(tmpFile, []byte("test"), 0644)
+	if err := os.WriteFile(tmpFile, []byte("test"), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
 
 	// Remove file
 	err := fs.Remove(tmpFile)
@@ -158,8 +160,12 @@ func TestOSFileSystemRemoveAll(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	subDir := filepath.Join(tmpDir, "subdir")
-	os.MkdirAll(subDir, 0755)
-	os.WriteFile(filepath.Join(subDir, "file.txt"), []byte("test"), 0644)
+	if err := os.MkdirAll(subDir, 0755); err != nil {
+		t.Fatalf("Failed to create subdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(subDir, "file.txt"), []byte("test"), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
 
 	err := fs.RemoveAll(subDir)
 	if err != nil {
