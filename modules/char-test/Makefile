@@ -1,5 +1,5 @@
 # The object file to build
-obj-m += char-test.o
+obj-m += char_test.o
 
 # KDIR is the path to the compiled kernel source on your sparse image
 # We use ?= so that module.sh can override this path
