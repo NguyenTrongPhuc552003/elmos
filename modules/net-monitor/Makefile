@@ -1,5 +1,5 @@
 # The object file to build
-obj-m += net-monitor.o
+obj-m += net_monitor.o
 
 # KDIR is the path to the compiled kernel source on your sparse image
 # We use ?= so that module.sh can override this path
