@@ -88,6 +88,23 @@ func BuildModule(ctx *Context) *cobra.Command {
 		},
 	}
 
-	modCmd.AddCommand(buildCmd, listCmd, newCmd, cleanCmd)
+	headerCmd := &cobra.Command{
+		Use:   "header",
+		Short: "Prepare kernel headers for module building",
+		Long:  "Runs 'make modules_prepare' to set up kernel headers required for external module compilation.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := ctx.AppContext.EnsureMounted(); err != nil {
+				return err
+			}
+			ctx.Printer.Step("Preparing kernel headers...")
+			if err := ctx.ModuleBuilder.PrepareHeaders(cmd.Context()); err != nil {
+				return err
+			}
+			ctx.Printer.Success("Kernel headers prepared!")
+			return nil
+		},
+	}
+
+	modCmd.AddCommand(buildCmd, listCmd, newCmd, cleanCmd, headerCmd)
 	return modCmd
 }
