@@ -71,4 +71,3 @@ func BuildExit(ctx *Context) *cobra.Command {
 	cmd.Flags().BoolVarP(&force, "force", "f", false, "Force unmount (needed if resource is busy)")
 	return cmd
 }
-
