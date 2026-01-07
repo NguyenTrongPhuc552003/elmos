@@ -65,8 +65,8 @@ var Architectures = map[string]*ArchConfig{
 		QEMUCPU:        "rv64",
 		QEMUBios:       "-bios default",
 		Console:        "ttyS0",
-		GCCBinary:      "riscv64-elf-gcc",
-		GDBBinary:      "riscv64-elf-gdb",
+		GCCBinary:      "riscv64-unknown-linux-gnu-gcc",
+		GDBBinary:      "riscv64-unknown-linux-gnu-gdb",
 		ToolchainPkg:   "", // Optional, uses LLVM
 	},
 }
