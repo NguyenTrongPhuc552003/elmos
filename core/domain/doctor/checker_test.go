@@ -22,6 +22,13 @@ func TestCheckResultString(t *testing.T) {
 	if !result.Passed {
 		t.Error("CheckResult.Passed should be true")
 	}
+	if !result.Required {
+		t.Error("CheckResult.Required should be true")
+	}
+	expectedMsg := "Install from: https://brew.sh"
+	if result.Message != expectedMsg {
+		t.Errorf("CheckResult.Message = %q, want %q", result.Message, expectedMsg)
+	}
 }
 
 func TestNewHealthChecker(t *testing.T) {
@@ -34,7 +41,7 @@ func TestNewHealthChecker(t *testing.T) {
 	hc := NewHealthChecker(nil, nil, cfg)
 
 	if hc == nil {
-		t.Error("NewHealthChecker returned nil")
+		t.Fatal("NewHealthChecker returned nil")
 	}
 	if hc.cfg != cfg {
 		t.Error("HealthChecker.cfg not set correctly")
