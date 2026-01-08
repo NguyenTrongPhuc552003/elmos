@@ -361,8 +361,3 @@ func appendOrUpdateEnv(env []string, key, value string) []string {
 	}
 	return append(env, key+"="+value)
 }
-
-// createGCCSymlinks is deprecated - using ~/.local/bin approach instead
-func (m *Manager) createGCCSymlinks(dir, brewPrefix, ver string) {
-	// Deprecated - symlinks now created in ~/.local/bin via getBuildEnv
-}
