@@ -9,21 +9,24 @@ import (
 	elconfig "github.com/NguyenTrongPhuc552003/elmos/core/config"
 	"github.com/NguyenTrongPhuc552003/elmos/core/infra/executor"
 	"github.com/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
+	"github.com/NguyenTrongPhuc552003/elmos/core/ui"
 )
 
 // Manager handles crosstool-ng toolchain operations.
 type Manager struct {
-	exec executor.Executor
-	fs   filesystem.FileSystem
-	cfg  *elconfig.Config
+	exec    executor.Executor
+	fs      filesystem.FileSystem
+	cfg     *elconfig.Config
+	printer *ui.Printer
 }
 
 // NewManager creates a new toolchain Manager.
-func NewManager(exec executor.Executor, fs filesystem.FileSystem, cfg *elconfig.Config) *Manager {
+func NewManager(exec executor.Executor, fs filesystem.FileSystem, cfg *elconfig.Config, printer *ui.Printer) *Manager {
 	return &Manager{
-		exec: exec,
-		fs:   fs,
-		cfg:  cfg,
+		exec:    exec,
+		fs:      fs,
+		cfg:     cfg,
+		printer: printer,
 	}
 }
 
@@ -91,8 +94,26 @@ func (m *Manager) ListSamples(ctx context.Context) ([]string, error) {
 			}
 		}
 	}
-
 	return samples, nil
+}
+
+// GetCustomConfigPath returns the path to a custom config file for the target.
+// Returns empty string if no custom config exists.
+func (m *Manager) GetCustomConfigPath(target string) string {
+	// Check in project root tools/toolchains/configs
+	projectConfigs := filepath.Join(m.cfg.Paths.ProjectRoot, "tools", "toolchains", "configs")
+	configPath := filepath.Join(projectConfigs, target+".config")
+	if m.fs.Exists(configPath) {
+		return configPath
+	}
+
+	// Fallback to checking in the toolchains dir (if manually placed there)
+	configPath = filepath.Join(m.Paths().Configs, target+".config")
+	if m.fs.Exists(configPath) {
+		return configPath
+	}
+
+	return ""
 }
 
 // GetInstalledToolchains returns a list of installed toolchains.
