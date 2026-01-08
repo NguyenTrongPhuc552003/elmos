@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -47,6 +46,8 @@ Examples:
 			}
 
 			target := args[0]
+			var archName string
+			var toolchainTarget string
 
 			// Handle "show" subcommand
 			if target == "show" {
@@ -61,19 +62,71 @@ Examples:
 				return nil
 			}
 
-			// Set architecture
-			if !config.IsValidArch(target) {
-				return fmt.Errorf("invalid architecture: %s (use: arm64, arm, riscv)", target)
+			// Check if it's a known short architecture name
+			if config.IsValidArch(target) {
+				archName = target
+				// Lookup default toolchain for this arch
+				if cfg := config.GetArchConfig(target); cfg != nil {
+					// Map short arch to ct-ng target if known
+					// For riscv, defaults to riscv64-unknown-linux-gnu
+					if cfg.GCCBinary != "" {
+						// Extract toolchain prefix from GCC binary (remove -gcc suffix)
+						// e.g. riscv64-unknown-linux-gnu-gcc -> riscv64-unknown-linux-gnu
+						if len(cfg.GCCBinary) > 4 && cfg.GCCBinary[len(cfg.GCCBinary)-4:] == "-gcc" {
+							toolchainTarget = cfg.GCCBinary[:len(cfg.GCCBinary)-4]
+						}
+					}
+				}
+			} else {
+				// Assume it's a toolchain target (e.g. riscv64-unknown-linux-gnu)
+				// Try to select it using ToolchainManager
+				if err := ctx.AppContext.EnsureMounted(); err != nil {
+					return err
+				}
+
+				// Try to infer architecture from toolchain name
+				if containsIgnoreCase(target, "riscv") {
+					archName = "riscv"
+				} else if containsIgnoreCase(target, "arm64") || containsIgnoreCase(target, "aarch64") {
+					archName = "arm64"
+				} else if containsIgnoreCase(target, "arm") {
+					archName = "arm"
+				}
+
+				toolchainTarget = target
 			}
-			ctx.Config.Build.Arch = target
-			configPath := ctx.Config.ConfigFile
-			if configPath == "" {
-				configPath = filepath.Join(ctx.Config.Paths.ProjectRoot, "elmos.yaml")
+
+			// 1. Set Architecture in Config
+			if archName != "" {
+				ctx.Config.Build.Arch = archName
+				configPath := ctx.Config.ConfigFile
+				if configPath == "" {
+					configPath = filepath.Join(ctx.Config.Paths.ProjectRoot, "elmos.yaml")
+				}
+				if err := ctx.Config.Save(configPath); err != nil {
+					return err
+				}
+				ctx.Printer.Success("Architecture set to: %s", archName)
+			} else {
+				ctx.Printer.Warn("Could not infer architecture from '%s', only toolchain will be set", target)
 			}
-			if err := ctx.Config.Save(configPath); err != nil {
-				return err
+
+			// 2. Select Toolchain (if applicable)
+			if toolchainTarget != "" {
+				if err := ctx.AppContext.EnsureMounted(); err != nil {
+					return err
+				}
+
+				ctx.Printer.Step("Selecting toolchain: %s", toolchainTarget)
+				if err := ctx.ToolchainManager.SelectTarget(cmd.Context(), toolchainTarget); err != nil {
+					// If exact match fails, maybe it was just an arch name without mapped toolchain?
+					// Or the toolchain sample doesn't exist?
+					return err
+				}
+				ctx.Printer.Success("Toolchain selected: %s", toolchainTarget)
+				ctx.Printer.Print("  Run 'elmos toolchains build' to build it")
 			}
-			ctx.Printer.Success("Architecture set to: %s", target)
+
 			return nil
 		},
 	}
