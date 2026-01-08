@@ -32,6 +32,7 @@ type RequiredPackage struct {
 
 // RequiredPackages lists all Homebrew dependencies for elmos.
 var RequiredPackages = []RequiredPackage{
+	// Core build tools
 	{"llvm", "LLVM/Clang toolchain", true},
 	{"lld", "LLVM linker", true},
 	{"gnu-sed", "GNU sed (kernel requires it)", true},
@@ -45,6 +46,21 @@ var RequiredPackages = []RequiredPackage{
 	{"coreutils", "GNU core utilities", true},
 	{"go", "Go programming language", true},
 	{"go-task", "Go task runner", true},
+	// Crosstool-ng dependencies (optional, for building custom toolchains)
+	{"binutils", "GNU binary utilities (objcopy)", false},
+	{"gcc", "GNU Compiler Collection (for ct-ng builds)", false},
+	{"gmp", "GNU Multiple Precision library", false},
+	{"mpfr", "GNU MPFR library", false},
+	{"libmpc", "GNU MPC library", false},
+	{"isl", "Integer Set Library", false},
+	{"texinfo", "GNU documentation system", false},
+	{"bison", "Parser generator", false},
+	{"gawk", "GNU AWK", false},
+	{"autoconf", "Autoconf for ct-ng bootstrap", false},
+	{"automake", "Automake for ct-ng bootstrap", false},
+	{"libtool", "GNU Libtool", false},
+	{"ncurses", "Terminal UI library (menuconfig)", false},
+	{"xz", "XZ compression", false},
 }
 
 // RequiredTaps lists required Homebrew taps.
