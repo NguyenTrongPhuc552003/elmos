@@ -12,6 +12,7 @@ import (
 	"github.com/NguyenTrongPhuc552003/elmos/core/domain/emulator"
 	"github.com/NguyenTrongPhuc552003/elmos/core/domain/patch"
 	"github.com/NguyenTrongPhuc552003/elmos/core/domain/rootfs"
+	"github.com/NguyenTrongPhuc552003/elmos/core/domain/toolchain"
 	"github.com/NguyenTrongPhuc552003/elmos/core/infra/executor"
 	"github.com/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
 	"github.com/NguyenTrongPhuc552003/elmos/core/ui"
@@ -20,40 +21,42 @@ import (
 
 // App holds all the application dependencies.
 type App struct {
-	Exec          executor.Executor
-	FS            filesystem.FileSystem
-	Config        *config.Config
-	Context       *elcontext.Context
-	KernelBuilder *builder.KernelBuilder
-	ModuleBuilder *builder.ModuleBuilder
-	AppBuilder    *builder.AppBuilder
-	QEMURunner    *emulator.QEMURunner
-	HealthChecker *doctor.HealthChecker
-	AutoFixer     *doctor.AutoFixer
-	RootfsCreator *rootfs.Creator
-	PatchManager  *patch.Manager
-	Printer       *ui.Printer
-	Verbose       bool
-	ConfigFile    string
+	Exec             executor.Executor
+	FS               filesystem.FileSystem
+	Config           *config.Config
+	Context          *elcontext.Context
+	KernelBuilder    *builder.KernelBuilder
+	ModuleBuilder    *builder.ModuleBuilder
+	AppBuilder       *builder.AppBuilder
+	QEMURunner       *emulator.QEMURunner
+	HealthChecker    *doctor.HealthChecker
+	AutoFixer        *doctor.AutoFixer
+	RootfsCreator    *rootfs.Creator
+	PatchManager     *patch.Manager
+	ToolchainManager *toolchain.Manager
+	Printer          *ui.Printer
+	Verbose          bool
+	ConfigFile       string
 }
 
 // New creates a new App with all dependencies wired up.
 func New(exec executor.Executor, fs filesystem.FileSystem, cfg *config.Config) *App {
 	ctx := elcontext.New(cfg, exec, fs)
 	return &App{
-		Exec:          exec,
-		FS:            fs,
-		Config:        cfg,
-		Context:       ctx,
-		KernelBuilder: builder.NewKernelBuilder(exec, fs, cfg, ctx),
-		ModuleBuilder: builder.NewModuleBuilder(exec, fs, cfg, ctx),
-		AppBuilder:    builder.NewAppBuilder(exec, fs, cfg),
-		QEMURunner:    emulator.NewQEMURunner(exec, fs, cfg, ctx),
-		HealthChecker: doctor.NewHealthChecker(exec, fs, cfg),
-		AutoFixer:     doctor.NewAutoFixer(fs, cfg),
-		RootfsCreator: rootfs.NewCreator(exec, fs, cfg),
-		PatchManager:  patch.NewManager(exec, fs, cfg),
-		Printer:       ui.NewPrinter(),
+		Exec:             exec,
+		FS:               fs,
+		Config:           cfg,
+		Context:          ctx,
+		KernelBuilder:    builder.NewKernelBuilder(exec, fs, cfg, ctx),
+		ModuleBuilder:    builder.NewModuleBuilder(exec, fs, cfg, ctx),
+		AppBuilder:       builder.NewAppBuilder(exec, fs, cfg),
+		QEMURunner:       emulator.NewQEMURunner(exec, fs, cfg, ctx),
+		HealthChecker:    doctor.NewHealthChecker(exec, fs, cfg),
+		AutoFixer:        doctor.NewAutoFixer(fs, cfg),
+		RootfsCreator:    rootfs.NewCreator(exec, fs, cfg),
+		PatchManager:     patch.NewManager(exec, fs, cfg),
+		ToolchainManager: toolchain.NewManager(exec, fs, cfg),
+		Printer:          ui.NewPrinter(),
 	}
 }
 
@@ -95,21 +98,22 @@ Common workflow:
 
 	// Create command context and register all commands
 	cmdCtx := &commands.Context{
-		Exec:          a.Exec,
-		FS:            a.FS,
-		Config:        a.Config,
-		AppContext:    a.Context,
-		KernelBuilder: a.KernelBuilder,
-		ModuleBuilder: a.ModuleBuilder,
-		AppBuilder:    a.AppBuilder,
-		QEMURunner:    a.QEMURunner,
-		HealthChecker: a.HealthChecker,
-		AutoFixer:     a.AutoFixer,
-		RootfsCreator: a.RootfsCreator,
-		PatchManager:  a.PatchManager,
-		Printer:       a.Printer,
-		Verbose:       &a.Verbose,
-		ConfigFile:    &a.ConfigFile,
+		Exec:             a.Exec,
+		FS:               a.FS,
+		Config:           a.Config,
+		AppContext:       a.Context,
+		KernelBuilder:    a.KernelBuilder,
+		ModuleBuilder:    a.ModuleBuilder,
+		AppBuilder:       a.AppBuilder,
+		QEMURunner:       a.QEMURunner,
+		HealthChecker:    a.HealthChecker,
+		AutoFixer:        a.AutoFixer,
+		RootfsCreator:    a.RootfsCreator,
+		PatchManager:     a.PatchManager,
+		ToolchainManager: a.ToolchainManager,
+		Printer:          a.Printer,
+		Verbose:          &a.Verbose,
+		ConfigFile:       &a.ConfigFile,
 	}
 
 	commands.Register(cmdCtx, rootCmd)
