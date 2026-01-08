@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"strings"
+
 	"github.com/spf13/cobra"
 )
 
@@ -20,12 +22,20 @@ func BuildDoctor(ctx *Context) *cobra.Command {
 					ctx.Printer.Step("Checking %s...", section)
 					currentSection = section
 				}
+
+				// Strip section prefix if present
+				displayName := r.Name
+				prefix := section + ": "
+				if len(displayName) > len(prefix) && displayName[:len(prefix)] == prefix {
+					displayName = displayName[len(prefix):]
+				}
+
 				if r.Passed {
-					ctx.Printer.Print("  ✓ %s", r.Name)
+					ctx.Printer.Print("  ✓ %s", displayName)
 				} else if r.Required {
-					ctx.Printer.Print("  ✗ %s (missing)", r.Name)
+					ctx.Printer.Print("  ✗ %s (missing)", displayName)
 				} else {
-					ctx.Printer.Print("  ○ %s - optional", r.Name)
+					ctx.Printer.Print("  ○ %s - optional", displayName)
 				}
 			}
 			if ctx.AutoFixer.CanFixElfH() {
@@ -55,24 +65,15 @@ func getSection(name string) string {
 	if name == "Homebrew" {
 		return "Package Manager"
 	}
-
-	// Match prefixes
-	prefixSections := []struct {
-		prefix  string
-		section string
-	}{
-		{"Tap:", "Homebrew Taps"},
-		{"Package:", "Homebrew Packages"},
-		{"Header:", "Custom Headers"},
-		{"GDB:", "Cross Debuggers"},
-		{"GCC:", "Cross Compilers"},
+	if name == "crosstool-ng" || strings.HasPrefix(name, "Toolchain:") {
+		return "Toolchains"
 	}
 
-	for _, ps := range prefixSections {
-		if len(name) >= len(ps.prefix) && name[:len(ps.prefix)] == ps.prefix {
-			return ps.section
-		}
+	// Dynamic sections based on prefix "Scetion: Item"
+	if idx := strings.Index(name, ": "); idx != -1 {
+		return name[:idx]
 	}
 
+	// fallback
 	return "Other"
 }
