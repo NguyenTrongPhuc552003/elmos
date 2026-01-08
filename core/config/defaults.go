@@ -27,45 +27,41 @@ const (
 type RequiredPackage struct {
 	Name        string
 	Description string
+	Category    string
 	Required    bool
 }
 
 // RequiredPackages lists all Homebrew dependencies for elmos.
 var RequiredPackages = []RequiredPackage{
 	// Core build tools
-	{"llvm", "LLVM/Clang toolchain", true},
-	{"lld", "LLVM linker", true},
-	{"gnu-sed", "GNU sed (kernel requires it)", true},
-	{"make", "GNU make 4.0+", true},
-	{"libelf", "ELF library", true},
-	{"git", "Git version control", true},
-	{"qemu", "QEMU emulator", true},
-	{"fakeroot", "Fake root for packaging", true},
-	{"e2fsprogs", "ext4 filesystem tools", true},
-	{"wget", "File downloader", false},
-	{"coreutils", "GNU core utilities", true},
-	{"go", "Go programming language", true},
-	{"go-task", "Go task runner", true},
+	{"llvm", "LLVM/Clang toolchain", "Build Tools", true},
+	{"lld", "LLVM linker", "Build Tools", true},
+	{"gnu-sed", "GNU sed (kernel requires it)", "Build Tools", true},
+	{"make", "GNU make 4.0+", "Build Tools", true},
+	{"libelf", "ELF library", "Build Tools", true},
+	{"git", "Git version control", "Build Tools", true},
+	{"qemu", "QEMU emulator", "Virtualization", true},
+	{"fakeroot", "Fake root for packaging", "Build Tools", true},
+	{"e2fsprogs", "ext4 filesystem tools", "Build Tools", true},
+	{"wget", "File downloader", "Build Tools", false},
+	{"coreutils", "GNU core utilities", "Build Tools", true},
+	{"go", "Go programming language", "Build Tools", true},
+	{"go-task", "Go task runner", "Build Tools", true},
 	// Crosstool-ng dependencies (optional, for building custom toolchains)
-	{"binutils", "GNU binary utilities (objcopy)", false},
-	{"gcc", "GNU Compiler Collection (for ct-ng builds)", false},
-	{"gmp", "GNU Multiple Precision library", false},
-	{"mpfr", "GNU MPFR library", false},
-	{"libmpc", "GNU MPC library", false},
-	{"isl", "Integer Set Library", false},
-	{"texinfo", "GNU documentation system", false},
-	{"bison", "Parser generator", false},
-	{"gawk", "GNU AWK", false},
-	{"autoconf", "Autoconf for ct-ng bootstrap", false},
-	{"automake", "Automake for ct-ng bootstrap", false},
-	{"libtool", "GNU Libtool", false},
-	{"ncurses", "Terminal UI library (menuconfig)", false},
-	{"xz", "XZ compression", false},
-}
-
-// RequiredTaps lists required Homebrew taps.
-var RequiredTaps = []string{
-	"messense/macos-cross-toolchains",
+	{"binutils", "GNU binary utilities (objcopy)", "Toolchain Dependencies", false},
+	{"gcc", "GNU Compiler Collection (for ct-ng builds)", "Toolchain Dependencies", false},
+	{"gmp", "GNU Multiple Precision library", "Toolchain Dependencies", false},
+	{"mpfr", "GNU MPFR library", "Toolchain Dependencies", false},
+	{"libmpc", "GNU MPC library", "Toolchain Dependencies", false},
+	{"isl", "Integer Set Library", "Toolchain Dependencies", false},
+	{"texinfo", "GNU documentation system", "Toolchain Dependencies", false},
+	{"bison", "Parser generator", "Toolchain Dependencies", false},
+	{"gawk", "GNU AWK", "Toolchain Dependencies", false},
+	{"autoconf", "Autoconf for ct-ng bootstrap", "Toolchain Dependencies", false},
+	{"automake", "Automake for ct-ng bootstrap", "Toolchain Dependencies", false},
+	{"libtool", "GNU Libtool", "Toolchain Dependencies", false},
+	{"ncurses", "Terminal UI library (menuconfig)", "Toolchain Dependencies", false},
+	{"xz", "XZ compression", "Toolchain Dependencies", false},
 }
 
 // RequiredHeaders lists header files that should exist in libraries/.
