@@ -12,6 +12,7 @@ import (
 	"github.com/NguyenTrongPhuc552003/elmos/core/domain/emulator"
 	"github.com/NguyenTrongPhuc552003/elmos/core/domain/patch"
 	"github.com/NguyenTrongPhuc552003/elmos/core/domain/rootfs"
+	"github.com/NguyenTrongPhuc552003/elmos/core/domain/toolchain"
 	"github.com/NguyenTrongPhuc552003/elmos/core/infra/executor"
 	"github.com/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
 	"github.com/NguyenTrongPhuc552003/elmos/core/ui"
@@ -20,19 +21,20 @@ import (
 // Context provides dependencies for command builders.
 // This avoids circular imports by passing only what commands need.
 type Context struct {
-	Exec          executor.Executor
-	FS            filesystem.FileSystem
-	Config        *config.Config
-	AppContext    *elcontext.Context
-	KernelBuilder *builder.KernelBuilder
-	ModuleBuilder *builder.ModuleBuilder
-	AppBuilder    *builder.AppBuilder
-	QEMURunner    *emulator.QEMURunner
-	HealthChecker *doctor.HealthChecker
-	AutoFixer     *doctor.AutoFixer
-	RootfsCreator *rootfs.Creator
-	PatchManager  *patch.Manager
-	Printer       *ui.Printer
+	Exec             executor.Executor
+	FS               filesystem.FileSystem
+	Config           *config.Config
+	AppContext       *elcontext.Context
+	KernelBuilder    *builder.KernelBuilder
+	ModuleBuilder    *builder.ModuleBuilder
+	AppBuilder       *builder.AppBuilder
+	QEMURunner       *emulator.QEMURunner
+	HealthChecker    *doctor.HealthChecker
+	AutoFixer        *doctor.AutoFixer
+	RootfsCreator    *rootfs.Creator
+	PatchManager     *patch.Manager
+	ToolchainManager *toolchain.Manager
+	Printer          *ui.Printer
 
 	// Flags that can be modified
 	Verbose    *bool
@@ -55,4 +57,5 @@ func Register(ctx *Context, rootCmd *cobra.Command) {
 	rootCmd.AddCommand(BuildStatus(ctx))
 	rootCmd.AddCommand(BuildRootfs(ctx))
 	rootCmd.AddCommand(BuildPatch(ctx))
+	rootCmd.AddCommand(BuildToolchains(ctx))
 }
