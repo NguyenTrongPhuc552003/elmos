@@ -192,4 +192,9 @@ func applyComputedDefaults(cfg *Config) {
 	if cfg.Paths.DiskImage == "" {
 		cfg.Paths.DiskImage = filepath.Join(cfg.Image.MountPoint, "disk.img")
 	}
+
+	// Toolchains directory (inside mount for case-sensitivity)
+	if cfg.Paths.ToolchainsDir == "" {
+		cfg.Paths.ToolchainsDir = filepath.Join(cfg.Image.MountPoint, "toolchains")
+	}
 }
