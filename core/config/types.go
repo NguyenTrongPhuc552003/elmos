@@ -49,15 +49,16 @@ type QEMUConfig struct {
 
 // PathsConfig holds important paths.
 type PathsConfig struct {
-	ProjectRoot  string `mapstructure:"project_root"`
-	KernelDir    string `mapstructure:"kernel_dir"`
-	ModulesDir   string `mapstructure:"modules_dir"`
-	AppsDir      string `mapstructure:"apps_dir"`
-	LibrariesDir string `mapstructure:"libraries_dir"`
-	PatchesDir   string `mapstructure:"patches_dir"`
-	RootfsDir    string `mapstructure:"rootfs_dir"`
-	DiskImage    string `mapstructure:"disk_image"`
-	DebianMirror string `mapstructure:"debian_mirror"`
+	ProjectRoot   string `mapstructure:"project_root"`
+	KernelDir     string `mapstructure:"kernel_dir"`
+	ModulesDir    string `mapstructure:"modules_dir"`
+	AppsDir       string `mapstructure:"apps_dir"`
+	LibrariesDir  string `mapstructure:"libraries_dir"`
+	PatchesDir    string `mapstructure:"patches_dir"`
+	RootfsDir     string `mapstructure:"rootfs_dir"`
+	DiskImage     string `mapstructure:"disk_image"`
+	DebianMirror  string `mapstructure:"debian_mirror"`
+	ToolchainsDir string `mapstructure:"toolchains_dir"`
 }
 
 // ProfileConfig holds a named configuration profile.
