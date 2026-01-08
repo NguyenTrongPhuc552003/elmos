@@ -42,6 +42,9 @@ type App struct {
 // New creates a new App with all dependencies wired up.
 func New(exec executor.Executor, fs filesystem.FileSystem, cfg *config.Config) *App {
 	ctx := elcontext.New(cfg, exec, fs)
+	printer := ui.NewPrinter()
+	tm := toolchain.NewManager(exec, fs, cfg, printer)
+
 	return &App{
 		Exec:             exec,
 		FS:               fs,
@@ -51,12 +54,12 @@ func New(exec executor.Executor, fs filesystem.FileSystem, cfg *config.Config) *
 		ModuleBuilder:    builder.NewModuleBuilder(exec, fs, cfg, ctx),
 		AppBuilder:       builder.NewAppBuilder(exec, fs, cfg),
 		QEMURunner:       emulator.NewQEMURunner(exec, fs, cfg, ctx),
-		HealthChecker:    doctor.NewHealthChecker(exec, fs, cfg),
+		HealthChecker:    doctor.NewHealthChecker(exec, fs, cfg, tm),
 		AutoFixer:        doctor.NewAutoFixer(fs, cfg),
 		RootfsCreator:    rootfs.NewCreator(exec, fs, cfg),
 		PatchManager:     patch.NewManager(exec, fs, cfg),
-		ToolchainManager: toolchain.NewManager(exec, fs, cfg, ui.NewPrinter()),
-		Printer:          ui.NewPrinter(),
+		ToolchainManager: tm,
+		Printer:          printer,
 	}
 }
 
