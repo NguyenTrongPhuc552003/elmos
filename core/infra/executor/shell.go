@@ -54,7 +54,8 @@ func (e *ShellExecutor) RunWithEnvInDir(ctx context.Context, env []string, dir s
 	}
 
 	if len(env) > 0 {
-		c.Env = env
+		// Merge custom env with current environment
+		c.Env = append(os.Environ(), env...)
 	}
 
 	return c.Run()
@@ -69,7 +70,8 @@ func (e *ShellExecutor) Output(ctx context.Context, cmd string, args ...string) 
 func (e *ShellExecutor) OutputWithEnv(ctx context.Context, env []string, cmd string, args ...string) ([]byte, error) {
 	c := exec.CommandContext(ctx, cmd, args...)
 	if len(env) > 0 {
-		c.Env = env
+		// Merge custom env with current environment
+		c.Env = append(os.Environ(), env...)
 	}
 	return c.Output()
 }
