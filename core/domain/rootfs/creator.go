@@ -71,16 +71,21 @@ func (c *Creator) Create(ctx context.Context, opts CreateOptions) error {
 	// For now, we'll use fakeroot + debootstrap approach
 	arch := c.getDebianArch()
 
-	// Run debootstrap
-	debootstrapPath := filepath.Join(c.cfg.Paths.ProjectRoot, "tools", "debootstrap", "debootstrap")
+	// Run debootstrap with DEBOOTSTRAP_DIR set
+	debootstrapDir := filepath.Join(c.cfg.Paths.ProjectRoot, "tools", "debootstrap")
+	debootstrapPath := filepath.Join(debootstrapDir, "debootstrap")
 	if !c.fs.Exists(debootstrapPath) {
 		return fmt.Errorf("debootstrap not found at %s", debootstrapPath)
 	}
 
-	if err := c.exec.Run(ctx, "fakeroot", debootstrapPath,
+	// Execute debootstrap with DEBOOTSTRAP_DIR set via env command
+	// Using env to pass the variable avoids sudo stripping it
+	if err := c.exec.Run(ctx,
+		"sudo", "env", "DEBOOTSTRAP_DIR="+debootstrapDir,
+		"fakeroot", debootstrapPath,
+		"--foreign",
 		"--arch="+arch,
-		"--variant=minbase",
-		"--include=systemd,systemd-sysv",
+		"--no-check-gpg",
 		"stable",
 		rootfsDir,
 		c.cfg.Paths.DebianMirror,
