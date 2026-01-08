@@ -51,8 +51,8 @@ var Architectures = map[string]*ArchConfig{
 		QEMUCPU:        "cortex-a15",
 		QEMUBios:       "",
 		Console:        "ttyAMA0",
-		GCCBinary:      "arm-unknown-linux-gnueabihf-gcc",
-		GDBBinary:      "arm-unknown-linux-gnueabihf-gdb",
+		GCCBinary:      "arm-cortex_a15-linux-gnueabihf-gcc",
+		GDBBinary:      "arm-cortex_a15-linux-gnueabihf-gdb",
 		ToolchainPkg:   "messense/macos-cross-toolchains/arm-unknown-linux-gnueabihf",
 	},
 	"riscv": {
