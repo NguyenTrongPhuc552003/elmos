@@ -38,15 +38,15 @@ func TestNewHealthChecker(t *testing.T) {
 		},
 	}
 
-	hc := NewHealthChecker(nil, nil, cfg)
-
-	if hc == nil {
+	// Test creating checker
+	checker := NewHealthChecker(nil, nil, cfg, nil)
+	if checker == nil {
 		t.Fatal("NewHealthChecker returned nil")
 	}
-	if hc.cfg != cfg {
+	if checker.cfg != cfg {
 		t.Error("HealthChecker.cfg not set correctly")
 	}
-	if hc.brew == nil {
+	if checker.brew == nil {
 		t.Error("HealthChecker.brew should not be nil")
 	}
 }
