@@ -152,13 +152,6 @@ func (h *HealthChecker) CheckPackages(ctx context.Context) []CheckResult {
 		pkgSet[p] = true
 	}
 
-	// Group packages by category
-	type CategoryGroup struct {
-		Name     string
-		Packages []elconfig.RequiredPackage
-	}
-
-	// Use map to collect categories first to keep order
 	cats := []string{"Build Tools", "Virtualization", "Toolchain Dependencies"}
 	grouped := make(map[string][]elconfig.RequiredPackage)
 
