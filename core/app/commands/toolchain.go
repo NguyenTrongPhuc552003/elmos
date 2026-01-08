@@ -1,0 +1,241 @@
+package commands
+
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/spf13/cobra"
+)
+
+// BuildToolchains creates the toolchains command tree for crosstool-ng management.
+func BuildToolchains(ctx *Context) *cobra.Command {
+	toolchainsCmd := &cobra.Command{
+		Use:   "toolchains",
+		Short: "Manage cross-compiler toolchains (crosstool-ng)",
+		Long: `Manage cross-compiler toolchains using crosstool-ng.
+
+Subcommands allow you to install crosstool-ng, list available targets,
+select a target configuration, build toolchains, and more.
+
+Examples:
+  elmos toolchains install              # Install crosstool-ng
+  elmos toolchains list                 # List available target samples
+  elmos toolchains riscv64-unknown-linux-gnu  # Select target
+  elmos toolchains build                # Build the selected toolchain
+  elmos toolchains build -j8            # Build with 8 parallel jobs`,
+	}
+
+	// Install command
+	installCmd := &cobra.Command{
+		Use:   "install",
+		Short: "Install crosstool-ng from latest git",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := ctx.AppContext.EnsureMounted(); err != nil {
+				return err
+			}
+			ctx.Printer.Step("Installing crosstool-ng...")
+			if err := ctx.ToolchainManager.Install(cmd.Context()); err != nil {
+				return err
+			}
+			ctx.Printer.Success("crosstool-ng installed!")
+			return nil
+		},
+	}
+
+	// List command
+	listCmd := &cobra.Command{
+		Use:   "list",
+		Short: "List available toolchain samples",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			samples, err := ctx.ToolchainManager.ListSamples(cmd.Context())
+			if err != nil {
+				return err
+			}
+			if len(samples) == 0 {
+				ctx.Printer.Info("No samples found")
+				return nil
+			}
+			ctx.Printer.Print("Available targets:")
+			for _, s := range samples {
+				ctx.Printer.Print("  %s", s)
+			}
+			return nil
+		},
+	}
+
+	// Status command
+	statusCmd := &cobra.Command{
+		Use:   "status",
+		Short: "Show installed toolchains status",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// Check if ct-ng is installed
+			if !ctx.ToolchainManager.IsInstalled() {
+				ctx.Printer.Warn("crosstool-ng not installed")
+				ctx.Printer.Print("  Run: elmos toolchains install")
+				return nil
+			}
+			ctx.Printer.Success("crosstool-ng installed at %s", ctx.ToolchainManager.Paths().CrosstoolNG)
+
+			// List installed toolchains
+			toolchains, err := ctx.ToolchainManager.GetInstalledToolchains()
+			if err != nil {
+				return err
+			}
+			if len(toolchains) == 0 {
+				ctx.Printer.Info("No toolchains built yet")
+				return nil
+			}
+			ctx.Printer.Print("")
+			ctx.Printer.Print("Installed toolchains:")
+			for _, tc := range toolchains {
+				status := "✓"
+				if !tc.Installed {
+					status = "○"
+				}
+				ctx.Printer.Print("  %s %s", status, tc.Target)
+			}
+			return nil
+		},
+	}
+
+	// Build command
+	var buildJobs int
+	buildCmd := &cobra.Command{
+		Use:   "build",
+		Short: "Build the currently configured toolchain",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := ctx.AppContext.EnsureMounted(); err != nil {
+				return err
+			}
+			ctx.Printer.Step("Building toolchain...")
+			if err := ctx.ToolchainManager.Build(cmd.Context(), buildJobs); err != nil {
+				return err
+			}
+			ctx.Printer.Success("Toolchain built!")
+			return nil
+		},
+	}
+	buildCmd.Flags().IntVarP(&buildJobs, "jobs", "j", 0, "Number of parallel jobs (default: CPU count)")
+
+	// Menuconfig command
+	menuconfigCmd := &cobra.Command{
+		Use:   "menuconfig",
+		Short: "Open interactive configuration menu",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ctx.ToolchainManager.Menuconfig(cmd.Context())
+		},
+	}
+
+	// Clean command
+	cleanCmd := &cobra.Command{
+		Use:   "clean",
+		Short: "Clean build artifacts",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx.Printer.Step("Cleaning build artifacts...")
+			if err := ctx.ToolchainManager.Clean(cmd.Context()); err != nil {
+				return err
+			}
+			ctx.Printer.Success("Cleaned!")
+			return nil
+		},
+	}
+
+	// Env command
+	envCmd := &cobra.Command{
+		Use:   "env",
+		Short: "Print environment variables for shell integration",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			paths := ctx.ToolchainManager.Paths()
+			// Print shell-compatible export statements
+			fmt.Printf("export PATH=\"%s/bin:$PATH\"\n", paths.CrosstoolNG)
+
+			toolchains, _ := ctx.ToolchainManager.GetInstalledToolchains()
+			for _, tc := range toolchains {
+				if tc.Installed {
+					fmt.Printf("export PATH=\"%s/bin:$PATH\"\n", tc.Path)
+				}
+			}
+			return nil
+		},
+	}
+
+	// Add subcommands
+	toolchainsCmd.AddCommand(installCmd, listCmd, statusCmd, buildCmd, menuconfigCmd, cleanCmd, envCmd)
+
+	// Add dynamic target selection as a fallback command
+	// This handles: elmos toolchains <target>
+	toolchainsCmd.RunE = func(cmd *cobra.Command, args []string) error {
+		if len(args) == 0 {
+			return cmd.Help()
+		}
+
+		// First arg is the target
+		target := args[0]
+
+		// Check if it looks like a valid target (contains "unknown" or "-linux-" etc.)
+		if !isValidTargetName(target) {
+			return fmt.Errorf("unknown subcommand or invalid target: %s", target)
+		}
+
+		if err := ctx.AppContext.EnsureMounted(); err != nil {
+			return err
+		}
+
+		ctx.Printer.Step("Selecting target: %s", target)
+		if err := ctx.ToolchainManager.SelectTarget(cmd.Context(), target); err != nil {
+			return err
+		}
+		ctx.Printer.Success("Target selected: %s", target)
+		ctx.Printer.Print("  Run 'elmos toolchains build' to build")
+		return nil
+	}
+
+	// Allow arbitrary args for target selection
+	toolchainsCmd.Args = cobra.ArbitraryArgs
+
+	return toolchainsCmd
+}
+
+// isValidTargetName checks if a string looks like a ct-ng target name.
+func isValidTargetName(s string) bool {
+	// Basic heuristics: contains architecture keywords
+	keywords := []string{
+		"arm", "aarch64", "riscv", "x86", "mips", "powerpc",
+		"linux", "elf", "gnu", "unknown",
+	}
+	for _, kw := range keywords {
+		if containsIgnoreCase(s, kw) {
+			return true
+		}
+	}
+	return false
+}
+
+// containsIgnoreCase checks if s contains substr (case-insensitive).
+func containsIgnoreCase(s, substr string) bool {
+	sLower := toLower(s)
+	substrLower := toLower(substr)
+	for i := 0; i+len(substrLower) <= len(sLower); i++ {
+		if sLower[i:i+len(substrLower)] == substrLower {
+			return true
+		}
+	}
+	return false
+}
+
+// toLower converts a string to lowercase.
+func toLower(s string) string {
+	result := make([]byte, len(s))
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c >= 'A' && c <= 'Z' {
+			result[i] = c + 32
+		} else {
+			result[i] = c
+		}
+	}
+	return string(result)
+}
+
+// Ensure strconv is used (for future job count parsing if needed)
+var _ = strconv.Atoi
