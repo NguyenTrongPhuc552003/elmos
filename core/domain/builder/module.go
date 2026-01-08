@@ -12,6 +12,7 @@ import (
 	"github.com/NguyenTrongPhuc552003/elmos/assets"
 	elconfig "github.com/NguyenTrongPhuc552003/elmos/core/config"
 	elcontext "github.com/NguyenTrongPhuc552003/elmos/core/context"
+	"github.com/NguyenTrongPhuc552003/elmos/core/domain/toolchain"
 	"github.com/NguyenTrongPhuc552003/elmos/core/infra/executor"
 	"github.com/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
 )
@@ -30,15 +31,17 @@ type ModuleBuilder struct {
 	fs   filesystem.FileSystem
 	cfg  *elconfig.Config
 	ctx  *elcontext.Context
+	tm   *toolchain.Manager
 }
 
 // NewModuleBuilder creates a new ModuleBuilder with the given dependencies.
-func NewModuleBuilder(exec executor.Executor, fs filesystem.FileSystem, cfg *elconfig.Config, ctx *elcontext.Context) *ModuleBuilder {
+func NewModuleBuilder(exec executor.Executor, fs filesystem.FileSystem, cfg *elconfig.Config, ctx *elcontext.Context, tm *toolchain.Manager) *ModuleBuilder {
 	return &ModuleBuilder{
 		exec: exec,
 		fs:   fs,
 		cfg:  cfg,
 		ctx:  ctx,
+		tm:   tm,
 	}
 }
 
@@ -64,16 +67,21 @@ func (m *ModuleBuilder) Build(ctx context.Context, name string) error {
 
 // buildModule builds a single module.
 func (m *ModuleBuilder) buildModule(ctx context.Context, mod ModuleInfo) error {
+	// Get environment with correct toolchain
+	env, crossCompile, err := getToolchainEnv(m.ctx, m.cfg, m.tm, m.fs, m.cfg.Build.Arch)
+	if err != nil {
+		return fmt.Errorf("failed to configure toolchain environment: %w", err)
+	}
+
 	args := []string{
 		"-C", m.cfg.Paths.KernelDir,
 		fmt.Sprintf("M=%s", mod.Path),
 		fmt.Sprintf("ARCH=%s", m.cfg.Build.Arch),
 		"LLVM=1",
-		fmt.Sprintf("CROSS_COMPILE=%s", m.cfg.Build.CrossCompile),
+		fmt.Sprintf("CROSS_COMPILE=%s", crossCompile),
 		"modules",
 	}
 
-	env := m.ctx.GetMakeEnv()
 	return m.exec.RunWithEnv(ctx, env, "make", args...)
 }
 
@@ -184,16 +192,21 @@ func extractModuleDescription(content string) string {
 
 // PrepareHeaders runs modules_prepare to set up headers for module building.
 func (m *ModuleBuilder) PrepareHeaders(ctx context.Context) error {
+	// Get environment with correct toolchain
+	env, crossCompile, err := getToolchainEnv(m.ctx, m.cfg, m.tm, m.fs, m.cfg.Build.Arch)
+	if err != nil {
+		return fmt.Errorf("failed to configure toolchain environment: %w", err)
+	}
+
 	args := []string{
 		"-C", m.cfg.Paths.KernelDir,
 		fmt.Sprintf("-j%d", m.cfg.Build.Jobs),
 		fmt.Sprintf("ARCH=%s", m.cfg.Build.Arch),
 		"LLVM=1",
-		fmt.Sprintf("CROSS_COMPILE=%s", m.cfg.Build.CrossCompile),
+		fmt.Sprintf("CROSS_COMPILE=%s", crossCompile),
 		"modules_prepare",
 	}
 
-	env := m.ctx.GetMakeEnv()
 	return m.exec.RunWithEnv(ctx, env, "make", args...)
 }
 
