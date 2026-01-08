@@ -162,53 +162,7 @@ Examples:
 	// Add subcommands
 	toolchainsCmd.AddCommand(installCmd, listCmd, statusCmd, buildCmd, menuconfigCmd, cleanCmd, envCmd)
 
-	// Add dynamic target selection as a fallback command
-	// This handles: elmos toolchains <target>
-	toolchainsCmd.RunE = func(cmd *cobra.Command, args []string) error {
-		if len(args) == 0 {
-			return cmd.Help()
-		}
-
-		// First arg is the target
-		target := args[0]
-
-		// Check if it looks like a valid target (contains "unknown" or "-linux-" etc.)
-		if !isValidTargetName(target) {
-			return fmt.Errorf("unknown subcommand or invalid target: %s", target)
-		}
-
-		if err := ctx.AppContext.EnsureMounted(); err != nil {
-			return err
-		}
-
-		ctx.Printer.Step("Selecting target: %s", target)
-		if err := ctx.ToolchainManager.SelectTarget(cmd.Context(), target); err != nil {
-			return err
-		}
-		ctx.Printer.Success("Target selected: %s", target)
-		ctx.Printer.Print("  Run 'elmos toolchains build' to build")
-		return nil
-	}
-
-	// Allow arbitrary args for target selection
-	toolchainsCmd.Args = cobra.ArbitraryArgs
-
 	return toolchainsCmd
-}
-
-// isValidTargetName checks if a string looks like a ct-ng target name.
-func isValidTargetName(s string) bool {
-	// Basic heuristics: contains architecture keywords
-	keywords := []string{
-		"arm", "aarch64", "riscv", "x86", "mips", "powerpc",
-		"linux", "elf", "gnu", "unknown",
-	}
-	for _, kw := range keywords {
-		if containsIgnoreCase(s, kw) {
-			return true
-		}
-	}
-	return false
 }
 
 // containsIgnoreCase checks if s contains substr (case-insensitive).
