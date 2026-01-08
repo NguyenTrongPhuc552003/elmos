@@ -24,7 +24,7 @@ func TestNewKernelBuilder(t *testing.T) {
 
 	// NewKernelBuilder should not panic with nil executor/fs
 	// when used with proper mocks
-	kb := NewKernelBuilder(nil, nil, cfg, nil)
+	kb := NewKernelBuilder(nil, nil, cfg, nil, nil)
 
 	if kb == nil {
 		t.Fatal("NewKernelBuilder returned nil")
