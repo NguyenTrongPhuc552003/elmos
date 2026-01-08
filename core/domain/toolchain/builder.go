@@ -93,8 +93,11 @@ func (m *Manager) getInstallEnv() []string {
 	return env
 }
 
-// SelectTarget configures a target toolchain sample.
+// SelectTarget configures crosstool-ng for the specified target.
+// It checks for a custom config first, then falls back to ct-ng samples.
 func (m *Manager) SelectTarget(ctx context.Context, target string) error {
+	m.printer.Step("Configuring toolchain for %s...", target)
+
 	if !m.IsInstalled() {
 		return fmt.Errorf("crosstool-ng not installed, run 'elmos toolchains install'")
 	}
@@ -106,9 +109,28 @@ func (m *Manager) SelectTarget(ctx context.Context, target string) error {
 		return fmt.Errorf("failed to create x-tools directory: %w", err)
 	}
 
-	// Run ct-ng <target> in toolchains directory
-	if err := m.exec.RunInDir(ctx, paths.Base, m.GetCtNgPath(), target); err != nil {
-		return fmt.Errorf("failed to select target %s: %w", target, err)
+	// Check if we have a custom config for this target
+	customConfig := m.GetCustomConfigPath(target)
+	if customConfig != "" {
+		m.printer.Info("Using custom configuration: %s", customConfig)
+
+		// Read custom config
+		content, err := os.ReadFile(customConfig)
+		if err != nil {
+			return fmt.Errorf("failed to read custom config: %w", err)
+		}
+
+		// Write to .config in toolchains dir
+		configPath := filepath.Join(paths.Base, ".config")
+		if err := os.WriteFile(configPath, content, 0644); err != nil {
+			return fmt.Errorf("failed to write .config: %w", err)
+		}
+	} else {
+		// Use ct-ng sample
+		// Run ct-ng <target> in toolchains directory
+		if err := m.exec.RunWithEnvInDir(ctx, m.getBuildEnv(paths), paths.Base, m.GetCtNgPath(), target); err != nil {
+			return fmt.Errorf("failed to select target %s: %w", target, err)
+		}
 	}
 
 	// Update .config to use our paths
