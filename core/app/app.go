@@ -55,7 +55,7 @@ func New(exec executor.Executor, fs filesystem.FileSystem, cfg *config.Config) *
 		AutoFixer:        doctor.NewAutoFixer(fs, cfg),
 		RootfsCreator:    rootfs.NewCreator(exec, fs, cfg),
 		PatchManager:     patch.NewManager(exec, fs, cfg),
-		ToolchainManager: toolchain.NewManager(exec, fs, cfg),
+		ToolchainManager: toolchain.NewManager(exec, fs, cfg, ui.NewPrinter()),
 		Printer:          ui.NewPrinter(),
 	}
 }
