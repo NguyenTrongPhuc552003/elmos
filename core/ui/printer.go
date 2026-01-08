@@ -44,6 +44,11 @@ func (p *Printer) Print(format string, args ...interface{}) {
 	fmt.Printf(format+"\n", args...)
 }
 
+// Writer returns an io.Writer that writes to stdout.
+func (p *Printer) Writer() *os.File {
+	return os.Stdout
+}
+
 // Global printer instance for convenience.
 var defaultPrinter = NewPrinter()
 
