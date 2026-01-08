@@ -11,6 +11,8 @@ import (
 
 	"github.com/NguyenTrongPhuc552003/elmos/assets"
 	elconfig "github.com/NguyenTrongPhuc552003/elmos/core/config"
+	elcontext "github.com/NguyenTrongPhuc552003/elmos/core/context"
+	"github.com/NguyenTrongPhuc552003/elmos/core/domain/toolchain"
 	"github.com/NguyenTrongPhuc552003/elmos/core/infra/executor"
 	"github.com/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
 )
@@ -27,14 +29,18 @@ type AppBuilder struct {
 	exec executor.Executor
 	fs   filesystem.FileSystem
 	cfg  *elconfig.Config
+	ctx  *elcontext.Context
+	tm   *toolchain.Manager
 }
 
 // NewAppBuilder creates a new AppBuilder with the given dependencies.
-func NewAppBuilder(exec executor.Executor, fs filesystem.FileSystem, cfg *elconfig.Config) *AppBuilder {
+func NewAppBuilder(exec executor.Executor, fs filesystem.FileSystem, cfg *elconfig.Config, ctx *elcontext.Context, tm *toolchain.Manager) *AppBuilder {
 	return &AppBuilder{
 		exec: exec,
 		fs:   fs,
 		cfg:  cfg,
+		ctx:  ctx,
+		tm:   tm,
 	}
 }
 
@@ -49,10 +55,16 @@ func (a *AppBuilder) Build(ctx context.Context, name string) error {
 		return nil
 	}
 
-	compiler := a.getCrossCompiler()
+	// Get environment with correct toolchain
+	env, crossCompile, err := getToolchainEnv(a.ctx, a.cfg, a.tm, a.fs, a.cfg.Build.Arch)
+	if err != nil {
+		return fmt.Errorf("failed to configure toolchain environment: %w", err)
+	}
+
+	compiler := a.getCrossCompiler(crossCompile)
 
 	for _, app := range apps {
-		if err := a.buildApp(ctx, app, compiler); err != nil {
+		if err := a.buildApp(ctx, app, compiler, env); err != nil {
 			return err
 		}
 	}
@@ -61,11 +73,11 @@ func (a *AppBuilder) Build(ctx context.Context, name string) error {
 }
 
 // buildApp builds a single application.
-func (a *AppBuilder) buildApp(ctx context.Context, app AppInfo, compiler string) error {
+func (a *AppBuilder) buildApp(ctx context.Context, app AppInfo, compiler string, env []string) error {
 	// Check for Makefile
 	makefilePath := filepath.Join(app.Path, "Makefile")
 	if a.fs.Exists(makefilePath) {
-		return a.exec.RunInDir(ctx, app.Path, "make",
+		return a.exec.RunWithEnvInDir(ctx, env, app.Path, "make",
 			fmt.Sprintf("CC=%s", compiler),
 			fmt.Sprintf("ARCH=%s", a.cfg.Build.Arch),
 		)
@@ -78,7 +90,7 @@ func (a *AppBuilder) buildApp(ctx context.Context, app AppInfo, compiler string)
 	}
 
 	outFile := filepath.Join(app.Path, app.Name)
-	return a.exec.Run(ctx, compiler, "-static", "-o", outFile, srcFile)
+	return a.exec.RunWithEnv(ctx, env, compiler, "-static", "-o", outFile, srcFile)
 }
 
 // Clean cleans one or all applications.
@@ -170,7 +182,14 @@ func (a *AppBuilder) getAppInfo(name, path string) AppInfo {
 }
 
 // getCrossCompiler returns the cross-compiler for the current architecture.
-func (a *AppBuilder) getCrossCompiler() string {
+func (a *AppBuilder) getCrossCompiler(prefix string) string {
+	// If we have a toolchain prefix, prefer it
+	if prefix != "" {
+		// e.g. riscv64-unknown-linux-gnu- + gcc
+		return prefix + "gcc"
+	}
+
+	// Fallback to configured binary or clang
 	archCfg := a.cfg.GetArchConfig()
 	if archCfg != nil && archCfg.GCCBinary != "" {
 		if path, err := a.exec.LookPath(archCfg.GCCBinary); err == nil {
