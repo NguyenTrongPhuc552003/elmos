@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	elconfig "github.com/NguyenTrongPhuc552003/elmos/core/config"
+	"github.com/NguyenTrongPhuc552003/elmos/core/domain/toolchain"
 	"github.com/NguyenTrongPhuc552003/elmos/core/infra/executor"
 	"github.com/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
 	"github.com/NguyenTrongPhuc552003/elmos/core/infra/homebrew"
@@ -27,15 +28,17 @@ type HealthChecker struct {
 	fs   filesystem.FileSystem
 	cfg  *elconfig.Config
 	brew *homebrew.Resolver
+	tm   *toolchain.Manager
 }
 
 // NewHealthChecker creates a new HealthChecker with the given dependencies.
-func NewHealthChecker(exec executor.Executor, fs filesystem.FileSystem, cfg *elconfig.Config) *HealthChecker {
+func NewHealthChecker(exec executor.Executor, fs filesystem.FileSystem, cfg *elconfig.Config, tm *toolchain.Manager) *HealthChecker {
 	return &HealthChecker{
 		exec: exec,
 		fs:   fs,
 		cfg:  cfg,
 		brew: homebrew.NewResolver(exec),
+		tm:   tm,
 	}
 }
 
@@ -49,15 +52,6 @@ func (h *HealthChecker) CheckAll(ctx context.Context) ([]CheckResult, int) {
 	results = append(results, result)
 	if !result.Passed && result.Required {
 		issues++
-	}
-
-	// Check taps
-	tapResults := h.CheckTaps(ctx)
-	for _, r := range tapResults {
-		results = append(results, r)
-		if !r.Passed && r.Required {
-			issues++
-		}
 	}
 
 	// Check packages
@@ -86,7 +80,46 @@ func (h *HealthChecker) CheckAll(ctx context.Context) ([]CheckResult, int) {
 	gccResults := h.CheckCrossGCC(ctx)
 	results = append(results, gccResults...)
 
+	// Check toolchains (ct-ng and installed targets)
+	tcResults := h.CheckToolchains(ctx)
+	results = append(results, tcResults...)
+
 	return results, issues
+}
+
+// CheckToolchains checks if crosstool-ng and toolchains are installed.
+func (h *HealthChecker) CheckToolchains(ctx context.Context) []CheckResult {
+	var results []CheckResult
+
+	// Check ct-ng installation
+	ctngInstalled := h.tm.IsInstalled()
+	results = append(results, CheckResult{
+		Name:     "crosstool-ng",
+		Passed:   ctngInstalled,
+		Required: false, // Optional for building, but good to have
+		Message:  "Run: elmos toolchains install",
+	})
+
+	if ctngInstalled {
+		// Check installed toolchains
+		toolchains, err := h.tm.GetInstalledToolchains()
+		if err == nil {
+			for _, tc := range toolchains {
+				msg := ""
+				if !tc.Installed {
+					msg = "Toolchain built but not fully installed"
+				}
+				results = append(results, CheckResult{
+					Name:     fmt.Sprintf("Toolchain: %s", tc.Target),
+					Passed:   tc.Installed,
+					Required: false,
+					Message:  msg,
+				})
+			}
+		}
+	}
+
+	return results
 }
 
 // CheckHomebrew checks if Homebrew is installed.
@@ -98,38 +131,6 @@ func (h *HealthChecker) CheckHomebrew(ctx context.Context) CheckResult {
 		Required: true,
 		Message:  "Install from: https://brew.sh",
 	}
-}
-
-// CheckTaps checks if required Homebrew taps are installed.
-func (h *HealthChecker) CheckTaps(ctx context.Context) []CheckResult {
-	var results []CheckResult
-
-	installedTaps, err := h.brew.ListTaps()
-	if err != nil {
-		return []CheckResult{{
-			Name:     "Homebrew Taps",
-			Passed:   false,
-			Required: true,
-			Message:  "Failed to list taps",
-		}}
-	}
-
-	tapSet := make(map[string]bool)
-	for _, t := range installedTaps {
-		tapSet[t] = true
-	}
-
-	for _, tap := range elconfig.RequiredTaps {
-		passed := tapSet[tap]
-		results = append(results, CheckResult{
-			Name:     fmt.Sprintf("Tap: %s", tap),
-			Passed:   passed,
-			Required: true,
-			Message:  fmt.Sprintf("Fix: brew tap %s", tap),
-		})
-	}
-
-	return results
 }
 
 // CheckPackages checks if required Homebrew packages are installed.
@@ -151,28 +152,52 @@ func (h *HealthChecker) CheckPackages(ctx context.Context) []CheckResult {
 		pkgSet[p] = true
 	}
 
-	var missing []string
-	for _, pkg := range elconfig.RequiredPackages {
-		passed := pkgSet[pkg.Name]
-		results = append(results, CheckResult{
-			Name:     fmt.Sprintf("Package: %s", pkg.Name),
-			Passed:   passed,
-			Required: pkg.Required,
-			Message:  pkg.Description,
-		})
-		if !passed && pkg.Required {
-			missing = append(missing, pkg.Name)
-		}
+	// Group packages by category
+	type CategoryGroup struct {
+		Name     string
+		Packages []elconfig.RequiredPackage
 	}
 
-	// Add fix message for missing packages
-	if len(missing) > 0 {
-		results = append(results, CheckResult{
-			Name:     "Missing packages fix",
-			Passed:   false,
-			Required: false,
-			Message:  fmt.Sprintf("brew install %s", strings.Join(missing, " ")),
-		})
+	// Use map to collect categories first to keep order
+	cats := []string{"Build Tools", "Virtualization", "Toolchain Dependencies"}
+	grouped := make(map[string][]elconfig.RequiredPackage)
+
+	for _, pkg := range elconfig.RequiredPackages {
+		cat := pkg.Category
+		if cat == "" {
+			cat = "Other"
+		}
+		grouped[cat] = append(grouped[cat], pkg)
+	}
+
+	for _, catName := range cats {
+		pkgs := grouped[catName]
+		if len(pkgs) == 0 {
+			continue
+		}
+
+		var missing []string
+		for _, pkg := range pkgs {
+			passed := pkgSet[pkg.Name]
+			results = append(results, CheckResult{
+				Name:     fmt.Sprintf("Homebrew Packages: [%s] %s", catName, pkg.Name),
+				Passed:   passed,
+				Required: pkg.Required,
+				Message:  pkg.Description,
+			})
+			if !passed && pkg.Required {
+				missing = append(missing, pkg.Name)
+			}
+		}
+
+		if len(missing) > 0 {
+			results = append(results, CheckResult{
+				Name:     "  Fix missing packages",
+				Passed:   false,
+				Required: false,
+				Message:  fmt.Sprintf("brew install %s", strings.Join(missing, " ")),
+			})
+		}
 	}
 
 	return results
@@ -197,7 +222,7 @@ func (h *HealthChecker) CheckHeaders(ctx context.Context) []CheckResult {
 		headerPath := filepath.Join(headersDir, header)
 		passed := h.fs.Exists(headerPath)
 		results = append(results, CheckResult{
-			Name:     fmt.Sprintf("Header: %s", header),
+			Name:     fmt.Sprintf("Custom Headers: %s", header),
 			Passed:   passed,
 			Required: true,
 			Message:  "",
@@ -207,7 +232,7 @@ func (h *HealthChecker) CheckHeaders(ctx context.Context) []CheckResult {
 	// Check asm directory
 	asmDir := filepath.Join(headersDir, "asm")
 	results = append(results, CheckResult{
-		Name:     "Header: asm/",
+		Name:     "Custom Headers: asm/",
 		Passed:   h.fs.IsDir(asmDir),
 		Required: true,
 		Message:  "",
@@ -226,12 +251,26 @@ func (h *HealthChecker) CheckCrossGDB(ctx context.Context) []CheckResult {
 			continue
 		}
 
-		_, err := h.exec.LookPath(archCfg.GDBBinary)
+		binary := archCfg.GDBBinary
+		passed := false
+		message := ""
+
+		// Check elmos toolchains only (strict check)
+		// Extract target tuple: binary minus "-gdb"
+		if strings.HasSuffix(binary, "-gdb") {
+			target := strings.TrimSuffix(binary, "-gdb")
+			toolchainBin := filepath.Join(h.tm.Paths().XTools, target, "bin", binary)
+			if h.fs.Exists(toolchainBin) {
+				passed = true
+				message = "Found in elmos toolchains"
+			}
+		}
+
 		results = append(results, CheckResult{
-			Name:     fmt.Sprintf("GDB: %s (%s)", arch, archCfg.GDBBinary),
-			Passed:   err == nil,
+			Name:     fmt.Sprintf("Cross Debuggers: %s (%s)", arch, binary),
+			Passed:   passed,
 			Required: false, // GDB is optional
-			Message:  "",
+			Message:  message,
 		})
 	}
 
@@ -248,12 +287,26 @@ func (h *HealthChecker) CheckCrossGCC(ctx context.Context) []CheckResult {
 			continue
 		}
 
-		_, err := h.exec.LookPath(archCfg.GCCBinary)
+		binary := archCfg.GCCBinary
+		passed := false
+		message := ""
+
+		// Check elmos toolchains only (strict check)
+		// Extract target tuple: binary minus "-gcc"
+		if strings.HasSuffix(binary, "-gcc") {
+			target := strings.TrimSuffix(binary, "-gcc")
+			toolchainBin := filepath.Join(h.tm.Paths().XTools, target, "bin", binary)
+			if h.fs.Exists(toolchainBin) {
+				passed = true
+				message = "Found in elmos toolchains"
+			}
+		}
+
 		results = append(results, CheckResult{
-			Name:     fmt.Sprintf("GCC: %s (%s)", arch, archCfg.GCCBinary),
-			Passed:   err == nil,
+			Name:     fmt.Sprintf("Cross Compilers: %s (%s)", arch, binary),
+			Passed:   passed,
 			Required: false, // GCC is optional when using LLVM
-			Message:  "",
+			Message:  message,
 		})
 	}
 
