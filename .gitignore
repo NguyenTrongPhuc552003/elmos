@@ -41,3 +41,6 @@ apps/*/[!.]*
 # Test coverage
 coverage.out
 coverage.html
+
+# Persistant workspace
+/data
