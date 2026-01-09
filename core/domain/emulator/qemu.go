@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	elconfig "github.com/NguyenTrongPhuc552003/elmos/core/config"
@@ -252,26 +253,13 @@ func (q *QEMURunner) CheckDebugConfig() error {
 	}
 
 	configStr := string(content)
-	hasDebugKernel := contains(configStr, "CONFIG_DEBUG_KERNEL=y")
-	hasDWARF := contains(configStr, "CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT=y") ||
-		contains(configStr, "CONFIG_DEBUG_INFO_DWARF5=y")
+	hasDebugKernel := strings.Contains(configStr, "CONFIG_DEBUG_KERNEL=y")
+	hasDWARF := strings.Contains(configStr, "CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT=y") ||
+		strings.Contains(configStr, "CONFIG_DEBUG_INFO_DWARF5=y")
 
 	if !hasDebugKernel || !hasDWARF {
 		return fmt.Errorf("kernel debugging not enabled in .config (need CONFIG_DEBUG_KERNEL and DWARF info)")
 	}
 
 	return nil
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsImpl(s, substr))
-}
-
-func containsImpl(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }
