@@ -96,9 +96,18 @@ func BuildKernel(ctx *Context) *cobra.Command {
 
 			// Get git info
 			ctx.Printer.Step("Git info:")
-			branch, err := ctx.Exec.Output(cmd.Context(), "git", "-C", ctx.Config.Paths.KernelDir, "branch", "--show-current")
+			branch, err := ctx.Exec.Output(cmd.Context(), "git", "-C", ctx.Config.Paths.KernelDir, "symbolic-ref", "-q", "--short", "HEAD")
 			if err == nil {
+				// We are on a branch
 				ctx.Printer.Print("  Branch: %s", strings.TrimSpace(string(branch)))
+			} else {
+				// Check for tag
+				tag, err := ctx.Exec.Output(cmd.Context(), "git", "-C", ctx.Config.Paths.KernelDir, "describe", "--tags", "--exact-match")
+				if err == nil {
+					ctx.Printer.Print("  Tag: %s", strings.TrimSpace(string(tag)))
+				} else {
+					ctx.Printer.Print("  Branch: <detached>")
+				}
 			}
 			commit, err := ctx.Exec.Output(cmd.Context(), "git", "-C", ctx.Config.Paths.KernelDir, "log", "-1", "--format=%h %s")
 			if err == nil {
@@ -148,16 +157,16 @@ func BuildKernel(ctx *Context) *cobra.Command {
 		},
 	}
 
-	branchCmd := &cobra.Command{
-		Use:   "branch [ref]",
+	switchCmd := &cobra.Command{
+		Use:   "switch [ref]",
 		Short: "List or switch branch/tag (auto-detects)",
 		Long: `List all branches and tags, or switch to a specific ref.
 Automatically detects whether the ref is a branch or tag.
 
 Examples:
-  elmos kernel branch           # List all refs
-  elmos kernel branch master    # Switch to branch
-  elmos kernel branch v6.7      # Switch to tag`,
+  elmos kernel switch           # List all refs
+  elmos kernel switch master    # Switch to branch
+  elmos kernel switch v6.7      # Switch to tag`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := ctx.AppContext.EnsureMounted(); err != nil {
 				return err
@@ -246,6 +255,6 @@ Examples:
 	}
 	buildCmd.Flags().IntVarP(&jobs, "jobs", "j", 0, "Number of parallel build jobs")
 
-	kernelCmd.AddCommand(configCmd, cleanCmd, cloneCmd, statusCmd, resetCmd, branchCmd, pullCmd, buildCmd)
+	kernelCmd.AddCommand(configCmd, cleanCmd, cloneCmd, statusCmd, resetCmd, switchCmd, pullCmd, buildCmd)
 	return kernelCmd
 }
