@@ -35,3 +35,8 @@ func GetInitScript() ([]byte, error) {
 func GetGuestSync() ([]byte, error) {
 	return Templates.ReadFile("templates/init/guesync.sh.tmpl")
 }
+
+// GetConfigTemplate returns the elmos.yaml configuration template.
+func GetConfigTemplate() ([]byte, error) {
+	return Templates.ReadFile("templates/configs/elmos.yaml.tmpl")
+}
