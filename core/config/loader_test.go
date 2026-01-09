@@ -89,9 +89,9 @@ func TestApplyComputedDefaults(t *testing.T) {
 
 	applyComputedDefaults(cfg)
 
-	// Check image path
-	if cfg.Image.Path != "/tmp/test-project/img.sparseimage" {
-		t.Errorf("Image.Path = %q, want %q", cfg.Image.Path, "/tmp/test-project/img.sparseimage")
+	// Check image path (now in build/ subdirectory)
+	if cfg.Image.Path != "/tmp/test-project/build/img.sparseimage" {
+		t.Errorf("Image.Path = %q, want %q", cfg.Image.Path, "/tmp/test-project/build/img.sparseimage")
 	}
 
 	// Check mount point
