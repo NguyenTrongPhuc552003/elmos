@@ -214,6 +214,8 @@ func (m *Model) getCommandWithInput(action, value string) string {
 		return "elmos config set memory " + value
 	case "rootfs:create:custom":
 		return "elmos rootfs create -s " + value
+	case "toolchain:select":
+		return "elmos toolchains " + value
 	default:
 		return "elmos " + action
 	}
@@ -307,6 +309,21 @@ func (m *Model) actionToArgs(action, inputValue string) []string {
 		return []string{"config", "set", "memory", inputValue}
 	case "doctor:check":
 		return []string{"doctor"}
+	// Toolchain actions
+	case "toolchain:status":
+		return []string{"toolchains", "status"}
+	case "toolchain:install":
+		return []string{"toolchains", "install"}
+	case "toolchain:list":
+		return []string{"toolchains", "list"}
+	case "toolchain:select":
+		return []string{"toolchains", inputValue}
+	case "toolchain:build":
+		return []string{"toolchains", "build"}
+	case "toolchain:env":
+		return []string{"toolchains", "env"}
+	case "toolchain:clean":
+		return []string{"toolchains", "clean"}
 	default:
 		return []string{}
 	}

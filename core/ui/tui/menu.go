@@ -86,6 +86,16 @@ func buildMenuStructure() []MenuItem {
 			{Label: "Clean", Desc: "Remove rootfs", Action: "rootfs:clean", Command: "elmos rootfs clean"},
 		}},
 		{Label: "Doctor", Desc: "Check environment", Action: "doctor:check", Command: "elmos doctor"},
+		{Label: "Toolchains", Desc: "Manage cross-compiler toolchains", Children: []MenuItem{
+			{Label: "Status", Desc: "Show installed toolchains", Action: "toolchain:status", Command: "elmos toolchains status"},
+			{Label: "Install", Desc: "Install crosstool-ng", Action: "toolchain:install", Command: "elmos toolchains install"},
+			{Label: "List", Desc: "List available targets", Action: "toolchain:list", Command: "elmos toolchains list"},
+			{Label: "Select", Desc: "Select toolchain target", Action: "toolchain:select", Command: "elmos toolchains <target>", NeedsInput: true, InputPrompt: "Target (e.g. riscv64-unknown-linux-gnu):", InputPlaceholder: "riscv64-unknown-linux-gnu"},
+			{Label: "Build", Desc: "Build selected toolchain", Action: "toolchain:build", Command: "elmos toolchains build"},
+			{Label: "Env", Desc: "Show env variables", Action: "toolchain:env", Command: "elmos toolchains env"},
+			{Label: "Menuconfig", Desc: "Configure toolchain", Action: "toolchain:menuconfig", Command: "elmos toolchains menuconfig", Interactive: true, Args: []string{"toolchains", "menuconfig"}},
+			{Label: "Clean", Desc: "Clean toolchain build", Action: "toolchain:clean", Command: "elmos toolchains clean"},
+		}},
 	}
 }
 
