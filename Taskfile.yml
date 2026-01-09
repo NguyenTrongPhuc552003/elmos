@@ -5,7 +5,8 @@
 version: '3'
 
 vars:
-  BINARY: elmos
+  BUILD_DIR: build
+  BINARY: "{{.BUILD_DIR}}/elmos"
   PREFIX: /usr/local
   VERSION:
     sh: git describe --tags --always --dirty 2>/dev/null || echo "dev"
@@ -30,6 +31,7 @@ tasks:
     desc: Build the elmos binary
     cmds:
       - echo "Building {{.BINARY}}..."
+      - mkdir -p {{.BUILD_DIR}}
       - go build -ldflags "{{.LDFLAGS}}" -o {{.BINARY}} .
     sources:
       - "**/*.go"
