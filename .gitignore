@@ -1,5 +1,5 @@
-# Allocated linux kernel workspace
-*.sparseimage
+# Allocated linux kernel workspace (legacy, now in build/)
+# *.sparseimage
 
 # Configuration files (kernel related)
 build.cfg
@@ -21,8 +21,23 @@ modules/**/*.mod.o
 guesync.sh
 module.cfg
 
-# Go build artifacts
-/elmos
+# Go build output directory
+/build/
+
+# Built userspace apps (binaries without extension)
+apps/*/[!.]*
+!apps/*/*.c
+!apps/*/*.h
+!apps/*/Makefile
+!apps/*/README*
 
 # Task cache
 .task/
+
+# IDE
+.idea
+.vscode
+
+# Test coverage
+coverage.out
+coverage.html

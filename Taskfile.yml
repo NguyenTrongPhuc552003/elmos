@@ -5,7 +5,8 @@
 version: '3'
 
 vars:
-  BINARY: elmos
+  BUILD_DIR: build
+  BINARY: "{{.BUILD_DIR}}/elmos"
   PREFIX: /usr/local
   VERSION:
     sh: git describe --tags --always --dirty 2>/dev/null || echo "dev"
@@ -21,6 +22,10 @@ vars:
     sh: go env GOPATH
 
 tasks:
+  # ============================================================================
+  # Default & Core Build
+  # ============================================================================
+
   default:
     desc: Build the elmos binary
     cmds:
@@ -30,6 +35,7 @@ tasks:
     desc: Build the elmos binary
     cmds:
       - echo "Building {{.BINARY}}..."
+      - mkdir -p {{.BUILD_DIR}}
       - go build -ldflags "{{.LDFLAGS}}" -o {{.BINARY}} .
     sources:
       - "**/*.go"
@@ -38,47 +44,30 @@ tasks:
     generates:
       - "{{.BINARY}}"
 
-  install:
-    desc: Install to GOPATH/pkg
-    deps: [build]
-    cmds:
-      - echo "Installing to {{.GOBIN}}/pkg..."
-      - cp {{.BINARY}} {{.GOBIN}}/pkg/
-
-  install:global:
-    desc: Install to /usr/local/bin (requires sudo)
-    deps: [build]
-    cmds:
-      - echo "Installing to {{.PREFIX}}/bin..."
-      - sudo cp {{.BINARY}} {{.PREFIX}}/bin/
-
-  uninstall:
-    desc: Remove from GOPATH/pkg
-    cmds:
-      - rm -f {{.GOBIN}}/pkg/{{.BINARY}}
-
   clean:
-    desc: Clean build artifacts
+    desc: Clean all build artifacts
     cmds:
-      - rm -f {{.BINARY}}
-      - rm -f {{.BINARY}}-darwin-*
+      - rm -rf {{.BUILD_DIR}}
+      - rm -rf completions
       - rm -f coverage.out coverage.html
       - go clean
 
-  # Development targets
+  # ============================================================================
+  # Development Workflow (dev:*)
+  # ============================================================================
 
-  deps:
+  dev:deps:
     desc: Download and tidy dependencies
     cmds:
       - go mod download
       - go mod tidy
 
-  fmt:
+  dev:fmt:
     desc: Format Go code
     cmds:
       - go fmt ./...
 
-  lint:
+  dev:lint:
     desc: Run linter (golangci-lint or go vet)
     cmds:
       - |
@@ -89,29 +78,120 @@ tasks:
           go vet ./...
         fi
 
-  test:
-    desc: Run tests
+  dev:check:
+    desc: Run fmt, lint, and test (pre-commit style)
     cmds:
-      - go test -v ./...
+      - task: dev:fmt
+      - task: dev:lint
+      - task: test
+
+  dev:setup:
+    desc: Full dev setup (deps + build + init workspace)
+    cmds:
+      - task: dev:deps
+      - task: build
+      - task: elmos:init
+
+  # ============================================================================
+  # Testing (test:*)
+  # ============================================================================
+
+  test:
+    desc: Run tests (with colors if gotestsum installed)
+    cmds:
+      - |
+        GOTESTSUM="$(go env GOPATH)/bin/gotestsum"
+        if [ -x "$GOTESTSUM" ]; then
+          $GOTESTSUM --format testdox ./...
+        else
+          go test -v ./...
+        fi
 
   test:cover:
     desc: Run tests with coverage report
     cmds:
-      - go test -v -cover -coverprofile=coverage.out ./...
+      - |
+        GOTESTSUM="$(go env GOPATH)/bin/gotestsum"
+        if [ -x "$GOTESTSUM" ]; then
+          $GOTESTSUM --format testdox -- -cover -coverprofile=coverage.out ./...
+        else
+          go test -v -cover -coverprofile=coverage.out ./...
+        fi
       - go tool cover -html=coverage.out -o coverage.html
       - 'echo "Coverage report: coverage.html"'
 
-  # Release targets
+  # ============================================================================
+  # elmos CLI Wrappers (elmos:*)
+  # ============================================================================
 
-  release:
-    desc: Build for all supported platforms
+  elmos:init:
+    desc: Initialize elmos workspace (mount volume)
+    deps: [build]
     cmds:
+      - ./{{.BINARY}} init
+
+  elmos:exit:
+    desc: Exit elmos workspace (unmount volume)
+    deps: [build]
+    cmds:
+      - ./{{.BINARY}} exit
+
+  elmos:status:
+    desc: Show workspace status
+    deps: [build]
+    cmds:
+      - ./{{.BINARY}} status
+
+  elmos:doctor:
+    desc: Run elmos doctor (environment check)
+    deps: [build]
+    cmds:
+      - ./{{.BINARY}} doctor
+
+  elmos:tui:
+    desc: Launch elmos TUI
+    deps: [build]
+    cmds:
+      - ./{{.BINARY}} tui
+
+  # ============================================================================
+  # Installation (install:*)
+  # ============================================================================
+
+  install:
+    desc: Install to GOPATH/bin
+    deps: [build]
+    cmds:
+      - echo "Installing to {{.GOBIN}}/bin..."
+      - mkdir -p {{.GOBIN}}/bin
+      - cp {{.BINARY}} {{.GOBIN}}/bin/
+
+  install:global:
+    desc: Install to /usr/local/bin (requires sudo)
+    deps: [build]
+    cmds:
+      - echo "Installing to {{.PREFIX}}/bin..."
+      - sudo cp {{.BINARY}} {{.PREFIX}}/bin/
+
+  uninstall:
+    desc: Remove from GOPATH/bin
+    cmds:
+      - rm -f {{.GOBIN}}/bin/elmos
+
+  # ============================================================================
+  # Release (release:*)
+  # ============================================================================
+
+  release:darwin:
+    desc: Build for macOS platforms (arm64 + amd64)
+    cmds:
+      - mkdir -p {{.BUILD_DIR}}
       - echo "Building for darwin/arm64..."
       - GOOS=darwin GOARCH=arm64 go build -ldflags "{{.LDFLAGS}}" -o {{.BINARY}}-darwin-arm64 .
       - echo "Building for darwin/amd64..."
       - GOOS=darwin GOARCH=amd64 go build -ldflags "{{.LDFLAGS}}" -o {{.BINARY}}-darwin-amd64 .
 
-  completions:
+  release:completions:
     desc: Generate shell completions
     deps: [build]
     cmds:
@@ -121,7 +201,13 @@ tasks:
       - ./{{.BINARY}} completion fish > completions/elmos.fish
       - 'echo "Completions generated in completions/"'
 
-  homebrew-formula:
+  release:all:
+    desc: Full release (all platforms + completions)
+    cmds:
+      - task: release:darwin
+      - task: release:completions
+
+  release:homebrew:
     desc: Generate Homebrew formula
     cmds:
       - |
@@ -150,19 +236,3 @@ tasks:
           end
         end
         EOF
-
-  # Quick aliases
-  b:
-    desc: Alias for build
-    cmds:
-      - task: build
-
-  t:
-    desc: Alias for test
-    cmds:
-      - task: test
-
-  c:
-    desc: Alias for clean
-    cmds:
-      - task: clean
