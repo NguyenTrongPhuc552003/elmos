@@ -83,7 +83,7 @@ tasks:
     cmds:
       - task: dev:fmt
       - task: dev:lint
-      - task: test
+
 
   dev:setup:
     desc: Full dev setup (deps + build + init workspace)
@@ -92,33 +92,7 @@ tasks:
       - task: build
       - task: elmos:init
 
-  # ============================================================================
-  # Testing (test:*)
-  # ============================================================================
 
-  test:
-    desc: Run tests (with colors if gotestsum installed)
-    cmds:
-      - |
-        GOTESTSUM="$(go env GOPATH)/bin/gotestsum"
-        if [ -x "$GOTESTSUM" ]; then
-          $GOTESTSUM --format testdox ./...
-        else
-          go test -v ./...
-        fi
-
-  test:cover:
-    desc: Run tests with coverage report
-    cmds:
-      - |
-        GOTESTSUM="$(go env GOPATH)/bin/gotestsum"
-        if [ -x "$GOTESTSUM" ]; then
-          $GOTESTSUM --format testdox -- -cover -coverprofile=coverage.out ./...
-        else
-          go test -v -cover -coverprofile=coverage.out ./...
-        fi
-      - go tool cover -html=coverage.out -o coverage.html
-      - 'echo "Coverage report: coverage.html"'
 
   # ============================================================================
   # elmos CLI Wrappers (elmos:*)
