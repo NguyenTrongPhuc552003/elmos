@@ -4,7 +4,7 @@ package config
 // Default values for configuration.
 const (
 	// DefaultImageSize is the default sparse image size.
-	DefaultImageSize = "20G"
+	DefaultImageSize = "40G"
 	// DefaultVolumeName is the default volume name for the disk image.
 	DefaultVolumeName = "kernel-dev"
 	// DefaultArch is the default target architecture.
