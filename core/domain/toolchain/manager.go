@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	elconfig "github.com/NguyenTrongPhuc552003/elmos/core/config"
 	"github.com/NguyenTrongPhuc552003/elmos/core/infra/executor"
@@ -84,11 +85,10 @@ func (m *Manager) ListSamples(ctx context.Context) ([]string, error) {
 	// Parse output to extract sample names
 	// ct-ng list-samples outputs lines like "[L..]   riscv64-unknown-linux-gnu"
 	var samples []string
-	lines := splitLines(string(output))
-	for _, line := range lines {
+	for _, line := range strings.Split(string(output), "\n") {
 		if len(line) > 8 && line[0] == '[' {
 			// Extract target name after the brackets
-			parts := splitWhitespace(line)
+			parts := strings.Fields(line)
 			if len(parts) >= 2 {
 				samples = append(samples, parts[len(parts)-1])
 			}
@@ -149,42 +149,4 @@ func (m *Manager) GetInstalledToolchains() ([]ToolchainInfo, error) {
 	}
 
 	return toolchains, nil
-}
-
-// splitLines splits a string by newlines.
-func splitLines(s string) []string {
-	var lines []string
-	start := 0
-	for i := 0; i < len(s); i++ {
-		if s[i] == '\n' {
-			lines = append(lines, s[start:i])
-			start = i + 1
-		}
-	}
-	if start < len(s) {
-		lines = append(lines, s[start:])
-	}
-	return lines
-}
-
-// splitWhitespace splits a string by whitespace.
-func splitWhitespace(s string) []string {
-	var parts []string
-	start := -1
-	for i := 0; i < len(s); i++ {
-		if s[i] == ' ' || s[i] == '\t' {
-			if start >= 0 {
-				parts = append(parts, s[start:i])
-				start = -1
-			}
-		} else {
-			if start < 0 {
-				start = i
-			}
-		}
-	}
-	if start >= 0 {
-		parts = append(parts, s[start:])
-	}
-	return parts
 }
