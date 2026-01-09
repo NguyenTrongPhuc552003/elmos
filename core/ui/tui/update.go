@@ -164,6 +164,18 @@ func (m Model) handleInputMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "enter":
 			value := strings.TrimSpace(m.textInput.Value())
+
+			// Auto-list refs if user types '?' for switch command
+			if m.inputAction == "kernel:switch" && value == "?" {
+				m.inputMode = false
+				m.textInput.Blur()
+				m.isRunning = true
+				m.currentTask = "Listing refs..."
+				m.logLines = append(m.logLines, lipgloss.NewStyle().Foreground(cyan).Render("  ▶ elmos kernel switch"))
+				m.refreshViewport()
+				return m, m.runCommand("kernel:switch", "")
+			}
+
 			if value == "" {
 				return m, nil
 			}
@@ -216,6 +228,8 @@ func (m *Model) getCommandWithInput(action, value string) string {
 		return "elmos rootfs create -s " + value
 	case "toolchain:select":
 		return "elmos toolchains " + value
+	case "kernel:switch":
+		return "elmos kernel switch " + value
 	default:
 		return "elmos " + action
 	}
@@ -254,10 +268,11 @@ func (m *Model) actionToArgs(action, inputValue string) []string {
 		return []string{"kernel", "clone"}
 	case "kernel:pull":
 		return []string{"kernel", "pull"}
-	case "kernel:branch:list":
-		return []string{"kernel", "branch"}
-	case "kernel:branch:switch":
-		return []string{"kernel", "branch", inputValue}
+	case "kernel:switch":
+		if inputValue == "" {
+			return []string{"kernel", "switch"}
+		}
+		return []string{"kernel", "switch", inputValue}
 	case "kernel:reset":
 		return []string{"kernel", "reset"}
 	case "kernel:config":
