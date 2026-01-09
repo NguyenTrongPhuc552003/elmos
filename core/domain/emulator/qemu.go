@@ -221,8 +221,16 @@ echo '  [GUEST] Processing module queues...'
 
 # Load all built modules found in the shared directory
 if [ -d "/mnt/modules" ]; then
-    echo "  [GUEST] Loading modules from /mnt/modules..."
-    find /mnt/modules -name "*.ko" -type f -exec insmod {} \; 2>/dev/null
+    for ko in $(find /mnt/modules -name "*.ko" -type f 2>/dev/null); do
+        modname=$(basename "$ko" .ko)
+        echo "  [GUEST] Loading: $modname"
+        insmod "$ko"
+        if [ $? -eq 0 ]; then
+            echo "  [GUEST]   -> $modname loaded OK"
+        else
+            echo "  [GUEST]   -> $modname FAILED (already loaded or error)"
+        fi
+    done
 else
     echo "  [GUEST] Warning: /mnt/modules not found"
 fi
