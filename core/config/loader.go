@@ -4,35 +4,17 @@ package config
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"runtime"
 
+	"github.com/NguyenTrongPhuc552003/elmos/assets"
 	"github.com/spf13/viper"
 )
 
 var (
 	configInstance *Config
 )
-
-// copyFile copies a file from src to dst.
-func copyFile(src, dst string) error {
-	srcFile, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = srcFile.Close() }()
-
-	dstFile, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = dstFile.Close() }()
-
-	_, err = io.Copy(dstFile, srcFile)
-	return err
-}
 
 // Load loads configuration from files and environment.
 // This is the preferred method for new code using dependency injection.
@@ -53,14 +35,13 @@ func Load(configPath string) (*Config, error) {
 		v.AddConfigPath(filepath.Join(os.Getenv("HOME"), ".config", "elmos")) // User config
 		v.AddConfigPath("/etc/elmos")                                         // System config
 
-		// Auto-create elmos.yaml from elmos.yaml.example if it doesn't exist
+		// Auto-create elmos.yaml from embedded template if it doesn't exist
 		cwd, _ := os.Getwd()
 		configFile := filepath.Join(cwd, "elmos.yaml")
-		exampleFile := filepath.Join(cwd, "elmos.yaml.example")
 		if _, err := os.Stat(configFile); os.IsNotExist(err) {
-			if _, err := os.Stat(exampleFile); err == nil {
-				// Copy example to config (ignore error, non-critical)
-				_ = copyFile(exampleFile, configFile)
+			// Use embedded template
+			if tmplData, err := assets.GetConfigTemplate(); err == nil {
+				_ = os.WriteFile(configFile, tmplData, 0644)
 			}
 		}
 	}
