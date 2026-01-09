@@ -10,13 +10,14 @@ func TestGetSection(t *testing.T) {
 		want string
 	}{
 		{"Homebrew", "Package Manager"},
-		{"Tap: messense/macos-cross-toolchains", "Homebrew Taps"},
-		{"Package: llvm", "Homebrew Packages"},
-		{"Package: qemu", "Homebrew Packages"},
-		{"Header: elf.h", "Custom Headers"},
-		{"Header: asm/", "Custom Headers"},
-		{"GDB: arm64 (aarch64-unknown-linux-gnu-gdb)", "Cross Debuggers"},
-		{"GCC: arm64 (aarch64-unknown-linux-gnu-gcc)", "Cross Compilers"},
+		{"Tap: messense/macos-cross-toolchains", "Tap"},
+		{"Package: llvm", "Package"},
+		{"Package: qemu", "Package"},
+		{"Header: elf.h", "Header"},
+		{"Header: asm/", "Header"},
+		{"GDB: arm64 (aarch64-unknown-linux-gnu-gdb)", "GDB"},
+		{"GCC: arm64 (aarch64-unknown-linux-gnu-gcc)", "GCC"},
+		{"Toolchain: riscv64", "Toolchains"},
 		{"Unknown item", "Other"},
 	}
 
