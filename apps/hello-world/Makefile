@@ -1,5 +1,5 @@
 # 1. Variables: Define output name and settings here
-TARGET  := hello-world
+TARGET  := hello_world
 CC      ?= clang
 CFLAGS  ?= -Wall -Wextra
 LDFLAGS ?= -static
