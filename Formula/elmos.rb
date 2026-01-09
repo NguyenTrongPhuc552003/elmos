@@ -71,9 +71,6 @@ class Elmos < Formula
         elmos build
         elmos qemu run
 
-      Required Homebrew tap for cross-toolchains:
-        brew tap messense/macos-cross-toolchains
-
       Shell completions have been installed for bash, zsh, and fish.
     EOS
   end
