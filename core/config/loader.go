@@ -135,7 +135,7 @@ func applyComputedDefaults(cfg *Config) {
 
 	// Image path (in build directory)
 	if cfg.Image.Path == "" {
-		cfg.Image.Path = filepath.Join(root, "build", "img.sparseimage")
+		cfg.Image.Path = filepath.Join(root, "data", "img.sparseimage")
 	}
 
 	// Mount point
