@@ -32,13 +32,17 @@ func Load(configPath string) (*Config, error) {
 		v.SetConfigName("elmos")
 		v.SetConfigType("yaml")
 		v.AddConfigPath(".")                                                  // Current directory
+		v.AddConfigPath(filepath.Join(".", "build"))                          // Build directory
 		v.AddConfigPath(filepath.Join(os.Getenv("HOME"), ".config", "elmos")) // User config
 		v.AddConfigPath("/etc/elmos")                                         // System config
 
-		// Auto-create elmos.yaml from embedded template if it doesn't exist
+		// Auto-create elmos.yaml from embedded template in build/ if it doesn't exist
 		cwd, _ := os.Getwd()
-		configFile := filepath.Join(cwd, "elmos.yaml")
+		buildDir := filepath.Join(cwd, "build")
+		configFile := filepath.Join(buildDir, "elmos.yaml")
 		if _, err := os.Stat(configFile); os.IsNotExist(err) {
+			// Ensure build directory exists
+			_ = os.MkdirAll(buildDir, 0755)
 			// Use embedded template
 			if tmplData, err := assets.GetConfigTemplate(); err == nil {
 				_ = os.WriteFile(configFile, tmplData, 0644)
@@ -129,9 +133,9 @@ func applyComputedDefaults(cfg *Config) {
 
 	root := cfg.Paths.ProjectRoot
 
-	// Image path
+	// Image path (in build directory)
 	if cfg.Image.Path == "" {
-		cfg.Image.Path = filepath.Join(root, "img.sparseimage")
+		cfg.Image.Path = filepath.Join(root, "build", "img.sparseimage")
 	}
 
 	// Mount point
