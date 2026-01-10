@@ -247,102 +247,84 @@ func (m *Model) runCommand(action, inputValue string) tea.Cmd {
 	}
 }
 
-// actionToArgs converts an action identifier to CLI arguments.
-func (m *Model) actionToArgs(action, inputValue string) []string {
-	switch action {
-	case "init:workspace":
-		return []string{"init"}
-	case "workspace:status":
-		return []string{"status"}
-	case "workspace:exit":
-		return []string{"exit"}
-	case "gdb:connect":
-		return []string{"gdb"}
-	case "arch:show":
-		return []string{"arch", "show"}
-	case "arch:set":
-		return []string{"arch", inputValue}
-	case "kernel:status":
-		return []string{"kernel", "status"}
-	case "kernel:clone":
-		return []string{"kernel", "clone"}
-	case "kernel:pull":
-		return []string{"kernel", "pull"}
-	case "kernel:switch":
-		if inputValue == "" {
+// actionArgsDispatch maps action identifiers to argument generators.
+// Simple actions return static args, dynamic ones use inputValue.
+var actionArgsDispatch = map[string]func(string) []string{
+	// Workspace
+	"init:workspace":   func(_ string) []string { return []string{"init"} },
+	"workspace:status": func(_ string) []string { return []string{"status"} },
+	"workspace:exit":   func(_ string) []string { return []string{"exit"} },
+	"gdb:connect":      func(_ string) []string { return []string{"gdb"} },
+	// Arch
+	"arch:show": func(_ string) []string { return []string{"arch", "show"} },
+	"arch:set":  func(v string) []string { return []string{"arch", v} },
+	// Kernel
+	"kernel:status": func(_ string) []string { return []string{"kernel", "status"} },
+	"kernel:clone":  func(_ string) []string { return []string{"kernel", "clone"} },
+	"kernel:pull":   func(_ string) []string { return []string{"kernel", "pull"} },
+	"kernel:switch": func(v string) []string {
+		if v == "" {
 			return []string{"kernel", "switch"}
 		}
-		return []string{"kernel", "switch", inputValue}
-	case "kernel:reset":
-		return []string{"kernel", "reset"}
-	case "kernel:config":
-		if inputValue == "" || inputValue == "defconfig" {
+		return []string{"kernel", "switch", v}
+	},
+	"kernel:reset": func(_ string) []string { return []string{"kernel", "reset"} },
+	"kernel:config": func(v string) []string {
+		if v == "" || v == "defconfig" {
 			return []string{"kernel", "config"}
 		}
-		return []string{"kernel", "config", inputValue}
-	case "kernel:build":
-		return []string{"kernel", "build"}
-	case "kernel:clean":
-		return []string{"kernel", "clean"}
-	case "module:list":
-		return []string{"module", "list"}
-	case "module:build":
-		if inputValue == "" {
+		return []string{"kernel", "config", v}
+	},
+	"kernel:build": func(_ string) []string { return []string{"kernel", "build"} },
+	"kernel:clean": func(_ string) []string { return []string{"kernel", "clean"} },
+	// Module
+	"module:list": func(_ string) []string { return []string{"module", "list"} },
+	"module:build": func(v string) []string {
+		if v == "" {
 			return []string{"module", "build"}
 		}
-		return []string{"module", "build", inputValue}
-	case "module:new":
-		return []string{"module", "new", inputValue}
-	case "module:clean":
-		return []string{"module", "clean"}
-	case "app:list":
-		return []string{"app", "list"}
-	case "app:build":
-		if inputValue == "" {
+		return []string{"module", "build", v}
+	},
+	"module:new":   func(v string) []string { return []string{"module", "new", v} },
+	"module:clean": func(_ string) []string { return []string{"module", "clean"} },
+	// App
+	"app:list": func(_ string) []string { return []string{"app", "list"} },
+	"app:build": func(v string) []string {
+		if v == "" {
 			return []string{"app", "build"}
 		}
-		return []string{"app", "build", inputValue}
-	case "app:new":
-		return []string{"app", "new", inputValue}
-	case "app:clean":
-		return []string{"app", "clean"}
-	case "rootfs:status":
-		return []string{"rootfs", "status"}
-	case "rootfs:create":
-		return []string{"rootfs", "create"}
-	case "rootfs:create:custom":
-		return []string{"rootfs", "create", "-s", inputValue}
-	case "rootfs:clean":
-		return []string{"rootfs", "clean"}
-	case "config:show":
-		return []string{"config", "show"}
-	case "config:arch":
-		return []string{"config", "set", "arch", inputValue}
-	case "config:jobs":
-		return []string{"config", "set", "jobs", inputValue}
-	case "config:memory":
-		return []string{"config", "set", "memory", inputValue}
-	case "doctor:check":
-		return []string{"doctor"}
-	// Toolchain actions
-	case "toolchain:status":
-		return []string{"toolchains", "status"}
-	case "toolchain:install":
-		return []string{"toolchains", "install"}
-	case "toolchain:list":
-		return []string{"toolchains", "list"}
-	case "toolchain:select":
-		return []string{"toolchains", inputValue}
-	case "toolchain:build":
-		return []string{"toolchains", "build"}
-	case "toolchain:env":
-		return []string{"toolchains", "env"}
-	case "toolchain:clean":
-		return []string{"toolchains", "clean"}
-	default:
-		return []string{}
-	}
+		return []string{"app", "build", v}
+	},
+	"app:new":   func(v string) []string { return []string{"app", "new", v} },
+	"app:clean": func(_ string) []string { return []string{"app", "clean"} },
+	// RootFS
+	"rootfs:status":        func(_ string) []string { return []string{"rootfs", "status"} },
+	"rootfs:create":        func(_ string) []string { return []string{"rootfs", "create"} },
+	"rootfs:create:custom": func(v string) []string { return []string{"rootfs", "create", "-s", v} },
+	"rootfs:clean":         func(_ string) []string { return []string{"rootfs", "clean"} },
+	// Config
+	"config:show":   func(_ string) []string { return []string{"config", "show"} },
+	"config:arch":   func(v string) []string { return []string{"config", "set", "arch", v} },
+	"config:jobs":   func(v string) []string { return []string{"config", "set", "jobs", v} },
+	"config:memory": func(v string) []string { return []string{"config", "set", "memory", v} },
+	// Doctor
+	"doctor:check": func(_ string) []string { return []string{"doctor"} },
+	// Toolchain
+	"toolchain:status":  func(_ string) []string { return []string{"toolchains", "status"} },
+	"toolchain:install": func(_ string) []string { return []string{"toolchains", "install"} },
+	"toolchain:list":    func(_ string) []string { return []string{"toolchains", "list"} },
+	"toolchain:select":  func(v string) []string { return []string{"toolchains", v} },
+	"toolchain:build":   func(_ string) []string { return []string{"toolchains", "build"} },
+	"toolchain:env":     func(_ string) []string { return []string{"toolchains", "env"} },
+	"toolchain:clean":   func(_ string) []string { return []string{"toolchains", "clean"} },
+}
 
+// actionToArgs converts an action identifier to CLI arguments using map dispatch.
+func (m *Model) actionToArgs(action, inputValue string) []string {
+	if fn, ok := actionArgsDispatch[action]; ok {
+		return fn(inputValue)
+	}
+	return []string{}
 }
 
 // isInteractiveCommand checks if a command from input mode should be run interactively.
