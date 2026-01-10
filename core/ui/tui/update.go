@@ -31,124 +31,160 @@ func (m Model) Init() tea.Cmd {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
-	// If in input mode, handle text input
 	if m.inputMode {
 		return m.handleInputMode(msg)
 	}
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.width, m.height = msg.Width, msg.Height
-		m.leftWidth = maxInt(25, int(float64(m.width)*0.30))
-		m.rightWidth = m.width - m.leftWidth - 3
-		m.viewport.Width = m.rightWidth - 4
-		m.viewport.Height = m.height - 10
-		m.refreshViewport()
-		return m, nil
-
+		return m.handleWindowSize(msg)
 	case spinner.TickMsg:
 		var cmd tea.Cmd
 		m.spinner, cmd = m.spinner.Update(msg)
 		cmds = append(cmds, cmd)
-
 	case CommandDoneMsg:
-		m.isRunning = false
-		if msg.Output != "" {
-			for _, line := range strings.Split(strings.TrimSpace(msg.Output), "\n") {
-				m.logLines = append(m.logLines, "  "+line)
-			}
-		}
-		if msg.Err != nil {
-			m.logLines = append(m.logLines, lipgloss.NewStyle().Foreground(red).Render(fmt.Sprintf("  ✗ Error: %v", msg.Err)))
-		} else {
-			m.logLines = append(m.logLines, lipgloss.NewStyle().Foreground(green).Render("  ✓ Completed"))
-		}
-		m.logLines = append(m.logLines, "")
-		m.refreshViewport()
-		m.currentTask = ""
-
+		m.handleCommandDone(msg)
 	case tea.KeyMsg:
-		if m.isRunning && !key.Matches(msg, keys.Quit) {
-			return m, tea.Batch(cmds...)
-		}
-
-		switch {
-		case key.Matches(msg, keys.Quit):
-			if len(m.menuStack) > 0 {
-				m.currentMenu = m.menuStack[len(m.menuStack)-1]
-				m.menuStack = m.menuStack[:len(m.menuStack)-1]
-				m.cursor, m.parentTitle = 0, ""
-			} else {
-				m.quitting = true
-				return m, tea.Quit
-			}
-		case key.Matches(msg, keys.Back):
-			if len(m.menuStack) > 0 {
-				m.currentMenu = m.menuStack[len(m.menuStack)-1]
-				m.menuStack = m.menuStack[:len(m.menuStack)-1]
-				m.cursor, m.parentTitle = 0, ""
-			}
-		case key.Matches(msg, keys.Up):
-			if m.cursor > 0 {
-				m.cursor--
-			}
-		case key.Matches(msg, keys.Down):
-			if m.cursor < len(m.currentMenu)-1 {
-				m.cursor++
-			}
-		case key.Matches(msg, keys.PageUp):
-			m.viewport.PageUp()
-		case key.Matches(msg, keys.PageDown):
-			m.viewport.PageDown()
-		case key.Matches(msg, keys.ScrollUp):
-			m.viewport.ScrollUp(1)
-		case key.Matches(msg, keys.ScrollDown):
-			m.viewport.ScrollDown(1)
-		case key.Matches(msg, keys.Clear):
-			m.logLines = make([]string, 0)
-			m.refreshViewport()
-		case key.Matches(msg, keys.Enter):
-			if m.cursor < len(m.currentMenu) {
-				item := m.currentMenu[m.cursor]
-				if len(item.Children) > 0 {
-					m.menuStack = append(m.menuStack, m.currentMenu)
-					m.parentTitle = item.Label
-					m.currentMenu = item.Children
-					m.cursor = 0
-					return m, nil
-				}
-
-				// If item needs input, enter input mode
-				if item.NeedsInput {
-					m.inputMode = true
-					m.inputAction = item.Action
-					m.inputPrompt = item.InputPrompt
-					m.textInput.Placeholder = item.InputPlaceholder
-					m.textInput.SetValue("")
-					m.textInput.Focus()
-					return m, textinput.Blink
-				}
-
-				if item.Interactive {
-					m.logLines = append(m.logLines, lipgloss.NewStyle().Foreground(cyan).Render("  ▶ "+item.Command))
-					m.refreshViewport()
-					c := exec.Command(m.execPath, item.Args...)
-					c.Stdin, c.Stdout, c.Stderr = os.Stdin, os.Stdout, os.Stderr
-					return m, tea.ExecProcess(c, func(err error) tea.Msg {
-						return CommandDoneMsg{Action: item.Action, Err: err}
-					})
-				}
-				if item.Action != "" {
-					m.isRunning = true
-					m.currentTask = item.Label
-					m.logLines = append(m.logLines, lipgloss.NewStyle().Foreground(cyan).Render("  ▶ "+item.Command))
-					m.refreshViewport()
-					return m, m.runCommand(item.Action, "")
-				}
-			}
-		}
+		return m.handleKeyMsg(msg, cmds)
 	}
 	return m, tea.Batch(cmds...)
+}
+
+// handleWindowSize handles window resize events.
+func (m Model) handleWindowSize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
+	m.width, m.height = msg.Width, msg.Height
+	m.leftWidth = maxInt(25, int(float64(m.width)*0.30))
+	m.rightWidth = m.width - m.leftWidth - 3
+	m.viewport.Width = m.rightWidth - 4
+	m.viewport.Height = m.height - 10
+	m.refreshViewport()
+	return m, nil
+}
+
+// handleCommandDone handles command completion messages.
+func (m *Model) handleCommandDone(msg CommandDoneMsg) {
+	m.isRunning = false
+	if msg.Output != "" {
+		for _, line := range strings.Split(strings.TrimSpace(msg.Output), "\n") {
+			m.logLines = append(m.logLines, "  "+line)
+		}
+	}
+	if msg.Err != nil {
+		m.logLines = append(m.logLines, lipgloss.NewStyle().Foreground(red).Render(fmt.Sprintf("  ✗ Error: %v", msg.Err)))
+	} else {
+		m.logLines = append(m.logLines, lipgloss.NewStyle().Foreground(green).Render("  ✓ Completed"))
+	}
+	m.logLines = append(m.logLines, "")
+	m.refreshViewport()
+	m.currentTask = ""
+}
+
+// handleKeyMsg handles all keyboard input.
+func (m Model) handleKeyMsg(msg tea.KeyMsg, cmds []tea.Cmd) (tea.Model, tea.Cmd) {
+	if m.isRunning && !key.Matches(msg, keys.Quit) {
+		return m, tea.Batch(cmds...)
+	}
+
+	switch {
+	case key.Matches(msg, keys.Quit):
+		return m.handleQuit()
+	case key.Matches(msg, keys.Back):
+		m.popMenuStack()
+	case key.Matches(msg, keys.Up):
+		if m.cursor > 0 {
+			m.cursor--
+		}
+	case key.Matches(msg, keys.Down):
+		if m.cursor < len(m.currentMenu)-1 {
+			m.cursor++
+		}
+	case key.Matches(msg, keys.PageUp):
+		m.viewport.PageUp()
+	case key.Matches(msg, keys.PageDown):
+		m.viewport.PageDown()
+	case key.Matches(msg, keys.ScrollUp):
+		m.viewport.ScrollUp(1)
+	case key.Matches(msg, keys.ScrollDown):
+		m.viewport.ScrollDown(1)
+	case key.Matches(msg, keys.Clear):
+		m.logLines = make([]string, 0)
+		m.refreshViewport()
+	case key.Matches(msg, keys.Enter):
+		return m.handleEnterKey()
+	}
+	return m, tea.Batch(cmds...)
+}
+
+// handleQuit handles quit/back navigation.
+func (m Model) handleQuit() (tea.Model, tea.Cmd) {
+	if len(m.menuStack) > 0 {
+		m.currentMenu = m.menuStack[len(m.menuStack)-1]
+		m.menuStack = m.menuStack[:len(m.menuStack)-1]
+		m.cursor, m.parentTitle = 0, ""
+		return m, nil
+	}
+	m.quitting = true
+	return m, tea.Quit
+}
+
+// popMenuStack navigates back in the menu hierarchy.
+func (m *Model) popMenuStack() {
+	if len(m.menuStack) > 0 {
+		m.currentMenu = m.menuStack[len(m.menuStack)-1]
+		m.menuStack = m.menuStack[:len(m.menuStack)-1]
+		m.cursor, m.parentTitle = 0, ""
+	}
+}
+
+// handleEnterKey handles Enter key press on menu items.
+func (m Model) handleEnterKey() (tea.Model, tea.Cmd) {
+	if m.cursor >= len(m.currentMenu) {
+		return m, nil
+	}
+
+	item := m.currentMenu[m.cursor]
+
+	// Expand submenu
+	if len(item.Children) > 0 {
+		m.menuStack = append(m.menuStack, m.currentMenu)
+		m.parentTitle = item.Label
+		m.currentMenu = item.Children
+		m.cursor = 0
+		return m, nil
+	}
+
+	// Enter input mode
+	if item.NeedsInput {
+		m.inputMode = true
+		m.inputAction = item.Action
+		m.inputPrompt = item.InputPrompt
+		m.textInput.Placeholder = item.InputPlaceholder
+		m.textInput.SetValue("")
+		m.textInput.Focus()
+		return m, textinput.Blink
+	}
+
+	// Run interactive command
+	if item.Interactive {
+		m.logLines = append(m.logLines, lipgloss.NewStyle().Foreground(cyan).Render("  ▶ "+item.Command))
+		m.refreshViewport()
+		c := exec.Command(m.execPath, item.Args...)
+		c.Stdin, c.Stdout, c.Stderr = os.Stdin, os.Stdout, os.Stderr
+		return m, tea.ExecProcess(c, func(err error) tea.Msg {
+			return CommandDoneMsg{Action: item.Action, Err: err}
+		})
+	}
+
+	// Run background command
+	if item.Action != "" {
+		m.isRunning = true
+		m.currentTask = item.Label
+		m.logLines = append(m.logLines, lipgloss.NewStyle().Foreground(cyan).Render("  ▶ "+item.Command))
+		m.refreshViewport()
+		return m, m.runCommand(item.Action, "")
+	}
+
+	return m, nil
 }
 
 // handleInputMode handles keyboard input when in text input mode.
