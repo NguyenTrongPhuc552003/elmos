@@ -16,8 +16,16 @@ func (m Model) View() string {
 	}
 
 	panelHeight := m.height - 2
+	leftPanel := m.renderLeftPanel(panelHeight)
+	rightPanel := m.renderRightPanel(panelHeight)
+	main := lipgloss.JoinHorizontal(lipgloss.Top, leftPanel, rightPanel)
+	footer := m.renderFooter()
 
-	// LEFT PANEL - Menu
+	return lipgloss.JoinVertical(lipgloss.Left, main, footer)
+}
+
+// renderLeftPanel renders the menu panel.
+func (m Model) renderLeftPanel(panelHeight int) string {
 	var left strings.Builder
 	title := "ELMOS"
 	if m.parentTitle != "" {
@@ -28,16 +36,7 @@ func (m Model) View() string {
 		left.WriteString(lipgloss.NewStyle().Foreground(darkGrey).Render("  ← Back (Esc)") + "\n\n")
 	}
 	for i, item := range m.currentMenu {
-		var prefix string
-		if len(item.Children) > 0 {
-			prefix = "▸ "
-		} else if item.Interactive {
-			prefix = "⚡"
-		} else if item.NeedsInput {
-			prefix = "✎ "
-		} else {
-			prefix = "• "
-		}
+		prefix := getMenuItemPrefix(item)
 		label := prefix + item.Label
 		if i == m.cursor {
 			left.WriteString(selectedItemStyle.Render(" "+label+" ") + "\n")
@@ -48,56 +47,90 @@ func (m Model) View() string {
 	for i := strings.Count(left.String(), "\n"); i < panelHeight-4; i++ {
 		left.WriteString("\n")
 	}
+	return leftPanelStyle.Width(m.leftWidth).Height(panelHeight).Render(left.String())
+}
 
-	// RIGHT PANEL - Output and Input
+// getMenuItemPrefix returns the appropriate prefix for a menu item.
+func getMenuItemPrefix(item MenuItem) string {
+	if len(item.Children) > 0 {
+		return "▸ "
+	}
+	if item.Interactive {
+		return "⚡"
+	}
+	if item.NeedsInput {
+		return "✎ "
+	}
+	return "• "
+}
+
+// renderRightPanel renders the output/input panel.
+func (m Model) renderRightPanel(panelHeight int) string {
 	var right strings.Builder
-	rightTitle := "Output"
-	if m.isRunning {
-		rightTitle = m.spinner.View() + " " + m.currentTask
-	} else if m.inputMode {
-		rightTitle = "📝 Input Required"
-	}
-	scrollInfo := ""
-	if m.viewport.TotalLineCount() > m.viewport.Height {
-		scrollInfo = fmt.Sprintf(" [%d%%]", int(m.viewport.ScrollPercent()*100))
-	}
+	rightTitle := m.getRightPanelTitle()
+	scrollInfo := m.getScrollInfo()
 	right.WriteString(titleStyle.Render("─ "+rightTitle+scrollInfo+" ─") + "\n\n")
 
-	// Show input field if in input mode
 	if m.inputMode {
-		right.WriteString(inputLabelStyle.Render(m.inputPrompt) + "\n\n")
-		right.WriteString(inputStyle.Render(m.textInput.View()) + "\n\n")
-		right.WriteString(descStyle.Render("  Press Enter to confirm, Esc to cancel") + "\n\n")
+		m.renderInputSection(&right)
 	} else if m.cursor < len(m.currentMenu) && !m.isRunning {
-		item := m.currentMenu[m.cursor]
-		if item.Command != "" {
-			right.WriteString(hintStyle.Render(" $ "+item.Command+" ") + "\n")
-			if item.Desc != "" {
-				right.WriteString(descStyle.Render("  "+item.Desc) + "\n")
-			}
-			if item.NeedsInput {
-				right.WriteString("\n" + inputLabelStyle.Render("  ✎ Press Enter to type: "+item.InputPrompt) + "\n")
-			}
-		} else if len(item.Children) > 0 {
-			right.WriteString(descStyle.Render("  Press Enter to expand → "+item.Desc) + "\n")
-		}
-		right.WriteString("\n")
+		m.renderMenuHint(&right)
 	}
 	right.WriteString(m.viewport.View())
 
-	// Combine panels
-	leftPanel := leftPanelStyle.Width(m.leftWidth).Height(panelHeight).Render(left.String())
-	rightPanel := rightPanelStyle.Width(m.rightWidth).Height(panelHeight).Render(right.String())
-	main := lipgloss.JoinHorizontal(lipgloss.Top, leftPanel, rightPanel)
+	return rightPanelStyle.Width(m.rightWidth).Height(panelHeight).Render(right.String())
+}
 
-	// Footer with keybindings
-	footer := lipgloss.NewStyle().Foreground(darkGrey).Render(
+// getRightPanelTitle returns the title for the right panel.
+func (m Model) getRightPanelTitle() string {
+	if m.isRunning {
+		return m.spinner.View() + " " + m.currentTask
+	}
+	if m.inputMode {
+		return "📝 Input Required"
+	}
+	return "Output"
+}
+
+// getScrollInfo returns scroll percentage info if applicable.
+func (m Model) getScrollInfo() string {
+	if m.viewport.TotalLineCount() > m.viewport.Height {
+		return fmt.Sprintf(" [%d%%]", int(m.viewport.ScrollPercent()*100))
+	}
+	return ""
+}
+
+// renderInputSection renders the input mode UI.
+func (m Model) renderInputSection(w *strings.Builder) {
+	w.WriteString(inputLabelStyle.Render(m.inputPrompt) + "\n\n")
+	w.WriteString(inputStyle.Render(m.textInput.View()) + "\n\n")
+	w.WriteString(descStyle.Render("  Press Enter to confirm, Esc to cancel") + "\n\n")
+}
+
+// renderMenuHint renders the hint for the current menu item.
+func (m Model) renderMenuHint(w *strings.Builder) {
+	item := m.currentMenu[m.cursor]
+	if item.Command != "" {
+		w.WriteString(hintStyle.Render(" $ "+item.Command+" ") + "\n")
+		if item.Desc != "" {
+			w.WriteString(descStyle.Render("  "+item.Desc) + "\n")
+		}
+		if item.NeedsInput {
+			w.WriteString("\n" + inputLabelStyle.Render("  ✎ Press Enter to type: "+item.InputPrompt) + "\n")
+		}
+	} else if len(item.Children) > 0 {
+		w.WriteString(descStyle.Render("  Press Enter to expand → "+item.Desc) + "\n")
+	}
+	w.WriteString("\n")
+}
+
+// renderFooter renders the keybindings footer.
+func (m Model) renderFooter() string {
+	return lipgloss.NewStyle().Foreground(darkGrey).Render(
 		lipgloss.NewStyle().Foreground(cyan).Render("↑↓") + " Navigate  " +
 			lipgloss.NewStyle().Foreground(cyan).Render("⏎") + " Select  " +
 			lipgloss.NewStyle().Foreground(cyan).Render("Esc") + " Back  " +
 			lipgloss.NewStyle().Foreground(cyan).Render("[ ]") + " Scroll  " +
 			lipgloss.NewStyle().Foreground(cyan).Render("c") + " Clear  " +
 			lipgloss.NewStyle().Foreground(cyan).Render("q") + " Quit")
-
-	return lipgloss.JoinVertical(lipgloss.Left, main, footer)
 }
