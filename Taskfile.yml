@@ -113,7 +113,37 @@ tasks:
       - task: build
       - task: elmos:init
 
+  # ============================================================================
+  # GUI (Native macOS Swift Application)
+  # ============================================================================
 
+  gui:build:
+    desc: Build native Swift GUI application
+    cmds:
+      - mkdir -p build/gui/ELMOS.app/Contents/{MacOS,Resources}
+      - cd core/ui/gui && swift build -c release
+      - cp core/ui/gui/.build/release/elmos build/gui/ELMOS.app/Contents/MacOS/ELMOS
+      - cp core/ui/gui/Info.plist build/gui/ELMOS.app/Contents/
+      - chmod +x build/gui/ELMOS.app/Contents/MacOS/ELMOS
+      - echo "GUI built successfully at build/gui/ELMOS.app"
+    sources:
+      - core/ui/gui/**/*.swift
+      - core/ui/gui/Package.swift
+      - core/ui/gui/Info.plist
+    generates:
+      - build/gui/ELMOS.app/Contents/MacOS/ELMOS
+
+  gui:run:
+    desc: Launch GUI application
+    deps: [build, gui:build]
+    cmds:
+      - open build/gui/ELMOS.app
+
+  gui:clean:
+    desc: Clean GUI build artifacts
+    cmds:
+      - rm -rf core/ui/gui/.build
+      - rm -rf build/gui/ELMOS.app
 
   # ============================================================================
   # elmos CLI Wrappers (elmos:*)

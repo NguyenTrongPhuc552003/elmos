@@ -45,6 +45,7 @@ type Context struct {
 func Register(ctx *Context, rootCmd *cobra.Command) {
 	rootCmd.AddCommand(BuildVersion(ctx))
 	rootCmd.AddCommand(BuildTUI(ctx))
+	rootCmd.AddCommand(BuildGUI(ctx)) // Native macOS GUI
 	rootCmd.AddCommand(BuildInit(ctx))
 	rootCmd.AddCommand(BuildExit(ctx))
 	rootCmd.AddCommand(BuildArch(ctx))
