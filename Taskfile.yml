@@ -84,6 +84,63 @@ tasks:
       - task: dev:fmt
       - task: dev:lint
 
+  test:setup:
+    desc: "Setup unit test generation environment"
+    cmds:
+      - |
+        if [ ! -f "$(go env GOPATH)/bin/gotests" ]; then
+          echo "Installing gotests..."
+          go install github.com/cweill/gotests/gotests@latest
+        else
+          echo "gotests already installed."
+        fi
+
+  test:gen:
+    desc: "Generate unit tests for specific file or all files"
+    deps: [test:setup]
+    cmds:
+      - |
+        if [ -z "{{.FILE}}" ]; then
+          echo "Generating tests for all files..."
+          $(go env GOPATH)/bin/gotests -all -w ./...
+        else
+          echo "Generating tests for {{.FILE}}..."
+          $(go env GOPATH)/bin/gotests -all -w {{.FILE}}
+        fi
+
+  test:gen:core:
+    desc: "Generate tests for all core optimized files"
+    deps: [test:setup]
+    cmds:
+      - task: test:gen
+        vars: { FILE: core/config/loader.go }
+      - task: test:gen
+        vars: { FILE: core/config/saver.go }
+      - task: test:gen
+        vars: { FILE: core/domain/doctor/checker.go }
+      - task: test:gen
+        vars: { FILE: core/ui/tui/update.go }
+      - task: test:gen
+        vars: { FILE: core/ui/tui/view.go }
+      - task: test:gen
+        vars: { FILE: core/domain/toolchain/builder.go }
+      - task: test:gen
+        vars: { FILE: core/domain/rootfs/creator.go }
+      - task: test:gen
+        vars: { FILE: core/app/commands/kernel.go }
+      - task: test:gen
+        vars: { FILE: core/app/commands/arch.go }
+      - task: test:gen
+        vars: { FILE: core/app/commands/module.go }
+      - task: test:gen
+        vars: { FILE: core/app/commands/toolchain.go }
+
+  test:run:
+    desc: "Run all unit tests"
+    deps: [test:setup]
+    cmds:
+      - go test ./...
+
   dev:complexity:install:
     desc: Install go-complexity-analysis tool for CC/MI analysis
     cmds:
