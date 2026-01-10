@@ -4,6 +4,7 @@ package executor
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 )
@@ -116,6 +117,12 @@ func TestShellExecutor_RunWithEnv(t *testing.T) {
 }
 
 func TestShellExecutor_RunInDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	resolvedTmpDir, err := filepath.EvalSymlinks(tmpDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	type args struct {
 		ctx  context.Context
 		dir  string
@@ -133,9 +140,9 @@ func TestShellExecutor_RunInDir(t *testing.T) {
 			e:    NewShellExecutor(),
 			args: args{
 				ctx:  context.Background(),
-				dir:  "/",
+				dir:  tmpDir,
 				cmd:  "sh",
-				args: []string{"-c", "if [ \"$(pwd)\" != \"/\" ]; then exit 1; fi"},
+				args: []string{"-c", "if [ \"$(pwd -P)\" != \"" + resolvedTmpDir + "\" ]; then echo \"pwd=$(pwd -P) want=" + resolvedTmpDir + "\"; exit 1; fi"},
 			},
 			wantErr: false,
 		},
@@ -144,7 +151,7 @@ func TestShellExecutor_RunInDir(t *testing.T) {
 			e:    NewShellExecutor(),
 			args: args{
 				ctx: context.Background(),
-				dir: "/invalid/directory/path/here",
+				dir: filepath.Join(tmpDir, "nonexistent"),
 				cmd: "true",
 			},
 			wantErr: true,
@@ -160,6 +167,12 @@ func TestShellExecutor_RunInDir(t *testing.T) {
 }
 
 func TestShellExecutor_RunWithEnvInDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	resolvedTmpDir, err := filepath.EvalSymlinks(tmpDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	type args struct {
 		ctx  context.Context
 		env  []string
@@ -179,9 +192,9 @@ func TestShellExecutor_RunWithEnvInDir(t *testing.T) {
 			args: args{
 				ctx:  context.Background(),
 				env:  []string{"MY_VAR=hello"},
-				dir:  "/",
+				dir:  tmpDir,
 				cmd:  "sh",
-				args: []string{"-c", "if [ \"$MY_VAR\" != \"hello\" ] || [ \"$(pwd)\" != \"/\" ]; then exit 1; fi"},
+				args: []string{"-c", "if [ \"$MY_VAR\" != \"hello\" ] || [ \"$(pwd -P)\" != \"" + resolvedTmpDir + "\" ]; then echo \"pwd=$(pwd -P) want=" + resolvedTmpDir + " env=$MY_VAR\"; exit 1; fi"},
 			},
 			wantErr: false,
 		},
