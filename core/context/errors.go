@@ -50,31 +50,25 @@ func (e *Error) Unwrap() error {
 	return e.Cause
 }
 
+// errCodeStrings maps error codes to their string representations.
+var errCodeStrings = map[ErrCode]string{
+	ErrCodeConfig:     "CONFIG",
+	ErrCodeImage:      "IMAGE",
+	ErrCodeRepo:       "REPO",
+	ErrCodeBuild:      "BUILD",
+	ErrCodeQEMU:       "QEMU",
+	ErrCodeModule:     "MODULE",
+	ErrCodeDependency: "DEP",
+	ErrCodePermission: "PERM",
+	ErrCodeApp:        "APP",
+	ErrCodeRootfs:     "ROOTFS",
+}
+
 func (e *Error) codeString() string {
-	switch e.Code {
-	case ErrCodeConfig:
-		return "CONFIG"
-	case ErrCodeImage:
-		return "IMAGE"
-	case ErrCodeRepo:
-		return "REPO"
-	case ErrCodeBuild:
-		return "BUILD"
-	case ErrCodeQEMU:
-		return "QEMU"
-	case ErrCodeModule:
-		return "MODULE"
-	case ErrCodeDependency:
-		return "DEP"
-	case ErrCodePermission:
-		return "PERM"
-	case ErrCodeApp:
-		return "APP"
-	case ErrCodeRootfs:
-		return "ROOTFS"
-	default:
-		return "ERROR"
+	if s, ok := errCodeStrings[e.Code]; ok {
+		return s
 	}
+	return "ERROR"
 }
 
 // Error constructors
