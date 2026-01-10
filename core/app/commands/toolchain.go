@@ -25,8 +25,22 @@ Examples:
   elmos toolchains build -j8            # Build with 8 parallel jobs`,
 	}
 
-	// Install command
-	installCmd := &cobra.Command{
+	toolchainsCmd.AddCommand(
+		buildToolchainInstallCmd(ctx),
+		buildToolchainListCmd(ctx),
+		buildToolchainStatusCmd(ctx),
+		buildToolchainBuildCmd(ctx),
+		buildToolchainMenuconfigCmd(ctx),
+		buildToolchainCleanCmd(ctx),
+		buildToolchainEnvCmd(ctx),
+	)
+
+	return toolchainsCmd
+}
+
+// buildToolchainInstallCmd creates the toolchains install subcommand.
+func buildToolchainInstallCmd(ctx *Context) *cobra.Command {
+	return &cobra.Command{
 		Use:   "install",
 		Short: "Install crosstool-ng from latest git",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -41,9 +55,11 @@ Examples:
 			return nil
 		},
 	}
+}
 
-	// List command
-	listCmd := &cobra.Command{
+// buildToolchainListCmd creates the toolchains list subcommand.
+func buildToolchainListCmd(ctx *Context) *cobra.Command {
+	return &cobra.Command{
 		Use:   "list",
 		Short: "List available toolchain samples",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -62,45 +78,52 @@ Examples:
 			return nil
 		},
 	}
+}
 
-	// Status command
-	statusCmd := &cobra.Command{
+// buildToolchainStatusCmd creates the toolchains status subcommand.
+func buildToolchainStatusCmd(ctx *Context) *cobra.Command {
+	return &cobra.Command{
 		Use:   "status",
 		Short: "Show installed toolchains status",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Check if ct-ng is installed
-			if !ctx.ToolchainManager.IsInstalled() {
-				ctx.Printer.Warn("crosstool-ng not installed")
-				ctx.Printer.Print("  Run: elmos toolchains install")
-				return nil
-			}
-			ctx.Printer.Success("crosstool-ng installed at %s", ctx.ToolchainManager.Paths().CrosstoolNG)
-
-			// List installed toolchains
-			toolchains, err := ctx.ToolchainManager.GetInstalledToolchains()
-			if err != nil {
-				return err
-			}
-			if len(toolchains) == 0 {
-				ctx.Printer.Info("No toolchains built yet")
-				return nil
-			}
-			ctx.Printer.Print("")
-			ctx.Printer.Print("Installed toolchains:")
-			for _, tc := range toolchains {
-				status := "✓"
-				if !tc.Installed {
-					status = "○"
-				}
-				ctx.Printer.Print("  %s %s", status, tc.Target)
-			}
-			return nil
+			return showToolchainStatus(ctx)
 		},
 	}
+}
 
-	// Build command
+// showToolchainStatus displays the toolchain installation status.
+func showToolchainStatus(ctx *Context) error {
+	if !ctx.ToolchainManager.IsInstalled() {
+		ctx.Printer.Warn("crosstool-ng not installed")
+		ctx.Printer.Print("  Run: elmos toolchains install")
+		return nil
+	}
+	ctx.Printer.Success("crosstool-ng installed at %s", ctx.ToolchainManager.Paths().CrosstoolNG)
+
+	toolchains, err := ctx.ToolchainManager.GetInstalledToolchains()
+	if err != nil {
+		return err
+	}
+	if len(toolchains) == 0 {
+		ctx.Printer.Info("No toolchains built yet")
+		return nil
+	}
+	ctx.Printer.Print("")
+	ctx.Printer.Print("Installed toolchains:")
+	for _, tc := range toolchains {
+		status := "✓"
+		if !tc.Installed {
+			status = "○"
+		}
+		ctx.Printer.Print("  %s %s", status, tc.Target)
+	}
+	return nil
+}
+
+// buildToolchainBuildCmd creates the toolchains build subcommand.
+func buildToolchainBuildCmd(ctx *Context) *cobra.Command {
 	var buildJobs int
-	buildCmd := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "build",
 		Short: "Build the currently configured toolchain",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -115,19 +138,24 @@ Examples:
 			return nil
 		},
 	}
-	buildCmd.Flags().IntVarP(&buildJobs, "jobs", "j", 0, "Number of parallel jobs (default: CPU count)")
+	cmd.Flags().IntVarP(&buildJobs, "jobs", "j", 0, "Number of parallel jobs (default: CPU count)")
+	return cmd
+}
 
-	// Menuconfig command
-	menuconfigCmd := &cobra.Command{
+// buildToolchainMenuconfigCmd creates the toolchains menuconfig subcommand.
+func buildToolchainMenuconfigCmd(ctx *Context) *cobra.Command {
+	return &cobra.Command{
 		Use:   "menuconfig",
 		Short: "Open interactive configuration menu",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ctx.ToolchainManager.Menuconfig(cmd.Context())
 		},
 	}
+}
 
-	// Clean command
-	cleanCmd := &cobra.Command{
+// buildToolchainCleanCmd creates the toolchains clean subcommand.
+func buildToolchainCleanCmd(ctx *Context) *cobra.Command {
+	return &cobra.Command{
 		Use:   "clean",
 		Short: "Clean build artifacts",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -139,14 +167,15 @@ Examples:
 			return nil
 		},
 	}
+}
 
-	// Env command
-	envCmd := &cobra.Command{
+// buildToolchainEnvCmd creates the toolchains env subcommand.
+func buildToolchainEnvCmd(ctx *Context) *cobra.Command {
+	return &cobra.Command{
 		Use:   "env",
 		Short: "Print environment variables for shell integration",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			paths := ctx.ToolchainManager.Paths()
-			// Print shell-compatible export statements
 			fmt.Printf("export PATH=\"%s/bin:$PATH\"\n", paths.CrosstoolNG)
 
 			toolchains, _ := ctx.ToolchainManager.GetInstalledToolchains()
@@ -158,11 +187,6 @@ Examples:
 			return nil
 		},
 	}
-
-	// Add subcommands
-	toolchainsCmd.AddCommand(installCmd, listCmd, statusCmd, buildCmd, menuconfigCmd, cleanCmd, envCmd)
-
-	return toolchainsCmd
 }
 
 // containsIgnoreCase checks if s contains substr (case-insensitive).
