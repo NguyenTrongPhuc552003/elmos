@@ -93,43 +93,8 @@ func BuildKernel(ctx *Context) *cobra.Command {
 
 			ctx.Printer.Success("Kernel source found at %s", ctx.Config.Paths.KernelDir)
 			ctx.Printer.Print("")
-
-			// Get git info
-			ctx.Printer.Step("Git info:")
-			branch, err := ctx.Exec.Output(cmd.Context(), "git", "-C", ctx.Config.Paths.KernelDir, "symbolic-ref", "-q", "--short", "HEAD")
-			if err == nil {
-				// We are on a branch
-				ctx.Printer.Print("  Branch: %s", strings.TrimSpace(string(branch)))
-			} else {
-				// Check for tag
-				tag, err := ctx.Exec.Output(cmd.Context(), "git", "-C", ctx.Config.Paths.KernelDir, "describe", "--tags", "--exact-match")
-				if err == nil {
-					ctx.Printer.Print("  Tag: %s", strings.TrimSpace(string(tag)))
-				} else {
-					ctx.Printer.Print("  Branch: <detached>")
-				}
-			}
-			commit, err := ctx.Exec.Output(cmd.Context(), "git", "-C", ctx.Config.Paths.KernelDir, "log", "-1", "--format=%h %s")
-			if err == nil {
-				ctx.Printer.Print("  Commit: %s", strings.TrimSpace(string(commit)))
-			}
-
-			// Check kernel config
-			ctx.Printer.Print("")
-			ctx.Printer.Step("Build status:")
-			if ctx.AppContext.HasConfig() {
-				ctx.Printer.Print("  ✓ Kernel configured (.config exists)")
-			} else {
-				ctx.Printer.Print("  ○ Not configured (run 'elmos kernel config')")
-			}
-
-			// Check kernel image
-			if ctx.AppContext.HasKernelImage() {
-				ctx.Printer.Print("  ✓ Kernel image built")
-			} else {
-				ctx.Printer.Print("  ○ Kernel not built (run 'elmos build')")
-			}
-
+			printKernelGitInfo(ctx, cmd)
+			printKernelBuildStatus(ctx)
 			return nil
 		},
 	}
@@ -177,39 +142,9 @@ Examples:
 			}
 
 			if len(args) == 0 {
-				// List branches and tags
-				ctx.Printer.Step("Branches:")
-				branches, _ := ctx.Exec.Output(cmd.Context(), "git", "-C", ctx.Config.Paths.KernelDir, "branch", "-a", "--format=%(refname:short)")
-				for _, b := range strings.Split(string(branches), "\n") {
-					if b != "" {
-						ctx.Printer.Print("  %s", b)
-					}
-				}
-				ctx.Printer.Print("")
-				ctx.Printer.Step("Tags (latest 10):")
-				tags, _ := ctx.Exec.Output(cmd.Context(), "git", "-C", ctx.Config.Paths.KernelDir, "tag", "-l", "--sort=-v:refname", "v*")
-				for i, t := range strings.Split(string(tags), "\n") {
-					if i >= 10 || t == "" {
-						break
-					}
-					ctx.Printer.Print("  %s", t)
-				}
-				return nil
+				return listKernelRefs(ctx, cmd)
 			}
-
-			// Smart checkout - works for both branches and tags
-			ref := args[0]
-			ctx.Printer.Step("Switching to: %s", ref)
-			if err := ctx.Exec.Run(cmd.Context(), "git", "-C", ctx.Config.Paths.KernelDir, "checkout", ref); err != nil {
-				// Try fetching if not found
-				ctx.Printer.Info("Not found locally, fetching...")
-				_ = ctx.Exec.Run(cmd.Context(), "git", "-C", ctx.Config.Paths.KernelDir, "fetch", "--all", "--tags")
-				if err := ctx.Exec.Run(cmd.Context(), "git", "-C", ctx.Config.Paths.KernelDir, "checkout", ref); err != nil {
-					return fmt.Errorf("failed to switch: %w", err)
-				}
-			}
-			ctx.Printer.Success("Now on: %s", ref)
-			return nil
+			return switchKernelRef(ctx, cmd, args[0])
 		},
 	}
 
@@ -257,4 +192,77 @@ Examples:
 
 	kernelCmd.AddCommand(configCmd, cleanCmd, cloneCmd, statusCmd, resetCmd, switchCmd, pullCmd, buildCmd)
 	return kernelCmd
+}
+
+// --- Helper functions to reduce RunE complexity ---
+
+// printKernelGitInfo prints git branch/tag and commit info for status command.
+func printKernelGitInfo(ctx *Context, cmd *cobra.Command) {
+	ctx.Printer.Step("Git info:")
+	branch, err := ctx.Exec.Output(cmd.Context(), "git", "-C", ctx.Config.Paths.KernelDir, "symbolic-ref", "-q", "--short", "HEAD")
+	if err == nil {
+		ctx.Printer.Print("  Branch: %s", strings.TrimSpace(string(branch)))
+	} else {
+		tag, err := ctx.Exec.Output(cmd.Context(), "git", "-C", ctx.Config.Paths.KernelDir, "describe", "--tags", "--exact-match")
+		if err == nil {
+			ctx.Printer.Print("  Tag: %s", strings.TrimSpace(string(tag)))
+		} else {
+			ctx.Printer.Print("  Branch: <detached>")
+		}
+	}
+	commit, err := ctx.Exec.Output(cmd.Context(), "git", "-C", ctx.Config.Paths.KernelDir, "log", "-1", "--format=%h %s")
+	if err == nil {
+		ctx.Printer.Print("  Commit: %s", strings.TrimSpace(string(commit)))
+	}
+}
+
+// printKernelBuildStatus prints kernel config and image status.
+func printKernelBuildStatus(ctx *Context) {
+	ctx.Printer.Print("")
+	ctx.Printer.Step("Build status:")
+	if ctx.AppContext.HasConfig() {
+		ctx.Printer.Print("  ✓ Kernel configured (.config exists)")
+	} else {
+		ctx.Printer.Print("  ○ Not configured (run 'elmos kernel config')")
+	}
+	if ctx.AppContext.HasKernelImage() {
+		ctx.Printer.Print("  ✓ Kernel image built")
+	} else {
+		ctx.Printer.Print("  ○ Kernel not built (run 'elmos build')")
+	}
+}
+
+// listKernelRefs lists available branches and tags for switch command.
+func listKernelRefs(ctx *Context, cmd *cobra.Command) error {
+	ctx.Printer.Step("Branches:")
+	branches, _ := ctx.Exec.Output(cmd.Context(), "git", "-C", ctx.Config.Paths.KernelDir, "branch", "-a", "--format=%(refname:short)")
+	for _, b := range strings.Split(string(branches), "\n") {
+		if b != "" {
+			ctx.Printer.Print("  %s", b)
+		}
+	}
+	ctx.Printer.Print("")
+	ctx.Printer.Step("Tags (latest 10):")
+	tags, _ := ctx.Exec.Output(cmd.Context(), "git", "-C", ctx.Config.Paths.KernelDir, "tag", "-l", "--sort=-v:refname", "v*")
+	for i, t := range strings.Split(string(tags), "\n") {
+		if i >= 10 || t == "" {
+			break
+		}
+		ctx.Printer.Print("  %s", t)
+	}
+	return nil
+}
+
+// switchKernelRef switches to a specific branch or tag.
+func switchKernelRef(ctx *Context, cmd *cobra.Command, ref string) error {
+	ctx.Printer.Step("Switching to: %s", ref)
+	if err := ctx.Exec.Run(cmd.Context(), "git", "-C", ctx.Config.Paths.KernelDir, "checkout", ref); err != nil {
+		ctx.Printer.Info("Not found locally, fetching...")
+		_ = ctx.Exec.Run(cmd.Context(), "git", "-C", ctx.Config.Paths.KernelDir, "fetch", "--all", "--tags")
+		if err := ctx.Exec.Run(cmd.Context(), "git", "-C", ctx.Config.Paths.KernelDir, "checkout", ref); err != nil {
+			return fmt.Errorf("failed to switch: %w", err)
+		}
+	}
+	ctx.Printer.Success("Now on: %s", ref)
+	return nil
 }
