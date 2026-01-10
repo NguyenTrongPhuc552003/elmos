@@ -85,9 +85,22 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg, cmds []tea.Cmd) (tea.Model, tea.Cmd)
 		return m, tea.Batch(cmds...)
 	}
 
-	switch {
-	case key.Matches(msg, keys.Quit):
+	// Handle special keys that return early
+	if key.Matches(msg, keys.Quit) {
 		return m.handleQuit()
+	}
+	if key.Matches(msg, keys.Enter) {
+		return m.handleEnterKey()
+	}
+
+	// Handle navigation and other keys
+	m.handleNavigationKey(msg)
+	return m, tea.Batch(cmds...)
+}
+
+// handleNavigationKey handles navigation and viewport keys.
+func (m *Model) handleNavigationKey(msg tea.KeyMsg) {
+	switch {
 	case key.Matches(msg, keys.Back):
 		m.popMenuStack()
 	case key.Matches(msg, keys.Up):
@@ -109,10 +122,7 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg, cmds []tea.Cmd) (tea.Model, tea.Cmd)
 	case key.Matches(msg, keys.Clear):
 		m.logLines = make([]string, 0)
 		m.refreshViewport()
-	case key.Matches(msg, keys.Enter):
-		return m.handleEnterKey()
 	}
-	return m, tea.Batch(cmds...)
 }
 
 // handleQuit handles quit/back navigation.
