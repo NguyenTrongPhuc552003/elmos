@@ -150,6 +150,7 @@ tasks:
 
   dev:complexity:
     desc: Run cyclomatic complexity analysis (CC>10, MI<30)
+    deps: [dev:complexity:install]
     vars:
       CC_THRESHOLD: '{{.CC_THRESHOLD | default "10"}}'
       MI_THRESHOLD: '{{.MI_THRESHOLD | default "30"}}'
