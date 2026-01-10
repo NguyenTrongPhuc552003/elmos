@@ -135,6 +135,24 @@ tasks:
       - task: test:gen
         vars: { FILE: core/app/commands/toolchain.go }
 
+  test:remove:
+    desc: "Remove generated test file (usage: task test:remove FILE=... or remove all if empty)"
+    cmds:
+      - |
+        if [ -z "{{.FILE}}" ]; then
+          echo "Removing all *_test.go files..."
+          find . -name "*_test.go" -type f -delete
+        else
+          TEST_FILE="${FILE%.*}_test.go"
+          if [ -f "$TEST_FILE" ]; then
+            echo "Removing $TEST_FILE..."
+            rm "$TEST_FILE"
+          else
+            echo "File $TEST_FILE does not exist."
+            exit 1
+          fi
+        fi
+
   test:run:
     desc: "Run all unit tests"
     deps: [test:setup]
