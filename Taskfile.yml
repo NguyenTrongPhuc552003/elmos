@@ -84,11 +84,32 @@ tasks:
       - task: dev:fmt
       - task: dev:lint
 
+  dev:complexity:install:
+    desc: Install go-complexity-analysis tool for CC/MI analysis
+    cmds:
+      - echo "Installing go-complexity-analysis..."
+      - go install github.com/firepear/go-complexity-analysis/cmd/complexity@latest
+      - echo "Installed to $(go env GOPATH)/bin/complexity"
+
+  dev:complexity:
+    desc: Run cyclomatic complexity analysis (CC>10, MI<30)
+    vars:
+      CC_THRESHOLD: '{{.CC_THRESHOLD | default "10"}}'
+      MI_THRESHOLD: '{{.MI_THRESHOLD | default "30"}}'
+    cmds:
+      - |
+        if [ ! -f "$(go env GOPATH)/bin/complexity" ]; then
+          echo "Error: complexity tool not installed. Run 'task dev:complexity:install' first."
+          exit 1
+        fi
+        echo "Running complexity analysis (CC>{{.CC_THRESHOLD}}, MI<{{.MI_THRESHOLD}})..."
+        go vet -vettool=$(go env GOPATH)/bin/complexity --cycloover {{.CC_THRESHOLD}} --maintunder {{.MI_THRESHOLD}} ./... 2>&1 | grep -v "undefined" || echo "✓ No complexity warnings!"
 
   dev:setup:
-    desc: Full dev setup (deps + build + init workspace)
+    desc: Full dev setup (deps + build + init workspace + tools)
     cmds:
       - task: dev:deps
+      - task: dev:complexity:install
       - task: build
       - task: elmos:init
 
