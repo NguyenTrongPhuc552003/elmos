@@ -133,7 +133,7 @@ func writeSimpleCommands(out *strings.Builder, cmds []*cobra.Command) {
 func writeCommand(out *strings.Builder, sub *cobra.Command) {
 	name := commandStyle.Render(fmt.Sprintf("%-12s", sub.Name()))
 	desc := descStyle.Render(sub.Short)
-	out.WriteString(fmt.Sprintf("  %s  %s\n", name, desc))
+	fmt.Fprintf(out, "  %s  %s\n", name, desc)
 }
 
 // writeFlags writes the flags section.
@@ -157,7 +157,7 @@ func writeFlags(out *strings.Builder, cmd *cobra.Command) {
 			name = flagStyle.Render(fmt.Sprintf("      --%s", f.Name))
 		}
 		desc := descStyle.Render(f.Usage)
-		out.WriteString(fmt.Sprintf("%-30s  %s\n", name, desc))
+		fmt.Fprintf(out, "%-30s  %s\n", name, desc)
 	})
 }
 
