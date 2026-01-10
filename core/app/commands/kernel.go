@@ -17,7 +17,23 @@ func BuildKernel(ctx *Context) *cobra.Command {
 		Short: "Kernel configuration commands",
 	}
 
-	configCmd := &cobra.Command{
+	kernelCmd.AddCommand(
+		buildKernelConfigCmd(ctx),
+		buildKernelCleanCmd(ctx),
+		buildKernelCloneCmd(ctx),
+		buildKernelStatusCmd(ctx),
+		buildKernelResetCmd(ctx),
+		buildKernelSwitchCmd(ctx),
+		buildKernelPullCmd(ctx),
+		buildKernelBuildCmd(ctx),
+	)
+
+	return kernelCmd
+}
+
+// buildKernelConfigCmd creates the kernel config subcommand.
+func buildKernelConfigCmd(ctx *Context) *cobra.Command {
+	return &cobra.Command{
 		Use:   "config [type]",
 		Short: "Configure the kernel",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -36,8 +52,11 @@ func BuildKernel(ctx *Context) *cobra.Command {
 			return nil
 		},
 	}
+}
 
-	cleanCmd := &cobra.Command{
+// buildKernelCleanCmd creates the kernel clean subcommand.
+func buildKernelCleanCmd(ctx *Context) *cobra.Command {
+	return &cobra.Command{
 		Use:   "clean",
 		Short: "Clean kernel build artifacts",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -52,8 +71,11 @@ func BuildKernel(ctx *Context) *cobra.Command {
 			return nil
 		},
 	}
+}
 
-	cloneCmd := &cobra.Command{
+// buildKernelCloneCmd creates the kernel clone subcommand.
+func buildKernelCloneCmd(ctx *Context) *cobra.Command {
+	return &cobra.Command{
 		Use:   "clone [git-url]",
 		Short: "Clone the Linux kernel source",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -76,21 +98,22 @@ func BuildKernel(ctx *Context) *cobra.Command {
 			return nil
 		},
 	}
+}
 
-	statusCmd := &cobra.Command{
+// buildKernelStatusCmd creates the kernel status subcommand.
+func buildKernelStatusCmd(ctx *Context) *cobra.Command {
+	return &cobra.Command{
 		Use:   "status",
 		Short: "Show kernel source status",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := ctx.AppContext.EnsureMounted(); err != nil {
 				return err
 			}
-
 			if !ctx.AppContext.KernelExists() {
 				ctx.Printer.Info("Kernel source not found at %s", ctx.Config.Paths.KernelDir)
 				ctx.Printer.Print("  Run 'elmos kernel clone' to download kernel source")
 				return nil
 			}
-
 			ctx.Printer.Success("Kernel source found at %s", ctx.Config.Paths.KernelDir)
 			ctx.Printer.Print("")
 			printKernelGitInfo(ctx, cmd)
@@ -98,8 +121,11 @@ func BuildKernel(ctx *Context) *cobra.Command {
 			return nil
 		},
 	}
+}
 
-	resetCmd := &cobra.Command{
+// buildKernelResetCmd creates the kernel reset subcommand.
+func buildKernelResetCmd(ctx *Context) *cobra.Command {
+	return &cobra.Command{
 		Use:   "reset",
 		Short: "Reset kernel source (reclone completely)",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -121,8 +147,11 @@ func BuildKernel(ctx *Context) *cobra.Command {
 			return nil
 		},
 	}
+}
 
-	switchCmd := &cobra.Command{
+// buildKernelSwitchCmd creates the kernel switch subcommand.
+func buildKernelSwitchCmd(ctx *Context) *cobra.Command {
+	return &cobra.Command{
 		Use:   "switch [ref]",
 		Short: "List or switch branch/tag (auto-detects)",
 		Long: `List all branches and tags, or switch to a specific ref.
@@ -140,15 +169,17 @@ Examples:
 				ctx.Printer.Info("Kernel source not found. Run 'elmos kernel clone' first.")
 				return nil
 			}
-
 			if len(args) == 0 {
 				return listKernelRefs(ctx, cmd)
 			}
 			return switchKernelRef(ctx, cmd, args[0])
 		},
 	}
+}
 
-	pullCmd := &cobra.Command{
+// buildKernelPullCmd creates the kernel pull subcommand.
+func buildKernelPullCmd(ctx *Context) *cobra.Command {
+	return &cobra.Command{
 		Use:   "pull",
 		Short: "Update kernel source",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -167,9 +198,12 @@ Examples:
 			return nil
 		},
 	}
+}
 
+// buildKernelBuildCmd creates the kernel build subcommand.
+func buildKernelBuildCmd(ctx *Context) *cobra.Command {
 	var jobs int
-	buildCmd := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "build [targets...]",
 		Short: "Build the Linux kernel",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -188,10 +222,8 @@ Examples:
 			return nil
 		},
 	}
-	buildCmd.Flags().IntVarP(&jobs, "jobs", "j", 0, "Number of parallel build jobs")
-
-	kernelCmd.AddCommand(configCmd, cleanCmd, cloneCmd, statusCmd, resetCmd, switchCmd, pullCmd, buildCmd)
-	return kernelCmd
+	cmd.Flags().IntVarP(&jobs, "jobs", "j", 0, "Number of parallel build jobs")
+	return cmd
 }
 
 // --- Helper functions to reduce RunE complexity ---
