@@ -15,72 +15,91 @@ func (cfg *Config) Save(path string) error {
 	v := viper.New()
 	v.SetConfigType("yaml")
 
-	// Calculate defaults to compare against
-	defaults := &Config{}
-	// If project root is set in current config, use it for defaults calculation base
-	if cfg.Paths.ProjectRoot != "" {
-		defaults.Paths.ProjectRoot = cfg.Paths.ProjectRoot
-	}
-	applyComputedDefaults(defaults)
+	defaults := cfg.computeDefaults()
+	saveCfg := cfg.prepareForSave(defaults)
 
-	// Create a copy to modify for saving
-	saveCfg := *cfg
-	savePaths := saveCfg.Paths
-
-	// Only save paths that differ from defaults
-	if savePaths.ProjectRoot == defaults.Paths.ProjectRoot {
-		savePaths.ProjectRoot = ""
-	}
-	if savePaths.KernelDir == defaults.Paths.KernelDir {
-		savePaths.KernelDir = ""
-	}
-	if savePaths.ModulesDir == defaults.Paths.ModulesDir {
-		savePaths.ModulesDir = ""
-	}
-	if savePaths.AppsDir == defaults.Paths.AppsDir {
-		savePaths.AppsDir = ""
-	}
-	if savePaths.LibrariesDir == defaults.Paths.LibrariesDir {
-		savePaths.LibrariesDir = ""
-	}
-	if savePaths.PatchesDir == defaults.Paths.PatchesDir {
-		savePaths.PatchesDir = ""
-	}
-	if savePaths.RootfsDir == defaults.Paths.RootfsDir {
-		savePaths.RootfsDir = ""
-	}
-	if savePaths.DiskImage == defaults.Paths.DiskImage {
-		savePaths.DiskImage = ""
-	}
-
-	// Verify image paths too
-	if saveCfg.Image.Path == defaults.Image.Path {
-		saveCfg.Image.Path = ""
-	}
-	if saveCfg.Image.MountPoint == defaults.Image.MountPoint {
-		saveCfg.Image.MountPoint = ""
-	}
-
-	saveCfg.Paths = savePaths
-
-	// Set all values
 	v.Set("image", saveCfg.Image)
 	v.Set("build", saveCfg.Build)
 	v.Set("qemu", saveCfg.QEMU)
 	v.Set("paths", saveCfg.Paths)
 	v.Set("profiles", saveCfg.Profiles)
 
-	// Ensure directory exists
-	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("failed to create config directory %s: %w", dir, err)
+	if err := ensureDir(filepath.Dir(path)); err != nil {
+		return err
 	}
 
-	// Write config
 	if err := v.WriteConfigAs(path); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
+	return nil
+}
+
+// computeDefaults calculates default config for comparison.
+func (cfg *Config) computeDefaults() *Config {
+	defaults := &Config{}
+	if cfg.Paths.ProjectRoot != "" {
+		defaults.Paths.ProjectRoot = cfg.Paths.ProjectRoot
+	}
+	applyComputedDefaults(defaults)
+	return defaults
+}
+
+// prepareForSave creates a copy with default values cleared.
+func (cfg *Config) prepareForSave(defaults *Config) Config {
+	saveCfg := *cfg
+	saveCfg.Paths = clearDefaultPaths(cfg.Paths, defaults.Paths)
+	saveCfg.Image = clearDefaultImage(cfg.Image, defaults.Image)
+	return saveCfg
+}
+
+// clearDefaultPaths clears path values that match defaults.
+func clearDefaultPaths(paths, defaults PathsConfig) PathsConfig {
+	result := paths
+	if paths.ProjectRoot == defaults.ProjectRoot {
+		result.ProjectRoot = ""
+	}
+	if paths.KernelDir == defaults.KernelDir {
+		result.KernelDir = ""
+	}
+	if paths.ModulesDir == defaults.ModulesDir {
+		result.ModulesDir = ""
+	}
+	if paths.AppsDir == defaults.AppsDir {
+		result.AppsDir = ""
+	}
+	if paths.LibrariesDir == defaults.LibrariesDir {
+		result.LibrariesDir = ""
+	}
+	if paths.PatchesDir == defaults.PatchesDir {
+		result.PatchesDir = ""
+	}
+	if paths.RootfsDir == defaults.RootfsDir {
+		result.RootfsDir = ""
+	}
+	if paths.DiskImage == defaults.DiskImage {
+		result.DiskImage = ""
+	}
+	return result
+}
+
+// clearDefaultImage clears image values that match defaults.
+func clearDefaultImage(image, defaults ImageConfig) ImageConfig {
+	result := image
+	if image.Path == defaults.Path {
+		result.Path = ""
+	}
+	if image.MountPoint == defaults.MountPoint {
+		result.MountPoint = ""
+	}
+	return result
+}
+
+// ensureDir creates a directory if it doesn't exist.
+func ensureDir(dir string) error {
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create config directory %s: %w", dir, err)
+	}
 	return nil
 }
 
