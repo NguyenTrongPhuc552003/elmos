@@ -154,10 +154,15 @@ tasks:
         fi
 
   test:run:
-    desc: "Run all unit tests"
+    desc: "Run unit tests (usage: task test:run TARGET=./core/config/...)"
     deps: [test:setup]
     cmds:
-      - go test ./...
+      - |
+        if [ -z "{{.TARGET}}" ]; then
+          go test ./...
+        else
+          go test {{.TARGET}}
+        fi
 
   dev:complexity:install:
     desc: Install go-complexity-analysis tool for CC/MI analysis
