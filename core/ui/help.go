@@ -197,46 +197,45 @@ type commandGroup struct {
 	commands []*cobra.Command
 }
 
+// commandCategories maps command names to their category.
+var commandCategories = map[string]string{
+	"init": "Core", "exit": "Core", "doctor": "Core", "version": "Core", "tui": "Core", "status": "Core", "arch": "Core",
+	"kernel": "Build", "module": "Build", "app": "Build", "rootfs": "Build", "patch": "Build",
+	"qemu": "Runtime", "gdb": "Runtime",
+	"toolchains": "Config",
+}
+
 // groupCommands organizes commands into logical groups.
 func groupCommands(cmds []*cobra.Command) []commandGroup {
-	core := []*cobra.Command{}
-	build := []*cobra.Command{}
-	runtime := []*cobra.Command{}
-	config := []*cobra.Command{}
-	other := []*cobra.Command{}
+	grouped := make(map[string][]*cobra.Command)
 
 	for _, cmd := range cmds {
 		if !cmd.IsAvailableCommand() {
 			continue
 		}
-		switch cmd.Name() {
-		case "init", "exit", "doctor", "version", "tui", "status", "arch":
-			core = append(core, cmd)
-		case "kernel", "module", "app", "rootfs", "patch":
-			build = append(build, cmd)
-		case "qemu", "gdb":
-			runtime = append(runtime, cmd)
-		default:
-			other = append(other, cmd)
+		category := commandCategories[cmd.Name()]
+		if category == "" {
+			category = "Other"
+		}
+		grouped[category] = append(grouped[category], cmd)
+	}
+
+	return buildGroupSlice(grouped)
+}
+
+// buildGroupSlice builds the ordered group slice from the map.
+func buildGroupSlice(grouped map[string][]*cobra.Command) []commandGroup {
+	groups := []commandGroup{}
+	order := []string{"Core", "Build", "Runtime", "Config", "Other"}
+
+	for _, name := range order {
+		if cmds, ok := grouped[name]; ok && len(cmds) > 0 {
+			displayName := name
+			if name == "Other" {
+				displayName = ""
+			}
+			groups = append(groups, commandGroup{name: displayName, commands: cmds})
 		}
 	}
-
-	groups := []commandGroup{}
-	if len(core) > 0 {
-		groups = append(groups, commandGroup{name: "Core", commands: core})
-	}
-	if len(build) > 0 {
-		groups = append(groups, commandGroup{name: "Build", commands: build})
-	}
-	if len(runtime) > 0 {
-		groups = append(groups, commandGroup{name: "Runtime", commands: runtime})
-	}
-	if len(config) > 0 {
-		groups = append(groups, commandGroup{name: "Config", commands: config})
-	}
-	if len(other) > 0 {
-		groups = append(groups, commandGroup{name: "", commands: other})
-	}
-
 	return groups
 }
