@@ -52,13 +52,22 @@ func SetCustomUsageFunc(cmd *cobra.Command) {
 func customHelpFunc(cmd *cobra.Command, args []string) {
 	var out strings.Builder
 
-	// Show banner only for root command
+	writeHeader(&out, cmd)
+	writeUsage(&out, cmd)
+	writeCommands(&out, cmd)
+	writeFlags(&out, cmd)
+	writeExamples(&out, cmd)
+	writeFooter(&out, cmd)
+
+	_, _ = fmt.Fprint(cmd.OutOrStdout(), out.String())
+}
+
+// writeHeader writes the banner and description section.
+func writeHeader(out *strings.Builder, cmd *cobra.Command) {
 	if !cmd.HasParent() {
 		out.WriteString(Banner())
 		out.WriteString("\n\n")
 	}
-
-	// Title and description
 	if cmd.Short != "" {
 		out.WriteString(headerStyle.Render(cmd.Short))
 		out.WriteString("\n")
@@ -67,90 +76,114 @@ func customHelpFunc(cmd *cobra.Command, args []string) {
 		out.WriteString(subtleStyle.Render(cmd.Long))
 		out.WriteString("\n")
 	}
+}
 
-	// Usage
+// writeUsage writes the usage section.
+func writeUsage(out *strings.Builder, cmd *cobra.Command) {
 	out.WriteString("\n")
 	out.WriteString(sectionStyle.Render("USAGE"))
 	out.WriteString("\n")
 	out.WriteString("  " + commandStyle.Render(cmd.UseLine()))
 	out.WriteString("\n")
+}
 
-	// Commands
-	if cmd.HasAvailableSubCommands() {
-		out.WriteString("\n")
-		out.WriteString(sectionStyle.Render("COMMANDS"))
-		out.WriteString("\n")
+// writeCommands writes the commands section.
+func writeCommands(out *strings.Builder, cmd *cobra.Command) {
+	if !cmd.HasAvailableSubCommands() {
+		return
+	}
 
-		// Only group commands for root command
-		if !cmd.HasParent() {
-			groups := groupCommands(cmd.Commands())
-			for _, group := range groups {
-				if group.name != "" {
-					out.WriteString("  " + subtleStyle.Render("─── "+group.name+" ───"))
-					out.WriteString("\n")
-				}
-				for _, sub := range group.commands {
-					if sub.IsAvailableCommand() {
-						name := commandStyle.Render(fmt.Sprintf("%-12s", sub.Name()))
-						desc := descStyle.Render(sub.Short)
-						out.WriteString(fmt.Sprintf("  %s  %s\n", name, desc))
-					}
-				}
+	out.WriteString("\n")
+	out.WriteString(sectionStyle.Render("COMMANDS"))
+	out.WriteString("\n")
+
+	if !cmd.HasParent() {
+		writeGroupedCommands(out, cmd.Commands())
+	} else {
+		writeSimpleCommands(out, cmd.Commands())
+	}
+}
+
+// writeGroupedCommands writes commands organized into groups.
+func writeGroupedCommands(out *strings.Builder, cmds []*cobra.Command) {
+	groups := groupCommands(cmds)
+	for _, group := range groups {
+		if group.name != "" {
+			out.WriteString("  " + subtleStyle.Render("─── "+group.name+" ───"))
+			out.WriteString("\n")
+		}
+		for _, sub := range group.commands {
+			if sub.IsAvailableCommand() {
+				writeCommand(out, sub)
 			}
+		}
+	}
+}
+
+// writeSimpleCommands writes a simple list of commands.
+func writeSimpleCommands(out *strings.Builder, cmds []*cobra.Command) {
+	for _, sub := range cmds {
+		if sub.IsAvailableCommand() {
+			writeCommand(out, sub)
+		}
+	}
+}
+
+// writeCommand writes a single command entry.
+func writeCommand(out *strings.Builder, sub *cobra.Command) {
+	name := commandStyle.Render(fmt.Sprintf("%-12s", sub.Name()))
+	desc := descStyle.Render(sub.Short)
+	out.WriteString(fmt.Sprintf("  %s  %s\n", name, desc))
+}
+
+// writeFlags writes the flags section.
+func writeFlags(out *strings.Builder, cmd *cobra.Command) {
+	if !cmd.HasAvailableLocalFlags() && !cmd.HasAvailablePersistentFlags() {
+		return
+	}
+
+	out.WriteString("\n")
+	out.WriteString(sectionStyle.Render("FLAGS"))
+	out.WriteString("\n")
+
+	cmd.LocalFlags().VisitAll(func(f *pflag.Flag) {
+		if f.Hidden {
+			return
+		}
+		var name string
+		if f.Shorthand != "" {
+			name = flagStyle.Render(fmt.Sprintf("  -%s, --%s", f.Shorthand, f.Name))
 		} else {
-			// Simple list for subcommands
-			for _, sub := range cmd.Commands() {
-				if sub.IsAvailableCommand() {
-					name := commandStyle.Render(fmt.Sprintf("%-12s", sub.Name()))
-					desc := descStyle.Render(sub.Short)
-					out.WriteString(fmt.Sprintf("  %s  %s\n", name, desc))
-				}
-			}
+			name = flagStyle.Render(fmt.Sprintf("      --%s", f.Name))
 		}
+		desc := descStyle.Render(f.Usage)
+		out.WriteString(fmt.Sprintf("%-30s  %s\n", name, desc))
+	})
+}
+
+// writeExamples writes the examples section.
+func writeExamples(out *strings.Builder, cmd *cobra.Command) {
+	if cmd.Example == "" {
+		return
 	}
 
-	// Flags
-	if cmd.HasAvailableLocalFlags() || cmd.HasAvailablePersistentFlags() {
-		out.WriteString("\n")
-		out.WriteString(sectionStyle.Render("FLAGS"))
-		out.WriteString("\n")
+	out.WriteString("\n")
+	out.WriteString(sectionStyle.Render("EXAMPLES"))
+	out.WriteString("\n")
+	for _, line := range strings.Split(cmd.Example, "\n") {
+		out.WriteString("  " + exampleStyle.Render(line) + "\n")
+	}
+}
 
-		printFlags := func(flags *pflag.FlagSet) {
-			flags.VisitAll(func(f *pflag.Flag) {
-				if f.Hidden {
-					return
-				}
-				var name string
-				if f.Shorthand != "" {
-					name = flagStyle.Render(fmt.Sprintf("  -%s, --%s", f.Shorthand, f.Name))
-				} else {
-					name = flagStyle.Render(fmt.Sprintf("      --%s", f.Name))
-				}
-				desc := descStyle.Render(f.Usage)
-				out.WriteString(fmt.Sprintf("%-30s  %s\n", name, desc))
-			})
-		}
-		printFlags(cmd.LocalFlags())
+// writeFooter writes the help footer.
+func writeFooter(out *strings.Builder, cmd *cobra.Command) {
+	if !cmd.HasAvailableSubCommands() {
+		return
 	}
 
-	// Examples
-	if cmd.Example != "" {
-		out.WriteString("\n")
-		out.WriteString(sectionStyle.Render("EXAMPLES"))
-		out.WriteString("\n")
-		for _, line := range strings.Split(cmd.Example, "\n") {
-			out.WriteString("  " + exampleStyle.Render(line) + "\n")
-		}
-	}
-
-	// Footer
-	if cmd.HasAvailableSubCommands() {
-		out.WriteString("\n")
-		out.WriteString(subtleStyle.Render(fmt.Sprintf("Use \"%s [command] --help\" for more information about a command.", cmd.CommandPath())))
-		out.WriteString("\n")
-	}
-
-	_, _ = fmt.Fprint(cmd.OutOrStdout(), out.String())
+	out.WriteString("\n")
+	out.WriteString(subtleStyle.Render(fmt.Sprintf("Use \"%s [command] --help\" for more information about a command.", cmd.CommandPath())))
+	out.WriteString("\n")
 }
 
 func customUsageFunc(cmd *cobra.Command) error {
