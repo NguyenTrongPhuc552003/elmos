@@ -2,7 +2,7 @@ package commands
 
 import (
 	"fmt"
-	"strconv"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -167,29 +167,5 @@ Examples:
 
 // containsIgnoreCase checks if s contains substr (case-insensitive).
 func containsIgnoreCase(s, substr string) bool {
-	sLower := toLower(s)
-	substrLower := toLower(substr)
-	for i := 0; i+len(substrLower) <= len(sLower); i++ {
-		if sLower[i:i+len(substrLower)] == substrLower {
-			return true
-		}
-	}
-	return false
+	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
 }
-
-// toLower converts a string to lowercase.
-func toLower(s string) string {
-	result := make([]byte, len(s))
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		if c >= 'A' && c <= 'Z' {
-			result[i] = c + 32
-		} else {
-			result[i] = c
-		}
-	}
-	return string(result)
-}
-
-// Ensure strconv is used (for future job count parsing if needed)
-var _ = strconv.Atoi
