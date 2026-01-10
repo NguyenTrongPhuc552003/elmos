@@ -1,0 +1,14 @@
+build:
+    arch: arm64
+    llvm: true
+    crosscompile: llvm-
+
+qemu:
+    memory: 2G
+    gdbport: 1234
+    sshport: 2222
+
+paths:
+    # Toolchains directory for crosstool-ng and built cross-compilers
+    # Must be on a case-sensitive filesystem (e.g., /Volumes/kernel-dev)
+    toolchains_dir: /Volumes/kernel-dev/toolchains
