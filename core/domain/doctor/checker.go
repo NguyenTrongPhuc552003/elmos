@@ -135,9 +135,7 @@ func (h *HealthChecker) CheckHomebrew(ctx context.Context) CheckResult {
 
 // CheckPackages checks if required Homebrew packages are installed.
 func (h *HealthChecker) CheckPackages(ctx context.Context) []CheckResult {
-	var results []CheckResult
-
-	installedPkgs, err := h.brew.ListInstalled()
+	pkgSet, err := h.getInstalledPackageSet()
 	if err != nil {
 		return []CheckResult{{
 			Name:     "Homebrew Packages",
@@ -147,14 +145,33 @@ func (h *HealthChecker) CheckPackages(ctx context.Context) []CheckResult {
 		}}
 	}
 
-	pkgSet := make(map[string]bool)
-	for _, p := range installedPkgs {
-		pkgSet[p] = true
+	grouped := h.groupPackagesByCategory()
+	cats := []string{"Build Tools", "Virtualization", "Toolchain Dependencies"}
+
+	var results []CheckResult
+	for _, catName := range cats {
+		results = append(results, h.checkCategoryPackages(catName, grouped[catName], pkgSet)...)
 	}
 
-	cats := []string{"Build Tools", "Virtualization", "Toolchain Dependencies"}
-	grouped := make(map[string][]elconfig.RequiredPackage)
+	return results
+}
 
+// getInstalledPackageSet returns a set of installed package names.
+func (h *HealthChecker) getInstalledPackageSet() (map[string]bool, error) {
+	installed, err := h.brew.ListInstalled()
+	if err != nil {
+		return nil, err
+	}
+	pkgSet := make(map[string]bool)
+	for _, p := range installed {
+		pkgSet[p] = true
+	}
+	return pkgSet, nil
+}
+
+// groupPackagesByCategory groups required packages by their category.
+func (h *HealthChecker) groupPackagesByCategory() map[string][]elconfig.RequiredPackage {
+	grouped := make(map[string][]elconfig.RequiredPackage)
 	for _, pkg := range elconfig.RequiredPackages {
 		cat := pkg.Category
 		if cat == "" {
@@ -162,35 +179,38 @@ func (h *HealthChecker) CheckPackages(ctx context.Context) []CheckResult {
 		}
 		grouped[cat] = append(grouped[cat], pkg)
 	}
+	return grouped
+}
 
-	for _, catName := range cats {
-		pkgs := grouped[catName]
-		if len(pkgs) == 0 {
-			continue
-		}
+// checkCategoryPackages checks packages in a category and returns results.
+func (h *HealthChecker) checkCategoryPackages(catName string, pkgs []elconfig.RequiredPackage, pkgSet map[string]bool) []CheckResult {
+	if len(pkgs) == 0 {
+		return nil
+	}
 
-		var missing []string
-		for _, pkg := range pkgs {
-			passed := pkgSet[pkg.Name]
-			results = append(results, CheckResult{
-				Name:     fmt.Sprintf("Homebrew Packages: [%s] %s", catName, pkg.Name),
-				Passed:   passed,
-				Required: pkg.Required,
-				Message:  pkg.Description,
-			})
-			if !passed && pkg.Required {
-				missing = append(missing, pkg.Name)
-			}
-		}
+	var results []CheckResult
+	var missing []string
 
-		if len(missing) > 0 {
-			results = append(results, CheckResult{
-				Name:     "  Fix missing packages",
-				Passed:   false,
-				Required: false,
-				Message:  fmt.Sprintf("brew install %s", strings.Join(missing, " ")),
-			})
+	for _, pkg := range pkgs {
+		passed := pkgSet[pkg.Name]
+		results = append(results, CheckResult{
+			Name:     fmt.Sprintf("Homebrew Packages: [%s] %s", catName, pkg.Name),
+			Passed:   passed,
+			Required: pkg.Required,
+			Message:  pkg.Description,
+		})
+		if !passed && pkg.Required {
+			missing = append(missing, pkg.Name)
 		}
+	}
+
+	if len(missing) > 0 {
+		results = append(results, CheckResult{
+			Name:     "  Fix missing packages",
+			Passed:   false,
+			Required: false,
+			Message:  fmt.Sprintf("brew install %s", strings.Join(missing, " ")),
+		})
 	}
 
 	return results
