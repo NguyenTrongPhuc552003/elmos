@@ -101,7 +101,7 @@ func Test_setDefaults(t *testing.T) {
 
 	tests := []struct {
 		key      string
-		expected interface{}
+		expected any
 	}{
 		{"image.volume_name", DefaultVolumeName},
 		{"image.size", DefaultImageSize},
