@@ -103,14 +103,29 @@ func (m *Model) handleNavigationKey(msg tea.KeyMsg) {
 	switch {
 	case key.Matches(msg, keys.Back):
 		m.popMenuStack()
-	case key.Matches(msg, keys.Up):
-		if m.cursor > 0 {
-			m.cursor--
-		}
-	case key.Matches(msg, keys.Down):
-		if m.cursor < len(m.currentMenu)-1 {
-			m.cursor++
-		}
+	case key.Matches(msg, keys.Up), key.Matches(msg, keys.Down):
+		m.handleCursorKey(msg)
+	case key.Matches(msg, keys.PageUp), key.Matches(msg, keys.PageDown),
+		key.Matches(msg, keys.ScrollUp), key.Matches(msg, keys.ScrollDown):
+		m.handleViewportKey(msg)
+	case key.Matches(msg, keys.Clear):
+		m.logLines = make([]string, 0)
+		m.refreshViewport()
+	}
+}
+
+// handleCursorKey handles up/down cursor navigation.
+func (m *Model) handleCursorKey(msg tea.KeyMsg) {
+	if key.Matches(msg, keys.Up) && m.cursor > 0 {
+		m.cursor--
+	} else if key.Matches(msg, keys.Down) && m.cursor < len(m.currentMenu)-1 {
+		m.cursor++
+	}
+}
+
+// handleViewportKey handles viewport scrolling keys.
+func (m *Model) handleViewportKey(msg tea.KeyMsg) {
+	switch {
 	case key.Matches(msg, keys.PageUp):
 		m.viewport.PageUp()
 	case key.Matches(msg, keys.PageDown):
@@ -119,9 +134,6 @@ func (m *Model) handleNavigationKey(msg tea.KeyMsg) {
 		m.viewport.ScrollUp(1)
 	case key.Matches(msg, keys.ScrollDown):
 		m.viewport.ScrollDown(1)
-	case key.Matches(msg, keys.Clear):
-		m.logLines = make([]string, 0)
-		m.refreshViewport()
 	}
 }
 
@@ -253,32 +265,26 @@ func (m Model) handleInputMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+// commandFormatters maps action identifiers to command format strings.
+var commandFormatters = map[string]string{
+	"module:new":           "elmos module new %s",
+	"module:build:one":     "elmos module build %s",
+	"app:new":              "elmos app new %s",
+	"app:build:one":        "elmos app build %s",
+	"config:arch":          "elmos config set arch %s",
+	"config:jobs":          "elmos config set jobs %s",
+	"config:memory":        "elmos config set memory %s",
+	"rootfs:create:custom": "elmos rootfs create -s %s",
+	"toolchain:select":     "elmos toolchains %s",
+	"kernel:switch":        "elmos kernel switch %s",
+}
+
 // getCommandWithInput returns the display command string for a given action and input.
 func (m *Model) getCommandWithInput(action, value string) string {
-	switch action {
-	case "module:new":
-		return "elmos module new " + value
-	case "module:build:one":
-		return "elmos module build " + value
-	case "app:new":
-		return "elmos app new " + value
-	case "app:build:one":
-		return "elmos app build " + value
-	case "config:arch":
-		return "elmos config set arch " + value
-	case "config:jobs":
-		return "elmos config set jobs " + value
-	case "config:memory":
-		return "elmos config set memory " + value
-	case "rootfs:create:custom":
-		return "elmos rootfs create -s " + value
-	case "toolchain:select":
-		return "elmos toolchains " + value
-	case "kernel:switch":
-		return "elmos kernel switch " + value
-	default:
-		return "elmos " + action
+	if format, ok := commandFormatters[action]; ok {
+		return fmt.Sprintf(format, value)
 	}
+	return "elmos " + action
 }
 
 // runCommand executes a command asynchronously and returns the result.
