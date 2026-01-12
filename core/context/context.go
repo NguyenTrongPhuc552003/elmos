@@ -82,39 +82,43 @@ func (ctx *Context) GetActualMountPoint() (string, error) {
 		return "", err
 	}
 
-	outputStr := string(out)
-	lines := strings.Split(outputStr, "\n")
+	return parseMountPointFromHdiutil(string(out), ctx.Config.Image.Path)
+}
 
-	// Look for our image file path in the output
+// parseMountPointFromHdiutil extracts the mount point for an image from hdiutil info output.
+func parseMountPointFromHdiutil(output, imagePath string) (string, error) {
+	lines := strings.Split(output, "\n")
+
+	// Find the image block and look for mount point
 	foundImage := false
 	for i, line := range lines {
-		if strings.Contains(line, ctx.Config.Image.Path) {
+		if strings.Contains(line, imagePath) {
 			foundImage = true
-			// Now look for the mount point in subsequent lines
-			// Format is typically several lines after image-path:
-			// /dev/diskXsY  UUID  /Volumes/ActualMountPoint
-			for j := i + 1; j < len(lines) && j < i+20; j++ {
-				if strings.Contains(lines[j], "/Volumes/") {
-					// Extract the mount point
-					if idx := strings.Index(lines[j], "/Volumes/"); idx != -1 {
-						mountStr := strings.TrimSpace(lines[j][idx:])
-						// Take only the path part (before any trailing whitespace or data)
-						parts := strings.Fields(mountStr)
-						if len(parts) > 0 {
-							return parts[0], nil
-						}
-					}
-				}
+			// Look for /Volumes/ in subsequent lines (up to 20 lines)
+			if mp := findMountPointInLines(lines, i+1, i+20); mp != "" {
+				return mp, nil
 			}
 			break
 		}
 	}
 
 	if !foundImage {
-		return "", fmt.Errorf("image not mounted: %s", ctx.Config.Image.Path)
+		return "", fmt.Errorf("image not mounted: %s", imagePath)
 	}
-
 	return "", fmt.Errorf("volume not found")
+}
+
+// findMountPointInLines searches for a /Volumes/ path in a range of lines.
+func findMountPointInLines(lines []string, start, end int) string {
+	for j := start; j < len(lines) && j < end; j++ {
+		if idx := strings.Index(lines[j], "/Volumes/"); idx != -1 {
+			mountStr := strings.TrimSpace(lines[j][idx:])
+			if parts := strings.Fields(mountStr); len(parts) > 0 {
+				return parts[0]
+			}
+		}
+	}
+	return ""
 }
 
 // KernelExists checks if the kernel source directory exists.
