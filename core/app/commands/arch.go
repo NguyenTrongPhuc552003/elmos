@@ -43,7 +43,7 @@ func handleArchNoArgs(ctx *Context) error {
 		if !ctx.FS.Exists(configPath) {
 			cfg := &config.Config{
 				Build: config.BuildConfig{Arch: "arm64", LLVM: true, CrossCompile: "llvm-"},
-				Image: config.ImageConfig{Size: "20G", VolumeName: "kernel-dev"},
+				Image: config.ImageConfig{Size: config.DefaultImageSize, VolumeName: config.DefaultVolumeName},
 				QEMU:  config.QEMUConfig{Memory: "2G", GDBPort: 1234, SSHPort: 2222},
 			}
 			if err := cfg.Save(configPath); err != nil {
