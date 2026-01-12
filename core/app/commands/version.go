@@ -4,7 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/NguyenTrongPhuc552003/elmos/core/ui"
-	"github.com/NguyenTrongPhuc552003/elmos/pkg/version"
+	"github.com/NguyenTrongPhuc552003/elmos/core/app/version"
 )
 
 // BuildVersion creates the version command.
