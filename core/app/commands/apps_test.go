@@ -1,28 +1,46 @@
 package commands
 
 import (
-	"reflect"
 	"testing"
 
-	"github.com/spf13/cobra"
+	"github.com/NguyenTrongPhuc552003/elmos/core/config"
+	"github.com/NguyenTrongPhuc552003/elmos/core/context"
+	"github.com/NguyenTrongPhuc552003/elmos/core/infra/executor"
+	"github.com/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
+	"github.com/NguyenTrongPhuc552003/elmos/core/ui"
 )
 
 func TestBuildApps(t *testing.T) {
-	type args struct {
-		ctx *Context
+	exec := executor.NewMockExecutor()
+	fs := filesystem.NewOSFileSystem()
+	cfg := &config.Config{
+		Build: config.BuildConfig{Arch: "arm64"},
+		Paths: config.PathsConfig{AppsDir: "/apps"},
 	}
-	tests := []struct {
-		name string
-		args args
-		want *cobra.Command
-	}{
-		// TODO: Add test cases.
+	appCtx := context.New(cfg, exec, fs)
+	printer := ui.NewPrinter()
+
+	ctx := &Context{
+		AppContext: appCtx,
+		Config:     cfg,
+		Exec:       exec,
+		Printer:    printer,
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := BuildApps(tt.args.ctx); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("BuildApps() = %v, want %v", got, tt.want)
-			}
-		})
+
+	cmd := BuildApps(ctx)
+
+	if cmd == nil {
+		t.Fatal("BuildApps() returned nil")
+	}
+	if cmd.Use != "app" {
+		t.Errorf("BuildApps().Use = %v, want app", cmd.Use)
+	}
+	if cmd.Short == "" {
+		t.Error("BuildApps() should have Short description")
+	}
+
+	// Should have subcommands (build, list, etc.)
+	if len(cmd.Commands()) == 0 {
+		t.Error("BuildApps() should have subcommands")
 	}
 }
