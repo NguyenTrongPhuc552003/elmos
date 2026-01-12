@@ -16,7 +16,7 @@ import (
 	"github.com/NguyenTrongPhuc552003/elmos/core/infra/executor"
 	"github.com/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
 	"github.com/NguyenTrongPhuc552003/elmos/core/ui"
-	"github.com/NguyenTrongPhuc552003/elmos/pkg/version"
+	"github.com/NguyenTrongPhuc552003/elmos/core/app/version"
 )
 
 // App holds all the application dependencies.
