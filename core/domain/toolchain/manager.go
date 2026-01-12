@@ -53,7 +53,7 @@ func (m *Manager) Paths() ToolchainPaths {
 
 // ToolchainPaths holds all toolchain directory paths.
 type ToolchainPaths struct {
-	Base        string // /Volumes/kernel-dev/toolchains
+	Base        string // /Volumes/elmos/toolchains
 	CrosstoolNG string // ct-ng installation
 	XTools      string // Built toolchains output
 	Src         string // Downloaded tarballs cache
