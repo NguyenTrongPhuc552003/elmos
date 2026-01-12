@@ -100,8 +100,8 @@ func (m *Manager) ListSamples(ctx context.Context) ([]string, error) {
 // GetCustomConfigPath returns the path to a custom config file for the target.
 // Returns empty string if no custom config exists.
 func (m *Manager) GetCustomConfigPath(target string) string {
-	// Check in project root tools/toolchains/configs
-	projectConfigs := filepath.Join(m.cfg.Paths.ProjectRoot, "tools", "toolchains", "configs")
+	// Check in project root assets/toolchains/configs
+	projectConfigs := filepath.Join(m.cfg.Paths.ProjectRoot, "assets", "toolchains", "configs")
 	configPath := filepath.Join(projectConfigs, target+".config")
 	if m.fs.Exists(configPath) {
 		return configPath
