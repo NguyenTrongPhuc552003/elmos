@@ -15,9 +15,9 @@ vars:
   DATE:
     sh: date -u +"%Y-%m-%dT%H:%M:%SZ"
   LDFLAGS: >-
-    -X github.com/NguyenTrongPhuc552003/elmos/pkg/version.Version={{.VERSION}}
-    -X github.com/NguyenTrongPhuc552003/elmos/pkg/version.Commit={{.COMMIT}}
-    -X github.com/NguyenTrongPhuc552003/elmos/pkg/version.BuildDate={{.DATE}}
+    -X github.com/NguyenTrongPhuc552003/elmos/core/app/version.Version={{.VERSION}}
+    -X github.com/NguyenTrongPhuc552003/elmos/core/app/version.Commit={{.COMMIT}}
+    -X github.com/NguyenTrongPhuc552003/elmos/core/app/version.BuildDate={{.DATE}}
   GOBIN:
     sh: go env GOPATH
 
@@ -36,7 +36,7 @@ tasks:
     cmds:
       - echo "Building {{.BINARY}}..."
       - mkdir -p {{.BUILD_DIR}}
-      - go build -ldflags "{{.LDFLAGS}}" -o {{.BINARY}} .
+      - go build -ldflags "{{.LDFLAGS}}" -o {{.BINARY}} ./cmd/elmos
     sources:
       - "**/*.go"
       - go.mod
