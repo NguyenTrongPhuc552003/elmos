@@ -142,7 +142,7 @@ func applyProjectRoot(cfg *Config) {
 func applyImageDefaults(cfg *Config) {
 	root := cfg.Paths.ProjectRoot
 	if cfg.Image.Path == "" {
-		cfg.Image.Path = filepath.Join(root, "data", "img.sparseimage")
+		cfg.Image.Path = filepath.Join(root, "data", fmt.Sprintf("%s.sparseimage", cfg.Image.VolumeName))
 	}
 	if cfg.Image.MountPoint == "" {
 		cfg.Image.MountPoint = filepath.Join("/Volumes", cfg.Image.VolumeName)
