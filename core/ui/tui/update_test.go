@@ -202,3 +202,179 @@ func TestModel_handleQuit(t *testing.T) {
 		t.Error("handleQuit() should return quit cmd")
 	}
 }
+
+func TestModel_Init(t *testing.T) {
+	tests := []struct {
+		name string
+		m    Model
+		want tea.Cmd
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.m.Init(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Model.Init() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestModel_Update(t *testing.T) {
+	type args struct {
+		msg tea.Msg
+	}
+	tests := []struct {
+		name  string
+		m     Model
+		args  args
+		want  tea.Model
+		want1 tea.Cmd
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, got1 := tt.m.Update(tt.args.msg)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Model.Update() got = %v, want %v", got, tt.want)
+			}
+			if !reflect.DeepEqual(got1, tt.want1) {
+				t.Errorf("Model.Update() got1 = %v, want %v", got1, tt.want1)
+			}
+		})
+	}
+}
+
+func TestModel_handleWindowSize(t *testing.T) {
+	type args struct {
+		msg tea.WindowSizeMsg
+	}
+	tests := []struct {
+		name  string
+		m     Model
+		args  args
+		want  tea.Model
+		want1 tea.Cmd
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, got1 := tt.m.handleWindowSize(tt.args.msg)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Model.handleWindowSize() got = %v, want %v", got, tt.want)
+			}
+			if !reflect.DeepEqual(got1, tt.want1) {
+				t.Errorf("Model.handleWindowSize() got1 = %v, want %v", got1, tt.want1)
+			}
+		})
+	}
+}
+
+func TestModel_handleCommandDone(t *testing.T) {
+	type args struct {
+		msg CommandDoneMsg
+	}
+	tests := []struct {
+		name string
+		m    *Model
+		args args
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.m.handleCommandDone(tt.args.msg)
+		})
+	}
+}
+
+func TestModel_handleKeyMsg(t *testing.T) {
+	type args struct {
+		msg  tea.KeyMsg
+		cmds []tea.Cmd
+	}
+	tests := []struct {
+		name  string
+		m     Model
+		args  args
+		want  tea.Model
+		want1 tea.Cmd
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, got1 := tt.m.handleKeyMsg(tt.args.msg, tt.args.cmds)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Model.handleKeyMsg() got = %v, want %v", got, tt.want)
+			}
+			if !reflect.DeepEqual(got1, tt.want1) {
+				t.Errorf("Model.handleKeyMsg() got1 = %v, want %v", got1, tt.want1)
+			}
+		})
+	}
+}
+
+func TestModel_popMenuStack(t *testing.T) {
+	tests := []struct {
+		name string
+		m    *Model
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.m.popMenuStack()
+		})
+	}
+}
+
+func TestModel_handleInputMode(t *testing.T) {
+	type args struct {
+		msg tea.Msg
+	}
+	tests := []struct {
+		name  string
+		m     Model
+		args  args
+		want  tea.Model
+		want1 tea.Cmd
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, got1 := tt.m.handleInputMode(tt.args.msg)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Model.handleInputMode() got = %v, want %v", got, tt.want)
+			}
+			if !reflect.DeepEqual(got1, tt.want1) {
+				t.Errorf("Model.handleInputMode() got1 = %v, want %v", got1, tt.want1)
+			}
+		})
+	}
+}
+
+func TestModel_runCommand(t *testing.T) {
+	type args struct {
+		action     string
+		inputValue string
+	}
+	tests := []struct {
+		name string
+		m    *Model
+		args args
+		want tea.Cmd
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.m.runCommand(tt.args.action, tt.args.inputValue); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Model.runCommand() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

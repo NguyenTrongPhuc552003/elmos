@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"reflect"
 	"testing"
 
 	elconfig "github.com/NguyenTrongPhuc552003/elmos/core/config"
@@ -280,4 +281,27 @@ func TestHealthChecker_CheckCrossGCC(t *testing.T) {
 
 	got := h.CheckCrossGCC(context.Background())
 	_ = got // ignored
+}
+
+func TestNewHealthChecker(t *testing.T) {
+	type args struct {
+		exec executor.Executor
+		fs   filesystem.FileSystem
+		cfg  *elconfig.Config
+		tm   *toolchain.Manager
+	}
+	tests := []struct {
+		name string
+		args args
+		want *HealthChecker
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := NewHealthChecker(tt.args.exec, tt.args.fs, tt.args.cfg, tt.args.tm); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("NewHealthChecker() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }

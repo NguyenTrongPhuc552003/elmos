@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"testing"
 
 	"github.com/NguyenTrongPhuc552003/elmos/core/config"
@@ -74,5 +75,103 @@ func TestBuildExit(t *testing.T) {
 	forceFlag := cmd.Flags().Lookup("force")
 	if forceFlag == nil {
 		t.Error("BuildExit() should have --force flag")
+	}
+}
+
+func Test_validateVolumeSize(t *testing.T) {
+	type args struct {
+		size    string
+		printer *ui.Printer
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := validateVolumeSize(tt.args.size, tt.args.printer); (err != nil) != tt.wantErr {
+				t.Errorf("validateVolumeSize() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func Test_findDiskDevice(t *testing.T) {
+	type args struct {
+		ctx *Context
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    string
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := findDiskDevice(tt.args.ctx)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("findDiskDevice() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr {
+				return
+			}
+			if got != tt.want {
+				t.Errorf("findDiskDevice() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_parseDiskDeviceFromHdiutil(t *testing.T) {
+	type args struct {
+		output    string
+		imagePath string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    string
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseDiskDeviceFromHdiutil(tt.args.output, tt.args.imagePath)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("parseDiskDeviceFromHdiutil() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr {
+				return
+			}
+			if got != tt.want {
+				t.Errorf("parseDiskDeviceFromHdiutil() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_extractDiskDevice(t *testing.T) {
+	type args struct {
+		line string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := extractDiskDevice(tt.args.line); got != tt.want {
+				t.Errorf("extractDiskDevice() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

@@ -133,3 +133,76 @@ func TestModel_renderFooter(t *testing.T) {
 		t.Error("renderFooter() missing key hints")
 	}
 }
+
+func Test_getMenuItemPrefix(t *testing.T) {
+	type args struct {
+		item MenuItem
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := getMenuItemPrefix(tt.args.item); got != tt.want {
+				t.Errorf("getMenuItemPrefix() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestModel_getRightPanelTitle(t *testing.T) {
+	tests := []struct {
+		name string
+		m    Model
+		want string
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.m.getRightPanelTitle(); got != tt.want {
+				t.Errorf("Model.getRightPanelTitle() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestModel_renderInputSection(t *testing.T) {
+	type args struct {
+		w *strings.Builder
+	}
+	tests := []struct {
+		name string
+		m    Model
+		args args
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.m.renderInputSection(tt.args.w)
+		})
+	}
+}
+
+func TestModel_renderMenuHint(t *testing.T) {
+	type args struct {
+		w *strings.Builder
+	}
+	tests := []struct {
+		name string
+		m    Model
+		args args
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.m.renderMenuHint(tt.args.w)
+		})
+	}
+}

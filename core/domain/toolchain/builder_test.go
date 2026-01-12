@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"testing"
@@ -412,5 +413,315 @@ func Test_getInstallEnv(t *testing.T) {
 	}
 	if !foundPath {
 		t.Error("getInstallEnv() missing PATH")
+	}
+}
+
+func TestManager_getInstallEnv(t *testing.T) {
+	tests := []struct {
+		name string
+		m    *Manager
+		want []string
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.m.getInstallEnv(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Manager.getInstallEnv() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestManager_Menuconfig(t *testing.T) {
+	type args struct {
+		ctx context.Context
+	}
+	tests := []struct {
+		name    string
+		m       *Manager
+		args    args
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.m.Menuconfig(tt.args.ctx); (err != nil) != tt.wantErr {
+				t.Errorf("Manager.Menuconfig() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func Test_patchConfigContent(t *testing.T) {
+	type args struct {
+		content string
+		paths   ToolchainPaths
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := patchConfigContent(tt.args.content, tt.args.paths); got != tt.want {
+				t.Errorf("patchConfigContent() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_replaceConfigValue(t *testing.T) {
+	type args struct {
+		content string
+		key     string
+		value   string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := replaceConfigValue(tt.args.content, tt.args.key, tt.args.value); got != tt.want {
+				t.Errorf("replaceConfigValue() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_replaceAll(t *testing.T) {
+	type args struct {
+		s   string
+		old string
+		new string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := replaceAll(tt.args.s, tt.args.old, tt.args.new); got != tt.want {
+				t.Errorf("replaceAll() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_indexOf(t *testing.T) {
+	type args struct {
+		s      string
+		substr string
+	}
+	tests := []struct {
+		name string
+		args args
+		want int
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := indexOf(tt.args.s, tt.args.substr); got != tt.want {
+				t.Errorf("indexOf() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestManager_getBuildEnv(t *testing.T) {
+	type args struct {
+		paths ToolchainPaths
+	}
+	tests := []struct {
+		name string
+		m    *Manager
+		args args
+		want []string
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.m.getBuildEnv(tt.args.paths); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Manager.getBuildEnv() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_getBrewPrefix(t *testing.T) {
+	tests := []struct {
+		name string
+		want string
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := getBrewPrefix(); got != tt.want {
+				t.Errorf("getBrewPrefix() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestManager_ensureLocalBin(t *testing.T) {
+	tests := []struct {
+		name string
+		m    *Manager
+		want string
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.m.ensureLocalBin(); got != tt.want {
+				t.Errorf("Manager.ensureLocalBin() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestManager_ensureGCCSymlinks(t *testing.T) {
+	type args struct {
+		localBin   string
+		brewPrefix string
+	}
+	tests := []struct {
+		name string
+		m    *Manager
+		args args
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.m.ensureGCCSymlinks(tt.args.localBin, tt.args.brewPrefix)
+		})
+	}
+}
+
+func TestManager_addLibraryFlags(t *testing.T) {
+	type args struct {
+		env        []string
+		brewPrefix string
+	}
+	tests := []struct {
+		name string
+		m    *Manager
+		args args
+		want []string
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.m.addLibraryFlags(tt.args.env, tt.args.brewPrefix); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Manager.addLibraryFlags() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestManager_buildFlagString(t *testing.T) {
+	type args struct {
+		brewPrefix string
+		pkgs       []string
+		subdir     string
+		flag       string
+	}
+	tests := []struct {
+		name string
+		m    *Manager
+		args args
+		want string
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.m.buildFlagString(tt.args.brewPrefix, tt.args.pkgs, tt.args.subdir, tt.args.flag); got != tt.want {
+				t.Errorf("Manager.buildFlagString() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestManager_addGmake(t *testing.T) {
+	type args struct {
+		env        []string
+		brewPrefix string
+	}
+	tests := []struct {
+		name string
+		m    *Manager
+		args args
+		want []string
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.m.addGmake(tt.args.env, tt.args.brewPrefix); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Manager.addGmake() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestManager_buildPathEnv(t *testing.T) {
+	type args struct {
+		env        []string
+		localBin   string
+		brewPrefix string
+	}
+	tests := []struct {
+		name string
+		m    *Manager
+		args args
+		want []string
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.m.buildPathEnv(tt.args.env, tt.args.localBin, tt.args.brewPrefix); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Manager.buildPathEnv() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_appendOrUpdateEnv(t *testing.T) {
+	type args struct {
+		env   []string
+		key   string
+		value string
+	}
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := appendOrUpdateEnv(tt.args.env, tt.args.key, tt.args.value); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("appendOrUpdateEnv() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
