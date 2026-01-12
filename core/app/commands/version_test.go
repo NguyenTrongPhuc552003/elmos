@@ -1,28 +1,43 @@
 package commands
 
 import (
-	"reflect"
 	"testing"
 
-	"github.com/spf13/cobra"
+	"github.com/NguyenTrongPhuc552003/elmos/core/config"
+	"github.com/NguyenTrongPhuc552003/elmos/core/context"
+	"github.com/NguyenTrongPhuc552003/elmos/core/infra/executor"
+	"github.com/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
+	"github.com/NguyenTrongPhuc552003/elmos/core/ui"
 )
 
 func TestBuildVersion(t *testing.T) {
-	type args struct {
-		ctx *Context
+	exec := executor.NewMockExecutor()
+	fs := filesystem.NewOSFileSystem()
+	cfg := &config.Config{}
+	appCtx := context.New(cfg, exec, fs)
+	printer := ui.NewPrinter()
+
+	ctx := &Context{
+		AppContext: appCtx,
+		Config:     cfg,
+		Exec:       exec,
+		Printer:    printer,
 	}
-	tests := []struct {
-		name string
-		args args
-		want *cobra.Command
-	}{
-		// TODO: Add test cases.
+
+	cmd := BuildVersion(ctx)
+
+	if cmd == nil {
+		t.Fatal("BuildVersion() returned nil")
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := BuildVersion(tt.args.ctx); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("BuildVersion() = %v, want %v", got, tt.want)
-			}
-		})
+	if cmd.Use != "version" {
+		t.Errorf("BuildVersion().Use = %v, want version", cmd.Use)
+	}
+	if cmd.Short == "" {
+		t.Error("BuildVersion() should have Short description")
+	}
+
+	// Should not error when executed
+	if err := cmd.Execute(); err != nil {
+		t.Errorf("BuildVersion().Execute() error = %v", err)
 	}
 }
