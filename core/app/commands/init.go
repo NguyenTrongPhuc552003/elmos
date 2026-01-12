@@ -167,35 +167,28 @@ func findDiskDevice(ctx *Context) (string, error) {
 		return "", err
 	}
 
-	lines := strings.Split(string(out), "\n")
-	imagePath := ctx.Config.Image.Path
+	return parseDiskDeviceFromHdiutil(string(out), ctx.Config.Image.Path)
+}
+
+// parseDiskDeviceFromHdiutil extracts the disk device for an image from hdiutil info output.
+func parseDiskDeviceFromHdiutil(output, imagePath string) (string, error) {
+	lines := strings.Split(output, "\n")
 
 	// Find the block for our image and extract the first /dev/diskX device
 	foundImage := false
 	for _, line := range lines {
-		// Check for image-path line
 		if strings.Contains(line, imagePath) {
 			foundImage = true
 			continue
 		}
-		// After finding our image, look for /dev/disk lines
 		if foundImage {
-			// Stop at the next image block (starts with "===")
+			// Stop at the next image block
 			if strings.HasPrefix(line, "===") {
 				break
 			}
-			// Look for /dev/disk device (not partition like /dev/disk4s1)
-			if strings.Contains(line, "/dev/disk") {
-				fields := strings.Fields(line)
-				if len(fields) > 0 && strings.HasPrefix(fields[0], "/dev/disk") {
-					// Return the main disk device (e.g., /dev/disk4, not /dev/disk4s1)
-					device := fields[0]
-					// If it's a partition, get the base disk
-					if idx := strings.LastIndex(device, "s"); idx > 8 { // after "/dev/disk"
-						device = device[:idx]
-					}
-					return device, nil
-				}
+			// Look for /dev/disk device
+			if device := extractDiskDevice(line); device != "" {
+				return device, nil
 			}
 		}
 	}
@@ -203,6 +196,22 @@ func findDiskDevice(ctx *Context) (string, error) {
 	if !foundImage {
 		return "", fmt.Errorf("image not found in hdiutil info: %s", imagePath)
 	}
-
 	return "", fmt.Errorf("could not find disk device for image")
+}
+
+// extractDiskDevice extracts and normalizes a disk device from a line.
+func extractDiskDevice(line string) string {
+	if !strings.Contains(line, "/dev/disk") {
+		return ""
+	}
+	fields := strings.Fields(line)
+	if len(fields) == 0 || !strings.HasPrefix(fields[0], "/dev/disk") {
+		return ""
+	}
+	device := fields[0]
+	// Get base disk (e.g., /dev/disk4 from /dev/disk4s1)
+	if idx := strings.LastIndex(device, "s"); idx > 8 {
+		device = device[:idx]
+	}
+	return device
 }
