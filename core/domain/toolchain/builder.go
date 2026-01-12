@@ -286,6 +286,12 @@ func (m *Manager) getBuildEnv(paths ToolchainPaths) []string {
 	env := os.Environ()
 	env = append(env, fmt.Sprintf("CT_PREFIX=%s", paths.XTools))
 
+	// Export workspace name for crosstool-NG config variable substitution
+	// This allows toolchain configs to use ${ELMOS_WORKSPACE} in paths
+	if m.cfg != nil && m.cfg.Image.VolumeName != "" {
+		env = append(env, fmt.Sprintf("ELMOS_WORKSPACE=%s", m.cfg.Image.VolumeName))
+	}
+
 	brewPrefix := getBrewPrefix()
 	localBin := m.ensureLocalBin()
 	m.ensureGCCSymlinks(localBin, brewPrefix)

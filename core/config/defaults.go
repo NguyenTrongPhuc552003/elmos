@@ -6,7 +6,9 @@ const (
 	// DefaultImageSize is the default sparse image size.
 	DefaultImageSize = "40G"
 	// DefaultVolumeName is the default volume name for the disk image.
-	DefaultVolumeName = "kernel-dev"
+	DefaultVolumeName = "elmos"
+	// MinimumImageSize is the minimum recommended image size in GB.
+	MinimumImageSize = 40
 	// DefaultArch is the default target architecture.
 	DefaultArch = "arm64"
 	// DefaultCrossPrefix is the default cross-compile prefix.
