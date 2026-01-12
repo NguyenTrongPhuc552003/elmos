@@ -1,28 +1,46 @@
 package commands
 
 import (
-	"reflect"
 	"testing"
 
-	"github.com/spf13/cobra"
+	"github.com/NguyenTrongPhuc552003/elmos/core/config"
+	"github.com/NguyenTrongPhuc552003/elmos/core/context"
+	"github.com/NguyenTrongPhuc552003/elmos/core/infra/executor"
+	"github.com/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
+	"github.com/NguyenTrongPhuc552003/elmos/core/ui"
 )
 
 func TestBuildPatch(t *testing.T) {
-	type args struct {
-		ctx *Context
+	exec := executor.NewMockExecutor()
+	fs := filesystem.NewOSFileSystem()
+	cfg := &config.Config{
+		Build: config.BuildConfig{Arch: "arm64"},
+		Paths: config.PathsConfig{KernelDir: "/mnt/linux"},
 	}
-	tests := []struct {
-		name string
-		args args
-		want *cobra.Command
-	}{
-		// TODO: Add test cases.
+	appCtx := context.New(cfg, exec, fs)
+	printer := ui.NewPrinter()
+
+	ctx := &Context{
+		AppContext: appCtx,
+		Config:     cfg,
+		Exec:       exec,
+		Printer:    printer,
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := BuildPatch(tt.args.ctx); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("BuildPatch() = %v, want %v", got, tt.want)
-			}
-		})
+
+	cmd := BuildPatch(ctx)
+
+	if cmd == nil {
+		t.Fatal("BuildPatch() returned nil")
+	}
+	if cmd.Use != "patch" {
+		t.Errorf("BuildPatch().Use = %v, want patch", cmd.Use)
+	}
+	if cmd.Short == "" {
+		t.Error("BuildPatch() should have Short description")
+	}
+
+	// Should have subcommands (apply, create, list, etc.)
+	if len(cmd.Commands()) == 0 {
+		t.Error("BuildPatch() should have subcommands")
 	}
 }
