@@ -1,48 +1,78 @@
 package commands
 
 import (
-	"reflect"
 	"testing"
 
-	"github.com/spf13/cobra"
+	"github.com/NguyenTrongPhuc552003/elmos/core/config"
+	"github.com/NguyenTrongPhuc552003/elmos/core/context"
+	"github.com/NguyenTrongPhuc552003/elmos/core/infra/executor"
+	"github.com/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
+	"github.com/NguyenTrongPhuc552003/elmos/core/ui"
 )
 
 func TestBuildInit(t *testing.T) {
-	type args struct {
-		ctx *Context
+	exec := executor.NewMockExecutor()
+	fs := filesystem.NewOSFileSystem()
+	cfg := &config.Config{
+		Build: config.BuildConfig{Arch: "arm64"},
+		Image: config.ImageConfig{VolumeName: "test", MountPoint: "/Volumes/test"},
+		Paths: config.PathsConfig{ProjectRoot: t.TempDir()},
 	}
-	tests := []struct {
-		name string
-		args args
-		want *cobra.Command
-	}{
-		// TODO: Add test cases.
+	appCtx := context.New(cfg, exec, fs)
+	printer := ui.NewPrinter()
+
+	ctx := &Context{
+		AppContext: appCtx,
+		Config:     cfg,
+		Exec:       exec,
+		Printer:    printer,
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := BuildInit(tt.args.ctx); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("BuildInit() = %v, want %v", got, tt.want)
-			}
-		})
+
+	cmd := BuildInit(ctx)
+
+	if cmd == nil {
+		t.Fatal("BuildInit() returned nil")
+	}
+	if cmd.Use != "init [workspace_name] [size]" {
+		t.Errorf("BuildInit().Use = %v", cmd.Use)
+	}
+	if cmd.Short == "" {
+		t.Error("BuildInit() should have Short description")
 	}
 }
 
 func TestBuildExit(t *testing.T) {
-	type args struct {
-		ctx *Context
+	exec := executor.NewMockExecutor()
+	fs := filesystem.NewOSFileSystem()
+	cfg := &config.Config{
+		Build: config.BuildConfig{Arch: "arm64"},
+		Image: config.ImageConfig{MountPoint: "/Volumes/test"},
 	}
-	tests := []struct {
-		name string
-		args args
-		want *cobra.Command
-	}{
-		// TODO: Add test cases.
+	appCtx := context.New(cfg, exec, fs)
+	printer := ui.NewPrinter()
+
+	ctx := &Context{
+		AppContext: appCtx,
+		Config:     cfg,
+		Exec:       exec,
+		Printer:    printer,
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := BuildExit(tt.args.ctx); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("BuildExit() = %v, want %v", got, tt.want)
-			}
-		})
+
+	cmd := BuildExit(ctx)
+
+	if cmd == nil {
+		t.Fatal("BuildExit() returned nil")
+	}
+	if cmd.Use != "exit" {
+		t.Errorf("BuildExit().Use = %v, want exit", cmd.Use)
+	}
+	if cmd.Short == "" {
+		t.Error("BuildExit() should have Short description")
+	}
+
+	// Should have force flag
+	forceFlag := cmd.Flags().Lookup("force")
+	if forceFlag == nil {
+		t.Error("BuildExit() should have --force flag")
 	}
 }
