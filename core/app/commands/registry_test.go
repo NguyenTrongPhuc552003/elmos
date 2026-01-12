@@ -5,23 +5,37 @@ package commands
 import (
 	"testing"
 
+	"github.com/NguyenTrongPhuc552003/elmos/core/config"
+	"github.com/NguyenTrongPhuc552003/elmos/core/context"
+	"github.com/NguyenTrongPhuc552003/elmos/core/infra/executor"
+	"github.com/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
+	"github.com/NguyenTrongPhuc552003/elmos/core/ui"
 	"github.com/spf13/cobra"
 )
 
 func TestRegister(t *testing.T) {
-	type args struct {
-		ctx     *Context
-		rootCmd *cobra.Command
+	exec := executor.NewMockExecutor()
+	fs := filesystem.NewOSFileSystem()
+	cfg := &config.Config{
+		Build: config.BuildConfig{Arch: "arm64"},
 	}
-	tests := []struct {
-		name string
-		args args
-	}{
-		// TODO: Add test cases.
+	appCtx := context.New(cfg, exec, fs)
+	printer := ui.NewPrinter()
+
+	ctx := &Context{
+		AppContext: appCtx,
+		Config:     cfg,
+		Exec:       exec,
+		Printer:    printer,
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			Register(tt.args.ctx, tt.args.rootCmd)
-		})
+
+	rootCmd := &cobra.Command{Use: "elmos"}
+
+	// Should not panic
+	Register(ctx, rootCmd)
+
+	// Should have subcommands after registration
+	if len(rootCmd.Commands()) == 0 {
+		t.Error("Register() should add subcommands to rootCmd")
 	}
 }
