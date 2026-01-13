@@ -71,10 +71,6 @@ func buildToolchainListCmd(ctx *Context) *cobra.Command {
 				ctx.Printer.Info("No samples found")
 				return nil
 			}
-			ctx.Printer.Print("Available targets:")
-			for _, s := range samples {
-				ctx.Printer.Print("  %s", s)
-			}
 			return nil
 		},
 	}
