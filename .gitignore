@@ -11,7 +11,7 @@
 
 # Kernel Build Artifacts
 *.ko
-*.o
+*.o*
 *.mod*
 *.symvers
 *.order
