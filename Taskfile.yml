@@ -113,42 +113,6 @@ tasks:
       - task: build
       - task: elmos:init
 
-
-
-  # ============================================================================
-  # elmos CLI Wrappers (elmos:*)
-  # ============================================================================
-
-  elmos:init:
-    desc: Initialize elmos workspace (mount volume)
-    deps: [build]
-    cmds:
-      - ./{{.BINARY}} init
-
-  elmos:exit:
-    desc: Exit elmos workspace (unmount volume)
-    deps: [build]
-    cmds:
-      - ./{{.BINARY}} exit
-
-  elmos:status:
-    desc: Show workspace status
-    deps: [build]
-    cmds:
-      - ./{{.BINARY}} status
-
-  elmos:doctor:
-    desc: Run elmos doctor (environment check)
-    deps: [build]
-    cmds:
-      - ./{{.BINARY}} doctor
-
-  elmos:tui:
-    desc: Launch elmos TUI
-    deps: [build]
-    cmds:
-      - ./{{.BINARY}} tui
-
   # ============================================================================
   # Installation (install:*)
   # ============================================================================
