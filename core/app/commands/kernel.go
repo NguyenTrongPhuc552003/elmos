@@ -33,10 +33,22 @@ func BuildKernel(ctx *Context) *cobra.Command {
 
 // buildKernelConfigCmd creates the kernel config subcommand.
 func buildKernelConfigCmd(ctx *Context) *cobra.Command {
-	return &cobra.Command{
+	var enableOpts []string
+	cmd := &cobra.Command{
 		Use:   "config [type]",
 		Short: "Configure the kernel",
+		Long: `Configure the kernel with a config target or enable specific options.
+
+Examples:
+  elmos kernel config              # Run defconfig
+  elmos kernel config menuconfig   # Interactive config
+  elmos kernel config -E NETFILTER # Enable CONFIG_NETFILTER`,
 		RunE: RunEWithContext(ctx, func(cmd *cobra.Command, args []string) error {
+			// Handle --enable options
+			if len(enableOpts) > 0 {
+				return enableKernelConfigs(ctx, cmd, enableOpts)
+			}
+
 			configType := "defconfig"
 			if len(args) > 0 {
 				configType = args[0]
@@ -49,6 +61,36 @@ func buildKernelConfigCmd(ctx *Context) *cobra.Command {
 			return nil
 		}),
 	}
+	cmd.Flags().StringArrayVarP(&enableOpts, "enable", "E", nil, "Enable kernel config option (e.g., NETFILTER)")
+	return cmd
+}
+
+// enableKernelConfigs enables specific kernel config options and runs oldconfig.
+func enableKernelConfigs(ctx *Context, cmd *cobra.Command, opts []string) error {
+	configPath := ctx.Config.Paths.KernelDir + "/.config"
+	scriptsConfig := ctx.Config.Paths.KernelDir + "/scripts/config"
+
+	// Enable each option
+	for _, opt := range opts {
+		// Add CONFIG_ prefix if not present
+		configName := opt
+		if !strings.HasPrefix(opt, "CONFIG_") {
+			configName = "CONFIG_" + opt
+		}
+		ctx.Printer.Step("Enabling %s...", configName)
+		if err := ctx.Exec.Run(cmd.Context(), scriptsConfig, "--file", configPath, "--enable", configName); err != nil {
+			return fmt.Errorf("failed to enable %s: %w", configName, err)
+		}
+	}
+
+	// Run oldconfig to resolve dependencies
+	ctx.Printer.Step("Updating config...")
+	if err := ctx.KernelBuilder.Configure(cmd.Context(), "olddefconfig"); err != nil {
+		return err
+	}
+
+	ctx.Printer.Success("Config updated! Run 'elmos kernel build' to apply changes.")
+	return nil
 }
 
 // buildKernelCleanCmd creates the kernel clean subcommand.
