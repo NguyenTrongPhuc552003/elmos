@@ -32,16 +32,22 @@ func NewManager(exec executor.Executor, fs filesystem.FileSystem, cfg *elconfig.
 func (m *Manager) Apply(ctx context.Context, patchFile string) error {
 	// Resolve patch path
 	patchPath := patchFile
-	if !filepath.IsAbs(patchPath) {
-		// Check in patches directory first
-		testPath := filepath.Join(m.cfg.Paths.PatchesDir, patchPath)
-		if m.fs.Exists(testPath) {
-			patchPath = testPath
-		}
-	}
 
-	if !m.fs.Exists(patchPath) {
-		return fmt.Errorf("patch file not found: %s", patchFile)
+	// Handle absolute paths
+	if filepath.IsAbs(patchPath) {
+		if !m.fs.Exists(patchPath) {
+			return fmt.Errorf("patch file not found: %s", patchFile)
+		}
+	} else {
+		// Strip redundant patches/ prefix if user included it
+		patchPath = strings.TrimPrefix(patchPath, "patches/")
+
+		// Build full path from patches directory
+		fullPath := filepath.Join(m.cfg.Paths.PatchesDir, patchPath)
+		if !m.fs.Exists(fullPath) {
+			return fmt.Errorf("patch file not found: %s", patchFile)
+		}
+		patchPath = fullPath
 	}
 
 	// Check if patch is already applied
@@ -68,15 +74,18 @@ func (m *Manager) Apply(ctx context.Context, patchFile string) error {
 // Reverse reverses a previously applied patch.
 func (m *Manager) Reverse(ctx context.Context, patchFile string) error {
 	patchPath := patchFile
-	if !filepath.IsAbs(patchPath) {
-		testPath := filepath.Join(m.cfg.Paths.PatchesDir, patchPath)
-		if m.fs.Exists(testPath) {
-			patchPath = testPath
-		}
-	}
 
-	if !m.fs.Exists(patchPath) {
-		return fmt.Errorf("patch file not found: %s", patchFile)
+	if filepath.IsAbs(patchPath) {
+		if !m.fs.Exists(patchPath) {
+			return fmt.Errorf("patch file not found: %s", patchFile)
+		}
+	} else {
+		patchPath = strings.TrimPrefix(patchPath, "patches/")
+		fullPath := filepath.Join(m.cfg.Paths.PatchesDir, patchPath)
+		if !m.fs.Exists(fullPath) {
+			return fmt.Errorf("patch file not found: %s", patchFile)
+		}
+		patchPath = fullPath
 	}
 
 	reverseArgs := []string{"-p1", "-R", "-i", patchPath}
