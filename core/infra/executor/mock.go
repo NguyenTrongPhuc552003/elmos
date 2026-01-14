@@ -120,6 +120,12 @@ func (m *MockExecutor) Exec(cmd string, args []string, env []string) error {
 	return m.ExecError
 }
 
+// RunWithEnvSilent records the command execution with environment (silent).
+func (m *MockExecutor) RunWithEnvSilent(ctx context.Context, env []string, cmd string, args ...string) error {
+	m.Calls = append(m.Calls, CommandCall{Cmd: cmd, Args: args, Env: env})
+	return m.RunError
+}
+
 // Reset clears all recorded calls.
 func (m *MockExecutor) Reset() {
 	m.Calls = make([]CommandCall, 0)
