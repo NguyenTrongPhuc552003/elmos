@@ -1,0 +1,27 @@
+From 9542e467058be5494010cce2a0ab6044e51da14f Mon Sep 17 00:00:00 2001
+From: Phuc Nguyen <trong552003@gmail.com>
+Date: Thu, 15 Jan 2026 21:52:15 +0700
+Subject: [PATCH] arch: riscv: kernel: compat_vdso: Makefile: Add
+ --undefined-version to linker flags
+
+Signed-off-by: Phuc Nguyen <trong552003@gmail.com>
+---
+ arch/riscv/kernel/compat_vdso/Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/riscv/kernel/compat_vdso/Makefile b/arch/riscv/kernel/compat_vdso/Makefile
+index 260daf3236d3..4554e015353f 100644
+--- a/arch/riscv/kernel/compat_vdso/Makefile
++++ b/arch/riscv/kernel/compat_vdso/Makefile
+@@ -12,7 +12,7 @@ COMPAT_CC := $(CC)
+ COMPAT_LD := $(LD)
+ 
+ COMPAT_CC_FLAGS := -march=rv32g -mabi=ilp32
+-COMPAT_LD_FLAGS := -melf32lriscv
++COMPAT_LD_FLAGS := -melf32lriscv --undefined-version
+ 
+ # Files to link into the compat_vdso
+ obj-compat_vdso = $(patsubst %, %.o, $(compat_vdso-syms)) note.o
+-- 
+2.52.0
+
