@@ -102,47 +102,63 @@ func (m *Manager) List() ([]PatchInfo, error) {
 		return nil, nil
 	}
 
-	var patches []PatchInfo
-
-	// List version directories
-	entries, err := m.fs.ReadDir(m.cfg.Paths.PatchesDir)
+	versionDirs, err := m.fs.ReadDir(m.cfg.Paths.PatchesDir)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, entry := range entries {
-		if !entry.IsDir() {
+	var patches []PatchInfo
+	for _, versionEntry := range versionDirs {
+		if !versionEntry.IsDir() {
 			continue
 		}
-
-		version := entry.Name()
-		versionDir := filepath.Join(m.cfg.Paths.PatchesDir, version)
-
-		// List patch files in this version directory
-		patchFiles, err := m.fs.ReadDir(versionDir)
-		if err != nil {
-			continue
-		}
-
-		for _, pf := range patchFiles {
-			if pf.IsDir() {
-				continue
-			}
-
-			name := pf.Name()
-			if !strings.HasSuffix(name, ".patch") {
-				continue
-			}
-
-			patches = append(patches, PatchInfo{
-				Name:    name,
-				Path:    filepath.Join(versionDir, name),
-				Version: version,
-			})
-		}
+		versionPatches := m.listPatchesForVersion(versionEntry.Name())
+		patches = append(patches, versionPatches...)
 	}
 
 	return patches, nil
+}
+
+// listPatchesForVersion lists all patches for a specific version directory.
+func (m *Manager) listPatchesForVersion(version string) []PatchInfo {
+	versionDir := filepath.Join(m.cfg.Paths.PatchesDir, version)
+	archDirs, err := m.fs.ReadDir(versionDir)
+	if err != nil {
+		return nil
+	}
+
+	var patches []PatchInfo
+	for _, archEntry := range archDirs {
+		if !archEntry.IsDir() {
+			continue
+		}
+		archPatches := m.listPatchesForArch(version, archEntry.Name())
+		patches = append(patches, archPatches...)
+	}
+	return patches
+}
+
+// listPatchesForArch lists all patches for a specific arch directory.
+func (m *Manager) listPatchesForArch(version, arch string) []PatchInfo {
+	archDir := filepath.Join(m.cfg.Paths.PatchesDir, version, arch)
+	patchFiles, err := m.fs.ReadDir(archDir)
+	if err != nil {
+		return nil
+	}
+
+	var patches []PatchInfo
+	for _, pf := range patchFiles {
+		if pf.IsDir() || !strings.HasSuffix(pf.Name(), ".patch") {
+			continue
+		}
+		patches = append(patches, PatchInfo{
+			Name:    pf.Name(),
+			Path:    filepath.Join(archDir, pf.Name()),
+			Version: version,
+			Arch:    arch,
+		})
+	}
+	return patches
 }
 
 // GetPatchesForVersion returns patches for a specific kernel version.
