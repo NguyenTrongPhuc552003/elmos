@@ -26,6 +26,9 @@ type Executor interface {
 	// OutputWithEnv executes a command with custom environment and returns its stdout.
 	OutputWithEnv(ctx context.Context, env []string, cmd string, args ...string) ([]byte, error)
 
+	// RunWithEnvSilent executes a command with custom environment, suppressing stderr.
+	RunWithEnvSilent(ctx context.Context, env []string, cmd string, args ...string) error
+
 	// LookPath searches for an executable in the system PATH.
 	LookPath(cmd string) (string, error)
 

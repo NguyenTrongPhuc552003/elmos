@@ -33,13 +33,22 @@ func BuildKernel(ctx *Context) *cobra.Command {
 
 // buildKernelConfigCmd creates the kernel config subcommand.
 func buildKernelConfigCmd(ctx *Context) *cobra.Command {
-	return &cobra.Command{
+	var enableOpts []string
+	cmd := &cobra.Command{
 		Use:   "config [type]",
 		Short: "Configure the kernel",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := ctx.AppContext.EnsureMounted(); err != nil {
-				return err
+		Long: `Configure the kernel with a config target or enable specific options.
+
+Examples:
+  elmos kernel config              # Run defconfig
+  elmos kernel config menuconfig   # Interactive config
+  elmos kernel config -E NETFILTER # Enable CONFIG_NETFILTER`,
+		RunE: RunEWithContext(ctx, func(cmd *cobra.Command, args []string) error {
+			// Handle --enable options
+			if len(enableOpts) > 0 {
+				return enableKernelConfigs(ctx, cmd, enableOpts)
 			}
+
 			configType := "defconfig"
 			if len(args) > 0 {
 				configType = args[0]
@@ -50,8 +59,38 @@ func buildKernelConfigCmd(ctx *Context) *cobra.Command {
 			}
 			ctx.Printer.Success("Kernel configured!")
 			return nil
-		},
+		}),
 	}
+	cmd.Flags().StringArrayVarP(&enableOpts, "enable", "E", nil, "Enable kernel config option (e.g., NETFILTER)")
+	return cmd
+}
+
+// enableKernelConfigs enables specific kernel config options and runs oldconfig.
+func enableKernelConfigs(ctx *Context, cmd *cobra.Command, opts []string) error {
+	configPath := ctx.Config.Paths.KernelDir + "/.config"
+	scriptsConfig := ctx.Config.Paths.KernelDir + "/scripts/config"
+
+	// Enable each option
+	for _, opt := range opts {
+		// Add CONFIG_ prefix if not present
+		configName := opt
+		if !strings.HasPrefix(opt, "CONFIG_") {
+			configName = "CONFIG_" + opt
+		}
+		ctx.Printer.Step("Enabling %s...", configName)
+		if err := ctx.Exec.Run(cmd.Context(), scriptsConfig, "--file", configPath, "--enable", configName); err != nil {
+			return fmt.Errorf("failed to enable %s: %w", configName, err)
+		}
+	}
+
+	// Run oldconfig to resolve dependencies
+	ctx.Printer.Step("Updating config...")
+	if err := ctx.KernelBuilder.Configure(cmd.Context(), "olddefconfig"); err != nil {
+		return err
+	}
+
+	ctx.Printer.Success("Config updated! Run 'elmos kernel build' to apply changes.")
+	return nil
 }
 
 // buildKernelCleanCmd creates the kernel clean subcommand.
@@ -59,17 +98,14 @@ func buildKernelCleanCmd(ctx *Context) *cobra.Command {
 	return &cobra.Command{
 		Use:   "clean",
 		Short: "Clean kernel build artifacts",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := ctx.AppContext.EnsureMounted(); err != nil {
-				return err
-			}
+		RunE: RunEWithContext(ctx, func(cmd *cobra.Command, args []string) error {
 			ctx.Printer.Step("Cleaning...")
 			if err := ctx.KernelBuilder.Clean(cmd.Context()); err != nil {
 				return err
 			}
 			ctx.Printer.Success("Cleaned!")
 			return nil
-		},
+		}),
 	}
 }
 
@@ -78,10 +114,7 @@ func buildKernelCloneCmd(ctx *Context) *cobra.Command {
 	return &cobra.Command{
 		Use:   "clone [git-url]",
 		Short: "Clone the Linux kernel source",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := ctx.AppContext.EnsureMounted(); err != nil {
-				return err
-			}
+		RunE: RunEWithContext(ctx, func(cmd *cobra.Command, args []string) error {
 			if ctx.AppContext.KernelExists() {
 				ctx.Printer.Info("Kernel source already exists at %s", ctx.Config.Paths.KernelDir)
 				return nil
@@ -96,7 +129,7 @@ func buildKernelCloneCmd(ctx *Context) *cobra.Command {
 			}
 			ctx.Printer.Success("Kernel cloned to %s", ctx.Config.Paths.KernelDir)
 			return nil
-		},
+		}),
 	}
 }
 
@@ -105,10 +138,7 @@ func buildKernelStatusCmd(ctx *Context) *cobra.Command {
 	return &cobra.Command{
 		Use:   "status",
 		Short: "Show kernel source status",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := ctx.AppContext.EnsureMounted(); err != nil {
-				return err
-			}
+		RunE: RunEWithContext(ctx, func(cmd *cobra.Command, args []string) error {
 			if !ctx.AppContext.KernelExists() {
 				ctx.Printer.Info("Kernel source not found at %s", ctx.Config.Paths.KernelDir)
 				ctx.Printer.Print("  Run 'elmos kernel clone' to download kernel source")
@@ -119,7 +149,7 @@ func buildKernelStatusCmd(ctx *Context) *cobra.Command {
 			printKernelGitInfo(ctx, cmd)
 			printKernelBuildStatus(ctx)
 			return nil
-		},
+		}),
 	}
 }
 
@@ -128,10 +158,7 @@ func buildKernelResetCmd(ctx *Context) *cobra.Command {
 	return &cobra.Command{
 		Use:   "reset",
 		Short: "Reset kernel source (reclone completely)",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := ctx.AppContext.EnsureMounted(); err != nil {
-				return err
-			}
+		RunE: RunEWithContext(ctx, func(cmd *cobra.Command, args []string) error {
 			if ctx.AppContext.KernelExists() {
 				ctx.Printer.Step("Removing existing kernel source...")
 				if err := os.RemoveAll(ctx.Config.Paths.KernelDir); err != nil {
@@ -145,7 +172,7 @@ func buildKernelResetCmd(ctx *Context) *cobra.Command {
 			}
 			ctx.Printer.Success("Kernel reset complete!")
 			return nil
-		},
+		}),
 	}
 }
 
@@ -161,10 +188,7 @@ Examples:
   elmos kernel switch           # List all refs
   elmos kernel switch master    # Switch to branch
   elmos kernel switch v6.7      # Switch to tag`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := ctx.AppContext.EnsureMounted(); err != nil {
-				return err
-			}
+		RunE: RunEWithContext(ctx, func(cmd *cobra.Command, args []string) error {
 			if !ctx.AppContext.KernelExists() {
 				ctx.Printer.Info("Kernel source not found. Run 'elmos kernel clone' first.")
 				return nil
@@ -173,7 +197,7 @@ Examples:
 				return listKernelRefs(ctx, cmd)
 			}
 			return switchKernelRef(ctx, cmd, args[0])
-		},
+		}),
 	}
 }
 
@@ -182,10 +206,7 @@ func buildKernelPullCmd(ctx *Context) *cobra.Command {
 	return &cobra.Command{
 		Use:   "pull",
 		Short: "Update kernel source",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := ctx.AppContext.EnsureMounted(); err != nil {
-				return err
-			}
+		RunE: RunEWithContext(ctx, func(cmd *cobra.Command, args []string) error {
 			if !ctx.AppContext.KernelExists() {
 				ctx.Printer.Info("Kernel source not found. Run 'elmos kernel clone' first.")
 				return nil
@@ -196,7 +217,7 @@ func buildKernelPullCmd(ctx *Context) *cobra.Command {
 			}
 			ctx.Printer.Success("Kernel updated!")
 			return nil
-		},
+		}),
 	}
 }
 
@@ -206,10 +227,7 @@ func buildKernelBuildCmd(ctx *Context) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "build [targets...]",
 		Short: "Build the Linux kernel",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := ctx.AppContext.EnsureMounted(); err != nil {
-				return err
-			}
+		RunE: RunEWithContext(ctx, func(cmd *cobra.Command, args []string) error {
 			targets := args
 			if len(targets) == 0 {
 				targets = ctx.KernelBuilder.GetDefaultTargets()
@@ -220,7 +238,7 @@ func buildKernelBuildCmd(ctx *Context) *cobra.Command {
 			}
 			ctx.Printer.Success("Build complete!")
 			return nil
-		},
+		}),
 	}
 	cmd.Flags().IntVarP(&jobs, "jobs", "j", 0, "Number of parallel build jobs")
 	return cmd
@@ -267,7 +285,8 @@ func printKernelBuildStatus(ctx *Context) {
 // listKernelRefs lists available branches and tags for switch command.
 func listKernelRefs(ctx *Context, cmd *cobra.Command) error {
 	ctx.Printer.Step("Branches:")
-	branches, _ := ctx.Exec.Output(cmd.Context(), "git", "-C", ctx.Config.Paths.KernelDir, "branch", "-a", "--format=%(refname:short)")
+	// Use for-each-ref for structured output
+	branches, _ := ctx.Exec.Output(cmd.Context(), "git", "-C", ctx.Config.Paths.KernelDir, "for-each-ref", "--format=%(refname:short)", "refs/heads/")
 	for _, b := range strings.Split(string(branches), "\n") {
 		if b != "" {
 			ctx.Printer.Print("  %s", b)
@@ -275,12 +294,20 @@ func listKernelRefs(ctx *Context, cmd *cobra.Command) error {
 	}
 	ctx.Printer.Print("")
 	ctx.Printer.Step("Tags (latest 10):")
-	tags, _ := ctx.Exec.Output(cmd.Context(), "git", "-C", ctx.Config.Paths.KernelDir, "tag", "-l", "--sort=-v:refname", "v*")
-	for i, t := range strings.Split(string(tags), "\n") {
-		if i >= 10 || t == "" {
-			break
+	// Optimized tag listing
+	tags, _ := ctx.Exec.Output(cmd.Context(), "git", "-C", ctx.Config.Paths.KernelDir, "describe", "--tags", "--abbrev=0")
+	// Fallback to list if describe only shows one
+	if tags == nil || len(string(tags)) < 2 {
+		tagsRaw, _ := ctx.Exec.Output(cmd.Context(), "git", "-C", ctx.Config.Paths.KernelDir, "tag", "-l", "--sort=-v:refname", "v*")
+		lines := strings.Split(string(tagsRaw), "\n")
+		for i, t := range lines {
+			if i >= 10 || t == "" {
+				break
+			}
+			ctx.Printer.Print("  %s", t)
 		}
-		ctx.Printer.Print("  %s", t)
+	} else {
+		ctx.Printer.Print("  Latest: %s", strings.TrimSpace(string(tags)))
 	}
 	return nil
 }
@@ -297,4 +324,14 @@ func switchKernelRef(ctx *Context, cmd *cobra.Command, ref string) error {
 	}
 	ctx.Printer.Success("Now on: %s", ref)
 	return nil
+}
+
+// RunEWithContext is a helper to run commands that require the AppContext to be mounted.
+func RunEWithContext(ctx *Context, run func(cmd *cobra.Command, args []string) error) func(cmd *cobra.Command, args []string) error {
+	return func(cmd *cobra.Command, args []string) error {
+		if err := ctx.AppContext.EnsureMounted(); err != nil {
+			return err
+		}
+		return run(cmd, args)
+	}
 }

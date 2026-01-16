@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/NguyenTrongPhuc552003/elmos/core/config"
@@ -26,68 +27,115 @@ Examples:
   elmos init my_workspace       # Create /Volumes/my_workspace/ with 40GB
   elmos init my_workspace 50G   # Create /Volumes/my_workspace/ with 50GB`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Parse arguments
-			workspaceName := config.DefaultVolumeName
-			volumeSize := config.DefaultImageSize
-
-			if len(args) > 0 {
-				workspaceName = args[0]
-			}
-			if len(args) > 1 {
-				volumeSize = args[1]
-				// Validate size
-				if err := validateVolumeSize(volumeSize, ctx.Printer); err != nil {
-					return err
-				}
-			}
-
-			// Update config with workspace name and size
-			ctx.Config.Image.VolumeName = workspaceName
-			ctx.Config.Image.Size = volumeSize
-			ctx.Config.Image.MountPoint = fmt.Sprintf("/Volumes/%s", workspaceName)
-			ctx.Config.Image.Path = fmt.Sprintf("%s/data/%s.sparseimage",
-				ctx.Config.Paths.ProjectRoot, workspaceName)
-			ctx.Config.Paths.ToolchainsDir = fmt.Sprintf("/Volumes/%s/toolchains", workspaceName)
-
-			// Save config to persist workspace settings
-			configPath := ctx.Config.ConfigFile
-			if configPath == "" {
-				configPath = fmt.Sprintf("%s/elmos.yaml", ctx.Config.Paths.ProjectRoot)
-			}
-			if err := ctx.Config.Save(configPath); err != nil {
-				return fmt.Errorf("failed to save config: %w", err)
-			}
-
-			// Create disk image if it doesn't exist
-			if !ctx.FS.Exists(ctx.Config.Image.Path) {
-				ctx.Printer.Step("Creating sparse disk image...")
-				if err := ctx.Exec.Run(cmd.Context(), "hdiutil", "create",
-					"-size", ctx.Config.Image.Size,
-					"-fs", "Case-sensitive APFS",
-					"-volname", ctx.Config.Image.VolumeName,
-					"-type", "SPARSE",
-					ctx.Config.Image.Path,
-				); err != nil {
-					return fmt.Errorf("failed to create disk image: %w", err)
-				}
-				ctx.Printer.Success("Disk image created!")
-			}
-
-			// Mount volume if not already mounted
-			if !ctx.AppContext.IsMounted() {
-				ctx.Printer.Step("Mounting volume...")
-				if err := ctx.Exec.Run(cmd.Context(), "hdiutil", "attach",
-					"-mountpoint", ctx.Config.Image.MountPoint,
-					ctx.Config.Image.Path,
-				); err != nil {
-					return fmt.Errorf("failed to mount: %w", err)
-				}
-			}
-
-			ctx.Printer.Success("Workspace initialized! Volume mounted at %s", ctx.Config.Image.MountPoint)
-			return nil
+			return runInit(ctx, cmd, args)
 		},
 	}
+}
+
+// runInit executes the init command logic.
+func runInit(ctx *Context, cmd *cobra.Command, args []string) error {
+	// Parse arguments
+	workspaceName := ctx.Config.Image.VolumeName
+	if workspaceName == "" {
+		workspaceName = config.DefaultVolumeName
+	}
+	volumeSize := ctx.Config.Image.Size
+	if volumeSize == "" {
+		volumeSize = config.DefaultImageSize
+	}
+
+	if len(args) > 0 {
+		workspaceName = args[0]
+	}
+	if len(args) > 1 {
+		volumeSize = args[1]
+		// Validate size
+		if err := validateVolumeSize(volumeSize, ctx.Printer); err != nil {
+			return err
+		}
+	}
+
+	// Check/Update configuration
+	if err := updateInitConfig(ctx, workspaceName, volumeSize); err != nil {
+		return err
+	}
+
+	// Create and mount volume
+	if err := ensureWorkspaceVolume(ctx, cmd); err != nil {
+		return err
+	}
+
+	ctx.Printer.Success("Workspace initialized! Volume mounted at %s", ctx.Config.Image.MountPoint)
+	return nil
+}
+
+// ensureWorkspaceVolume creates and mounts the disk image if needed.
+func ensureWorkspaceVolume(ctx *Context, cmd *cobra.Command) error {
+	// Create disk image if it doesn't exist
+	if !ctx.FS.Exists(ctx.Config.Image.Path) {
+		ctx.Printer.Step("Creating sparse disk image...")
+		if err := ctx.Exec.Run(cmd.Context(), "hdiutil", "create",
+			"-size", ctx.Config.Image.Size,
+			"-fs", "Case-sensitive APFS",
+			"-volname", ctx.Config.Image.VolumeName,
+			"-type", "SPARSE",
+			ctx.Config.Image.Path,
+		); err != nil {
+			return fmt.Errorf("failed to create disk image: %w", err)
+		}
+		ctx.Printer.Success("Disk image created!")
+	}
+
+	// Mount volume if not already mounted
+	if !ctx.AppContext.IsMounted() {
+		ctx.Printer.Step("Mounting volume...")
+		if err := ctx.Exec.Run(cmd.Context(), "hdiutil", "attach",
+			"-mountpoint", ctx.Config.Image.MountPoint,
+			ctx.Config.Image.Path,
+		); err != nil {
+			return fmt.Errorf("failed to mount: %w", err)
+		}
+	}
+	return nil
+}
+
+// updateInitConfig updates the configuration and saves it if necessary.
+func updateInitConfig(ctx *Context, workspaceName, volumeSize string) error {
+	// Check if we need to update config
+	configChanged := false
+	if ctx.Config.Image.VolumeName != workspaceName {
+		ctx.Config.Image.VolumeName = workspaceName
+		configChanged = true
+	}
+	if ctx.Config.Image.Size != volumeSize {
+		ctx.Config.Image.Size = volumeSize
+		configChanged = true
+	}
+
+	// Update derived paths
+	ctx.Config.Image.MountPoint = fmt.Sprintf("/Volumes/%s", workspaceName)
+	ctx.Config.Image.Path = fmt.Sprintf("%s/data/%s.sparseimage",
+		ctx.Config.Paths.ProjectRoot, workspaceName)
+	ctx.Config.Paths.ToolchainsDir = fmt.Sprintf("/Volumes/%s/toolchains", workspaceName)
+
+	// Determine config file path
+	configPath := ctx.Config.ConfigFile
+	if configPath == "" {
+		configPath = fmt.Sprintf("%s/elmos.yaml", ctx.Config.Paths.ProjectRoot)
+	}
+
+	// Save only if changed OR file doesn't exist
+	shouldSave := configChanged
+	if !ctx.FS.Exists(configPath) {
+		shouldSave = true
+	}
+
+	if shouldSave {
+		if err := ctx.Config.Save(configPath); err != nil {
+			return fmt.Errorf("failed to save config: %w", err)
+		}
+	}
+	return nil
 }
 
 // validateVolumeSize checks if the provided size meets minimum requirements.
@@ -172,46 +220,24 @@ func findDiskDevice(ctx *Context) (string, error) {
 
 // parseDiskDeviceFromHdiutil extracts the disk device for an image from hdiutil info output.
 func parseDiskDeviceFromHdiutil(output, imagePath string) (string, error) {
-	lines := strings.Split(output, "\n")
+	// Simple O(N) regex search instead of multi-pass line parsing
+	// Look for: image-path ... /dev/diskXsY or /dev/diskX
+	// But hdiutil output structure is:
+	// image-path: ...
+	// /dev/disk...
+	//
+	// We need to find the block for our image.
 
-	// Find the block for our image and extract the first /dev/diskX device
-	foundImage := false
-	for _, line := range lines {
-		if strings.Contains(line, imagePath) {
-			foundImage = true
-			continue
-		}
-		if foundImage {
-			// Stop at the next image block
-			if strings.HasPrefix(line, "===") {
-				break
-			}
-			// Look for /dev/disk device
-			if device := extractDiskDevice(line); device != "" {
-				return device, nil
+	// Split by block for safety
+	blocks := strings.Split(output, "===")
+	for _, block := range blocks {
+		if strings.Contains(block, imagePath) {
+			re := regexp.MustCompile(`/dev/disk\d+`)
+			if match := re.FindString(block); match != "" {
+				return match, nil
 			}
 		}
 	}
 
-	if !foundImage {
-		return "", fmt.Errorf("image not found in hdiutil info: %s", imagePath)
-	}
-	return "", fmt.Errorf("could not find disk device for image")
-}
-
-// extractDiskDevice extracts and normalizes a disk device from a line.
-func extractDiskDevice(line string) string {
-	if !strings.Contains(line, "/dev/disk") {
-		return ""
-	}
-	fields := strings.Fields(line)
-	if len(fields) == 0 || !strings.HasPrefix(fields[0], "/dev/disk") {
-		return ""
-	}
-	device := fields[0]
-	// Get base disk (e.g., /dev/disk4 from /dev/disk4s1)
-	if idx := strings.LastIndex(device, "s"); idx > 8 {
-		device = device[:idx]
-	}
-	return device
+	return "", fmt.Errorf("disk device not found for image: %s", imagePath)
 }

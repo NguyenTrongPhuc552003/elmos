@@ -66,7 +66,7 @@ var RequiredPackages = []RequiredPackage{
 	{"xz", "XZ compression", "Toolchain Dependencies", false},
 }
 
-// RequiredHeaders lists header files that should exist in libraries/.
+// RequiredHeaders lists header files that should exist in assets/libraries/.
 var RequiredHeaders = []string{
 	"elf.h",
 	"byteswap.h",

@@ -1,4 +1,4 @@
-// ./libraries/endian.h
+// ./assets/libraries/endian.h
 #pragma once
 
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__

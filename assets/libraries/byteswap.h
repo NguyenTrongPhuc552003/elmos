@@ -1,4 +1,4 @@
-// ./libraries/byteswap.h
+// ./assets/libraries/byteswap.h
 #pragma once
 
 #define bswap_16 __builtin_bswap16

@@ -184,7 +184,7 @@ func (b *KernelBuilder) Clean(ctx context.Context) error {
 	}
 
 	env := b.ctx.GetMakeEnv()
-	return b.exec.RunWithEnv(ctx, env, "make", args...)
+	return b.exec.RunWithEnvSilent(ctx, env, "make", args...)
 }
 
 // GetDefaultTargets returns the default build targets for the current architecture.

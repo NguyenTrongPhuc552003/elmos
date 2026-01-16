@@ -142,7 +142,7 @@ func applyProjectRoot(cfg *Config) {
 func applyImageDefaults(cfg *Config) {
 	root := cfg.Paths.ProjectRoot
 	if cfg.Image.Path == "" {
-		cfg.Image.Path = filepath.Join(root, "data", "img.sparseimage")
+		cfg.Image.Path = filepath.Join(root, "data", fmt.Sprintf("%s.sparseimage", cfg.Image.VolumeName))
 	}
 	if cfg.Image.MountPoint == "" {
 		cfg.Image.MountPoint = filepath.Join("/Volumes", cfg.Image.VolumeName)
@@ -155,9 +155,9 @@ func applyPathDefaults(cfg *Config) {
 	mount := cfg.Image.MountPoint
 
 	setIfEmpty(&cfg.Paths.KernelDir, filepath.Join(mount, "linux"))
-	setIfEmpty(&cfg.Paths.ModulesDir, filepath.Join(root, "modules"))
-	setIfEmpty(&cfg.Paths.AppsDir, filepath.Join(root, "apps"))
-	setIfEmpty(&cfg.Paths.LibrariesDir, filepath.Join(root, "libraries"))
+	setIfEmpty(&cfg.Paths.ModulesDir, filepath.Join(root, "examples", "modules"))
+	setIfEmpty(&cfg.Paths.AppsDir, filepath.Join(root, "examples", "apps"))
+	setIfEmpty(&cfg.Paths.LibrariesDir, filepath.Join(root, "assets", "libraries"))
 	setIfEmpty(&cfg.Paths.PatchesDir, filepath.Join(root, "patches"))
 	setIfEmpty(&cfg.Paths.RootfsDir, filepath.Join(mount, "rootfs"))
 	setIfEmpty(&cfg.Paths.DiskImage, filepath.Join(mount, "disk.img"))
