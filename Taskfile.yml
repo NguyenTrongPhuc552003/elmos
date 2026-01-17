@@ -195,3 +195,32 @@ tasks:
           end
         end
         EOF
+
+  # ============================================================================
+  # Documentation (docs:*)
+  # ============================================================================
+  docs:
+    desc: Build the documentation site
+    deps: [docs:install]
+    cmds:
+      - mkdocs build
+
+  docs:install:
+    desc: Install documentation dependencies if missing
+    internal: true
+    cmds:
+      - python3 -m pip install mkdocs-material "mkdocstrings[python]" --break-system-packages
+    status:
+      # Only run if both packages are NOT found in the python environment
+      - python3 -c "import material, mkdocstrings" 2>/dev/null
+
+  docs:clean:
+    desc: Remove generated documentation build files
+    cmds:
+      - rm -rf build/site/
+
+  docs:serve:
+    desc: Serve the documentation site locally and open in browser
+    deps: [docs]
+    cmds:
+      - mkdocs serve --open
