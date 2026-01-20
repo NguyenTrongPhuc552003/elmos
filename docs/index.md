@@ -65,25 +65,8 @@ For contributors:
 
 ## CLI Overview
 
-```
-elmos
-├── init          # Initialize workspace (mount volume)
-├── exit          # Exit workspace (unmount)
-├── doctor        # Check dependencies
-├── status        # Show workspace status
-├── arch          # Set/show target architecture
-├── kernel        # Kernel configuration and building
-│   ├── config    # Run menuconfig, defconfig, etc.
-│   └── build     # Build kernel targets
-├── module        # Kernel module management
-├── app           # Userspace app management
-├── qemu          # Run and debug in QEMU
-│   ├── -r        # Run mode
-│   ├── -d        # Debug mode (GDB)
-│   └── -l        # List machines
-├── toolchains    # Manage cross-compilers
-└── tui           # Interactive interface
-```
+<!-- elmos_tui.png -->
+![elmos_tui](images/elmos_tui.png)
 
 ---
 
