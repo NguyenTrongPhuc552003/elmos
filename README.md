@@ -1,10 +1,12 @@
 # ELMOS – Embedded Linux on MacOS
 
-[![Build Status](https://img.shields.io/badge/build-v6.18%20ARM64-green)](https://github.com/NguyenTrongPhuc552003/elmos) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Build Status](https://img.shields.io/badge/build-v6.18%20ARM64-green)](https://github.com/NguyenTrongPhuc552003/elmos) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Docs](https://img.shields.io/badge/docs-gh--pages-blue)](https://nguyentrongphuc552003.github.io/elmos/)
 
 A complete embedded Linux SDK for macOS. Build kernels, cross-compile with native toolchains, develop kernel modules and userspace apps—all without Docker or VMs. ELMOS provides an integrated development environment with interactive TUI, automatic toolchain management (crosstool-ng), and seamless QEMU integration. Targeting RISC-V, ARM64, ARM, and more, with full support for Linux v6.18+.
 
 Inspired by [Seiya's tutorial](https://seiya.me/blog/building-linux-on-macos-natively) (which fixed older kernels like v6.17), we extended it for v6.18's new challenges, like the `copy_file_range()` incompatibility.
+
+**[Read the Full Documentation](https://elmos.vercel.app/)**
 
 ## Features
 
@@ -13,7 +15,16 @@ Inspired by [Seiya's tutorial](https://seiya.me/blog/building-linux-on-macos-nat
 - **Environment Doctor**: Comprehensive dependency and toolchain health checks
 - **Kernel Build Automation**: Configure, build, and test Linux kernels with integrated toolchain support
 - **Module & App Development**: Build kernel modules and userspace apps with automatic cross-compilation
+- **Visual Architecture**: PlantUML diagrams for system design and workflows
 - **QEMU Integration**: Boot and debug kernels with built-in GDB support
+
+## Documentation
+
+Comprehensive documentation is hosted on GitHub Pages:
+
+- **[User Guide](https://elmos.vercel.app/user/)**: Usage, kernel building, toolchains.
+- **[Developer Guide](https://elmos.vercel.app/developer/)**: Architecture, APIs, code patterns.
+- **[Diagrams](https://elmos.vercel.app/developer/diagrams/)**: Component, Sequence, and Class diagrams.
 
 ## Quick Start
 
