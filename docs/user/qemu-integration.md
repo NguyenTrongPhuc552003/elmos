@@ -2,53 +2,160 @@
 
 Run and debug kernels using ELMOS's QEMU integration.
 
-## Running Kernels
+---
+
+## CLI Reference
+
+```bash
+elmos qemu [flags]
+
+Flags:
+  -r, --run         Run mode (boot kernel)
+  -d, --debug       Debug mode (tmux + GDB)
+  -t, --target      Path to app or module (repeatable)
+  -l, --list        List available machines
+  -p, --pick        Select specific machine
+      --graphical   Use graphical display
+```
+
+---
+
+## Run Modes
 
 ### Basic Run
 
 ```bash
-./build/elmos qemu run
+elmos qemu -r
 ```
 
-Boots kernel with generated rootfs. Requires kernel and rootfs built.
+Boots kernel with generated rootfs. Output:
+
+```
+→ Starting QEMU...
+[    0.000000] Booting Linux on physical CPU 0x0000000000
+[    0.000000] Linux version 6.0.0-dirty ...
+...
+System ready.
+#
+```
 
 ### Debug Mode
 
 ```bash
-./build/elmos qemu debug
+elmos qemu -d
 ```
 
-Starts QEMU with GDB stub on port 1234.
+Opens tmux session with:
 
-Connect GDB:
+- **Left pane**: QEMU (paused at boot)
+- **Right pane**: GDB connected to kernel
 
 ```bash
-gdb-multiarch build/linux/vmlinux
-(gdb) target remote :1234
+# In GDB pane
+(gdb) break start_kernel
 (gdb) continue
 ```
 
-### Custom Options
+### With Targets
 
-Modify `elmos.yaml` or use `./build/elmos qemu options` to set QEMU args.
+Load userspace apps or kernel modules:
 
-## Supported Architectures
+```bash
+# Run with user application
+elmos qemu -r -t ./examples/apps/hello/hello
 
-- **RISC-V**: `qemu-system-riscv64`
-- **ARM64**: `qemu-system-aarch64`
-- **ARM**: `qemu-system-arm`
+# Debug with kernel module
+elmos qemu -d -t ./examples/modules/hello/hello.ko
+```
+
+Targets are synced to `/mnt/share` inside the guest.
+
+---
+
+## Machine Selection
+
+### List Machines
+
+```bash
+elmos qemu -l
+```
+
+Shows available QEMU machines for current architecture:
+
+```
+ℹ Available QEMU Machines for arm64:
+  * virt - QEMU 10.2 ARM Virtual Machine (default)
+    raspi3b - Raspberry Pi 3B
+    raspi4b - Raspberry Pi 4B
+    sbsa-ref - QEMU SBSA Reference
+```
+
+### Pick Machine
+
+```bash
+elmos qemu -p raspi4b -r
+```
+
+Uses Raspberry Pi 4B machine instead of default `virt`.
+
+---
+
+## RunOptions (Developer Reference)
+
+```go
+// core/domain/emulator/options.go
+type RunOptions struct {
+    Debug     bool     // Enable GDB stub
+    Run       bool     // Run mode
+    Graphical bool     // GUI display
+    Targets   []Target // Apps/modules to load
+    Machine   string   // Override machine
+}
+```
+
+---
+
+## Architecture Defaults
+
+| Arch  | QEMU Binary           | Default Machine    | Console   |
+| ----- | --------------------- | ------------------ | --------- |
+| arm64 | `qemu-system-aarch64` | `virt`             | `ttyAMA0` |
+| arm   | `qemu-system-arm`     | `virt,highmem=off` | `ttyAMA0` |
+| riscv | `qemu-system-riscv64` | `virt`             | `ttyS0`   |
+
+---
+
+## Graphical Mode
+
+```bash
+elmos qemu -r --graphical
+```
+
+Opens QEMU with GUI window (requires virtio-gpu kernel config).
+
+---
 
 ## Networking
 
-QEMU runs with user-mode networking. Access host via `10.0.2.2`.
+QEMU runs with user-mode networking:
 
-## Disk Images
+- Guest can access internet
+- Host accessible at `10.0.2.2`
+- SSH forwarded: host `:2222` → guest `:22`
 
-Uses `build/elmos.sparseimage` for workspace. Rootfs mounted as `/dev/vda`.
+```bash
+# From host
+ssh -p 2222 root@localhost
+```
+
+---
 
 ## Troubleshooting
 
-- "Kernel not found": Build kernel first
-- "No rootfs": Create with `./build/elmos rootfs create`
-- Boot hangs: Check kernel config for console/serial
-- GDB fails: Ensure `gdb-multiarch` installed (`brew install gdb`)
+| Issue              | Solution                                  |
+| ------------------ | ----------------------------------------- |
+| "Kernel not found" | Run `elmos kernel build` first            |
+| "No rootfs"        | Run `elmos rootfs create`                 |
+| Boot hangs         | Check kernel config for `CONFIG_SERIAL_*` |
+| Invalid machine    | Run `elmos qemu -l` to see valid options  |
+| GDB fails          | Install `gdb` via Homebrew                |
