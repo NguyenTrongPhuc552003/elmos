@@ -1,0 +1,64 @@
+@startuml component
+!theme plain
+skinparam componentStyle rectangle
+
+title ELMOS Component Architecture
+
+package "cmd/elmos" {
+    [main.go] as main
+}
+
+package "core/app" {
+    [app.go] as app
+    [commands/] as commands
+}
+
+package "core/config" {
+    [types.go] as types
+    [loader.go] as loader
+    [arch.go] as arch
+}
+
+package "core/context" {
+    [context.go] as context
+}
+
+package "core/domain" {
+    [builder/] as builder
+    [emulator/] as emulator
+    [rootfs/] as rootfs
+    [patch/] as patch
+    [module/] as module
+    [toolchain/] as toolchain
+}
+
+package "core/infra" {
+    [executor/] as executor
+    [filesystem/] as filesystem
+    [printer/] as printer
+}
+
+package "core/ui" {
+    [tui/] as tui
+}
+
+package "assets" {
+    [templates/] as templates
+}
+
+main --> app
+app --> commands
+commands --> context
+context --> loader
+context --> executor
+context --> filesystem
+commands --> builder
+commands --> emulator
+commands --> rootfs
+builder --> executor
+builder --> templates
+emulator --> executor
+rootfs --> filesystem
+tui --> commands
+
+@enduml

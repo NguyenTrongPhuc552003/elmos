@@ -1,0 +1,30 @@
+@startuml state
+!theme plain
+
+title ELMOS Workspace State Machine
+
+[*] --> Unmounted : Initial
+
+Unmounted --> Mounted : elmos init
+Mounted --> Unmounted : elmos exit
+
+state Mounted {
+    [*] --> Ready
+    
+    Ready --> Configuring : elmos kernel config
+    Configuring --> Ready : config complete
+    
+    Ready --> Building : elmos kernel build
+    Building --> Ready : build complete
+    Building --> Error : build failed
+    
+    Ready --> Running : elmos qemu -r
+    Running --> Ready : QEMU exit
+    
+    Ready --> Debugging : elmos qemu -d
+    Debugging --> Ready : Debug session end
+    
+    Error --> Ready : fix & retry
+}
+
+@enduml
