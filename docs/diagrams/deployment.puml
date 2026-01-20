@@ -1,0 +1,39 @@
+@startuml deployment
+!theme plain
+
+title ELMOS Deployment View
+
+node "macOS Host" {
+    package "elmos CLI" {
+        [elmos binary]
+    }
+    
+    folder "/Volumes/elmos" as volume {
+        folder "linux/" {
+            [Kernel Source]
+        }
+        folder "rootfs/" {
+            [Debian Root]
+        }
+        file "disk.img" as disk
+    }
+    
+    database "~/.config/elmos" {
+        [elmos.yaml]
+    }
+}
+
+cloud "QEMU VM" {
+    [Linux Kernel]
+    [Root Filesystem]
+    folder "/mnt/modules" {
+        [9p mount]
+    }
+}
+
+[elmos binary] --> volume : mounts
+[elmos binary] --> [QEMU VM] : launches
+disk --> [Root Filesystem] : virtio
+[Kernel Source] --> [Linux Kernel] : builds
+
+@enduml
