@@ -24,6 +24,7 @@ nav:
   - Developer Guide:
     - Overview: developer/index.md
     - Architecture: developer/architecture.md
+    - Diagrams: developer/diagrams.md
     - Contributing: developer/contributing.md
     - API Reference:
       - Core App: developer/api/core-app.md
@@ -52,11 +53,8 @@ theme:
 
 plugins:
   - search
-  - mkdocstrings:
-      handlers:
-        python:
-          options:
-            show_source: false
+  - plantuml:
+      puml_url: https://www.plantuml.com/plantuml/
 
 extra:
   social:
