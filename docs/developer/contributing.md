@@ -2,52 +2,140 @@
 
 Guidelines for contributing to ELMOS.
 
-## Workflow
+---
 
-1. Fork the repo
-2. Create a feature branch: `git checkout -b feature/my-feature`
-3. Make changes, add tests
-4. Run checks: `task dev:check`
-5. Commit: `git commit -m "feat: add my feature"`
-6. Push and PR
-
-## Code Style
-
-- **Go**: Follow `gofmt`, `goimports`
-- **Commits**: Conventional commits (e.g., `feat:`, `fix:`, `docs:`)
-- **PRs**: Descriptive, link issues
-- **Tests**: Required for new code
-
-## Development Setup
+## Quick Start
 
 ```bash
+# Clone
 git clone https://github.com/NguyenTrongPhuc552003/elmos.git
 cd elmos
-task dev:setup  # Install deps, build
+
+# Setup
+task dev:setup
+
+# Develop
+task dev:check   # Format + lint
+task test        # Run tests
+task build       # Build binary
 ```
 
-## Testing
+---
 
-- `task test` - Run tests
-- `task test:cover` - With coverage
-- Add mocks for new infra interfaces
+## Commit Convention
+
+Use the project's commit message format:
+
+```
+<scope>: <Title>
+
+- Change 1
+- Change 2
+
+Signed-off-by: Your Name <email@example.com>
+```
+
+**Scope examples:**
+
+| Scope                   | Example                |
+| ----------------------- | ---------------------- |
+| `core: domain: builder` | Kernel builder changes |
+| `core: app: commands`   | CLI command changes    |
+| `docs: user: qemu`      | User doc updates       |
+| `.github: workflows`    | CI changes             |
+| `Taskfile`              | Build task changes     |
+
+**Examples:**
+
+```bash
+git commit -sm "core: domain: emulator: Add machine validation
+
+- Add ValidateMachine function
+- Improve error messages"
+
+git commit -sm "docs: user: kernel-building: Add troubleshooting table
+
+- Add common issues and solutions"
+```
+
+---
+
+## Pull Request Process
+
+1. **Branch from `main`**
+   ```bash
+   git checkout -b feature/my-feature
+   ```
+
+2. **Make changes with tests**
+   ```bash
+   task dev:check
+   task test
+   ```
+
+3. **Push and create PR**
+   ```bash
+   git push origin feature/my-feature
+   ```
+
+4. **PR requirements:**
+   - Descriptive title
+   - Link related issues
+   - CI must pass
+   - One maintainer approval
+
+---
+
+## Code Standards
+
+### Go Style
+
+- Run `gofmt` and `goimports`
+- Follow [Effective Go](https://go.dev/doc/effective_go)
+- Use interfaces for testability
+- Constructor pattern: `NewXxx(deps...) *Xxx`
+
+### Testing
+
+- Table-driven tests
+- Mock infra interfaces
+- Aim for 80%+ coverage on new code
+
+```bash
+task test:cover
+```
+
+---
 
 ## Documentation
 
-- Update docs for user-facing changes
-- Add API docs for new interfaces
+- Update user docs for CLI changes
+- Update developer docs for API changes
+- Add code comments for exported types/functions
 
-## Reviews
+---
 
-- At least one maintainer review
-- CI must pass
-- Squash merges
+## Issue Guidelines
 
-## Issues
+### Bug Reports
 
-- Bug reports with reproduction steps
-- Feature requests with use cases
+Include:
+
+- ELMOS version (`elmos version`)
+- macOS version
+- Steps to reproduce
+- Expected vs actual behavior
+
+### Feature Requests
+
+Include:
+
+- Use case description
+- Proposed solution
+- Alternatives considered
+
+---
 
 ## License
 
-Contributions under MIT license.
+All contributions are under MIT license.
