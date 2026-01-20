@@ -1,84 +1,144 @@
 # Kernel Building
 
-This guide covers cloning, configuring, building, and patching Linux kernels with ELMOS.
+Build Linux kernels for ARM64, ARM, and RISC-V on macOS.
 
-## Supported Versions
+---
 
-ELMOS supports Linux v6.18+ with patches for macOS compatibility.
+## Prerequisites
 
-## Workflow
+- Workspace initialized: `elmos init`
+- Dependencies checked: `elmos doctor`
 
-### 1. Select Architecture
+---
 
-```bash
-./build/elmos arch <arch>  # e.g., riscv, arm64, arm
-```
+## Build Workflow
 
-### 2. Clone Source
-
-```bash
-./build/elmos kernel clone
-```
-
-Clones to `build/linux/` with architecture-specific branch.
-
-### 3. Configure
-
-Generate default config:
+### 1. Set Architecture
 
 ```bash
-./build/elmos kernel config defconfig
+elmos arch arm64    # or: arm, riscv
+elmos arch          # Show current
 ```
 
-Or interactive menu:
+### 2. Configure Kernel
 
 ```bash
-./build/elmos kernel config menuconfig
+# Default config for architecture
+elmos kernel config defconfig
+
+# Interactive menu
+elmos kernel config menuconfig
+
+# Minimal config
+elmos kernel config tinyconfig
 ```
 
-### 4. Apply Patches (if needed)
+**Valid config types:**
 
-For v6.18+ compatibility:
+| Type               | Description          |
+| ------------------ | -------------------- |
+| `defconfig`        | Architecture default |
+| `tinyconfig`       | Minimal kernel       |
+| `menuconfig`       | Interactive menu     |
+| `kvm_guest.config` | KVM optimized        |
+| `oldconfig`        | Update existing      |
+| `olddefconfig`     | Update with defaults |
+
+### 3. Build
 
 ```bash
-./build/elmos patch apply patches/v6.18/generic/...
+# Default targets (Image, dtbs, modules)
+elmos kernel build
+
+# Specific targets
+elmos kernel build Image
+elmos kernel build vmlinux
+
+# Custom parallelism
+elmos kernel build -j 8
 ```
 
-### 5. Build
+**Valid build targets:**
+
+| Target    | Description                   |
+| --------- | ----------------------------- |
+| `Image`   | Kernel image (arm64, riscv)   |
+| `zImage`  | Compressed image (arm)        |
+| `dtbs`    | Device tree blobs             |
+| `modules` | Kernel modules                |
+| `vmlinux` | Uncompressed kernel (for GDB) |
+
+### 4. Verify Build
 
 ```bash
-./build/elmos kernel build
+elmos status
 ```
 
-Uses detected toolchain. Output: `build/linux/arch/<arch>/boot/Image` or `vmlinux`.
+Output:
 
-### 6. Verify
+```
+Workspace Status:
+  Volume: /Volumes/elmos (mounted)
+  Kernel: ✓ Configured, ✓ Built
+  Architecture: arm64
+  Image: /Volumes/elmos/linux/arch/arm64/boot/Image
+```
 
-Check build artifacts:
+---
+
+## BuildOptions Reference
+
+```go
+// core/domain/builder/kernel.go
+type BuildOptions struct {
+    Jobs    int      // Parallel jobs (-j)
+    Targets []string // Build targets
+}
+```
+
+---
+
+## Environment Variables
+
+ELMOS automatically sets:
+
+| Variable        | Value                     |
+| --------------- | ------------------------- |
+| `ARCH`          | Target architecture       |
+| `LLVM`          | `1` (use LLVM toolchain)  |
+| `CROSS_COMPILE` | Toolchain prefix          |
+| `HOSTCFLAGS`    | macOS compatibility flags |
+| `PATH`          | Prepends LLVM, GNU tools  |
+
+---
+
+## Clean Build
 
 ```bash
-ls build/linux/arch/*/boot/
+elmos kernel clean    # make distclean
 ```
+
+---
 
 ## Patches
 
-ELMOS includes patches for macOS issues:
+Apply macOS compatibility patches:
 
-- **v6.18**: `copy_file_range()` syscall replacement
-- **ARM**: Build error fixes
-- **RISC-V**: VDSO compatibility
+```bash
+# List available
+elmos patch list
 
-Apply with `./build/elmos patch apply <patch>`.
+# Apply
+elmos patch apply v6.18/generic/fix-copy-range
+```
 
-## Custom Builds
-
-- Set `HOSTCFLAGS`: ELMOS auto-sets for macOS (shims, libelf, uuid fixes)
-- Environment: `CROSS_COMPILE`, `ARCH`, `PATH` set automatically
-- Parallel builds: Controlled by `JOBS` config
+---
 
 ## Troubleshooting
 
-- "No toolchain": Install via [Toolchains](toolchains.md)
-- Config errors: Regenerate defconfig
-- Build hangs: Check disk space, kill and retry
-- Patches fail: Ensure clean source (`./build/elmos kernel clean`)
+| Issue           | Solution                                  |
+| --------------- | ----------------------------------------- |
+| "No toolchain"  | Run `elmos doctor`                        |
+| Config errors   | Run `elmos kernel clean` then reconfigure |
+| Build hangs     | Check disk space, reduce `-j`             |
+| Missing headers | Run `elmos doctor --fix`                  |
