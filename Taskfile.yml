@@ -19,7 +19,7 @@ vars:
     -X github.com/NguyenTrongPhuc552003/elmos/core/app/version.Commit={{.COMMIT}}
     -X github.com/NguyenTrongPhuc552003/elmos/core/app/version.BuildDate={{.DATE}}
   GOBIN:
-    sh: go env GOPATH
+    sh: go env GOPATH 2>/dev/null || echo "$HOME/go"
 
 tasks:
   # ============================================================================
