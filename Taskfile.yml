@@ -15,9 +15,9 @@ vars:
   DATE:
     sh: date -u +"%Y-%m-%dT%H:%M:%SZ"
   LDFLAGS: >-
-    -X github.com/NguyenTrongPhuc552003/elmos/pkg/version.Version={{.VERSION}}
-    -X github.com/NguyenTrongPhuc552003/elmos/pkg/version.Commit={{.COMMIT}}
-    -X github.com/NguyenTrongPhuc552003/elmos/pkg/version.BuildDate={{.DATE}}
+    -X github.com/NguyenTrongPhuc552003/elmos/core/app/version.Version={{.VERSION}}
+    -X github.com/NguyenTrongPhuc552003/elmos/core/app/version.Commit={{.COMMIT}}
+    -X github.com/NguyenTrongPhuc552003/elmos/core/app/version.BuildDate={{.DATE}}
   GOBIN:
     sh: go env GOPATH
 
@@ -36,7 +36,7 @@ tasks:
     cmds:
       - echo "Building {{.BINARY}}..."
       - mkdir -p {{.BUILD_DIR}}
-      - go build -ldflags "{{.LDFLAGS}}" -o {{.BINARY}} .
+      - go build -ldflags "{{.LDFLAGS}}" -o {{.BINARY}} ./cmd/elmos
     sources:
       - "**/*.go"
       - go.mod
@@ -83,76 +83,35 @@ tasks:
     cmds:
       - task: dev:fmt
       - task: dev:lint
-      - task: test
+
+  dev:complexity:install:
+    desc: Install go-complexity-analysis tool for CC/MI analysis
+    cmds:
+      - echo "Installing go-complexity-analysis..."
+      - go install github.com/firepear/go-complexity-analysis/cmd/complexity@latest
+      - echo "Installed to $(go env GOPATH)/bin/complexity"
+
+  dev:complexity:
+    desc: Run cyclomatic complexity analysis (CC>10, MI<30)
+    vars:
+      CC_THRESHOLD: '{{.CC_THRESHOLD | default "10"}}'
+      MI_THRESHOLD: '{{.MI_THRESHOLD | default "30"}}'
+    cmds:
+      - |
+        if [ ! -f "$(go env GOPATH)/bin/complexity" ]; then
+          echo "Error: complexity tool not installed. Run 'task dev:complexity:install' first."
+          exit 1
+        fi
+        echo "Running complexity analysis (CC>{{.CC_THRESHOLD}}, MI<{{.MI_THRESHOLD}})..."
+        go vet -vettool=$(go env GOPATH)/bin/complexity --cycloover {{.CC_THRESHOLD}} --maintunder {{.MI_THRESHOLD}} ./... 2>&1 | grep -v "undefined" || echo "✓ No complexity warnings!"
 
   dev:setup:
-    desc: Full dev setup (deps + build + init workspace)
+    desc: Full dev setup (deps + build + init workspace + tools)
     cmds:
       - task: dev:deps
+      - task: dev:complexity:install
       - task: build
       - task: elmos:init
-
-  # ============================================================================
-  # Testing (test:*)
-  # ============================================================================
-
-  test:
-    desc: Run tests (with colors if gotestsum installed)
-    cmds:
-      - |
-        GOTESTSUM="$(go env GOPATH)/bin/gotestsum"
-        if [ -x "$GOTESTSUM" ]; then
-          $GOTESTSUM --format testdox ./...
-        else
-          go test -v ./...
-        fi
-
-  test:cover:
-    desc: Run tests with coverage report
-    cmds:
-      - |
-        GOTESTSUM="$(go env GOPATH)/bin/gotestsum"
-        if [ -x "$GOTESTSUM" ]; then
-          $GOTESTSUM --format testdox -- -cover -coverprofile=coverage.out ./...
-        else
-          go test -v -cover -coverprofile=coverage.out ./...
-        fi
-      - go tool cover -html=coverage.out -o coverage.html
-      - 'echo "Coverage report: coverage.html"'
-
-  # ============================================================================
-  # elmos CLI Wrappers (elmos:*)
-  # ============================================================================
-
-  elmos:init:
-    desc: Initialize elmos workspace (mount volume)
-    deps: [build]
-    cmds:
-      - ./{{.BINARY}} init
-
-  elmos:exit:
-    desc: Exit elmos workspace (unmount volume)
-    deps: [build]
-    cmds:
-      - ./{{.BINARY}} exit
-
-  elmos:status:
-    desc: Show workspace status
-    deps: [build]
-    cmds:
-      - ./{{.BINARY}} status
-
-  elmos:doctor:
-    desc: Run elmos doctor (environment check)
-    deps: [build]
-    cmds:
-      - ./{{.BINARY}} doctor
-
-  elmos:tui:
-    desc: Launch elmos TUI
-    deps: [build]
-    cmds:
-      - ./{{.BINARY}} tui
 
   # ============================================================================
   # Installation (install:*)
@@ -236,3 +195,32 @@ tasks:
           end
         end
         EOF
+
+  # ============================================================================
+  # Documentation (docs:*)
+  # ============================================================================
+  docs:
+    desc: Build the documentation site
+    deps: [docs:install]
+    cmds:
+      - mkdocs build
+
+  docs:install:
+    desc: Install documentation dependencies if missing
+    internal: true
+    cmds:
+      - python3 -m pip install mkdocs-material "mkdocstrings[python]" mkdocs_puml --break-system-packages
+    status:
+      # Only run if all packages are found in the python environment
+      - python3 -c "import material, mkdocstrings, mkdocs_puml" 2>/dev/null
+
+  docs:clean:
+    desc: Remove generated documentation build files
+    cmds:
+      - rm -rf build/site/
+
+  docs:serve:
+    desc: Serve the documentation site locally and open in browser
+    deps: [docs]
+    cmds:
+      - mkdocs serve --open

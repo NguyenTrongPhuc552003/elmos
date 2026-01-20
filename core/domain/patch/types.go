@@ -7,4 +7,5 @@ type PatchInfo struct {
 	Name    string // Name of the patch file
 	Path    string // Full path to the patch file
 	Version string // Kernel version this patch applies to
+	Arch    string // Target architecture (e.g., "arm", "riscv", "generic")
 }

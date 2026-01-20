@@ -2,9 +2,12 @@
 package toolchain
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"os/exec"
 	"path/filepath"
+	"strings"
 
 	elconfig "github.com/NguyenTrongPhuc552003/elmos/core/config"
 	"github.com/NguyenTrongPhuc552003/elmos/core/infra/executor"
@@ -52,7 +55,7 @@ func (m *Manager) Paths() ToolchainPaths {
 
 // ToolchainPaths holds all toolchain directory paths.
 type ToolchainPaths struct {
-	Base        string // /Volumes/kernel-dev/toolchains
+	Base        string // /Volumes/elmos/toolchains
 	CrosstoolNG string // ct-ng installation
 	XTools      string // Built toolchains output
 	Src         string // Downloaded tarballs cache
@@ -76,32 +79,56 @@ func (m *Manager) ListSamples(ctx context.Context) ([]string, error) {
 		return nil, fmt.Errorf("crosstool-ng not installed, run 'elmos toolchains install'")
 	}
 
-	output, err := m.exec.Output(ctx, m.GetCtNgPath(), "list-samples")
+	m.printer.Print("Available targets:")
+
+	// Use os/exec directly to stream output
+	cmd := exec.CommandContext(ctx, m.GetCtNgPath(), "list-samples")
+
+	// Get stdout pipe
+	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, fmt.Errorf("failed to list samples: %w", err)
+		return nil, fmt.Errorf("failed to get stdout pipe: %w", err)
 	}
 
-	// Parse output to extract sample names
-	// ct-ng list-samples outputs lines like "[L..]   riscv64-unknown-linux-gnu"
+	// Start command
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("failed to start command: %w", err)
+	}
+
+	// Stream and parse output
 	var samples []string
-	lines := splitLines(string(output))
-	for _, line := range lines {
-		if len(line) > 8 && line[0] == '[' {
-			// Extract target name after the brackets
-			parts := splitWhitespace(line)
+	scanner := bufio.NewScanner(stdout)
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		// Parse ct-ng output: "[L..]   riscv64-unknown-linux-gnu"
+		// We look for lines starting with brackets
+		trimLine := strings.TrimSpace(line)
+		if len(trimLine) > 0 && strings.HasPrefix(trimLine, "[") {
+			parts := strings.Fields(trimLine)
 			if len(parts) >= 2 {
-				samples = append(samples, parts[len(parts)-1])
+				sample := parts[len(parts)-1]
+				samples = append(samples, sample)
+
+				// Print immediately for real-time feedback
+				m.printer.Print("  %s", sample)
 			}
 		}
 	}
+
+	// Wait for command to finish
+	if err := cmd.Wait(); err != nil {
+		return nil, fmt.Errorf("failed to list samples: %w", err)
+	}
+
 	return samples, nil
 }
 
 // GetCustomConfigPath returns the path to a custom config file for the target.
 // Returns empty string if no custom config exists.
 func (m *Manager) GetCustomConfigPath(target string) string {
-	// Check in project root tools/toolchains/configs
-	projectConfigs := filepath.Join(m.cfg.Paths.ProjectRoot, "tools", "toolchains", "configs")
+	// Check in project root assets/toolchains/configs
+	projectConfigs := filepath.Join(m.cfg.Paths.ProjectRoot, "assets", "toolchains", "configs")
 	configPath := filepath.Join(projectConfigs, target+".config")
 	if m.fs.Exists(configPath) {
 		return configPath
@@ -149,42 +176,4 @@ func (m *Manager) GetInstalledToolchains() ([]ToolchainInfo, error) {
 	}
 
 	return toolchains, nil
-}
-
-// splitLines splits a string by newlines.
-func splitLines(s string) []string {
-	var lines []string
-	start := 0
-	for i := 0; i < len(s); i++ {
-		if s[i] == '\n' {
-			lines = append(lines, s[start:i])
-			start = i + 1
-		}
-	}
-	if start < len(s) {
-		lines = append(lines, s[start:])
-	}
-	return lines
-}
-
-// splitWhitespace splits a string by whitespace.
-func splitWhitespace(s string) []string {
-	var parts []string
-	start := -1
-	for i := 0; i < len(s); i++ {
-		if s[i] == ' ' || s[i] == '\t' {
-			if start >= 0 {
-				parts = append(parts, s[start:i])
-				start = -1
-			}
-		} else {
-			if start < 0 {
-				start = i
-			}
-		}
-	}
-	if start >= 0 {
-		parts = append(parts, s[start:])
-	}
-	return parts
 }

@@ -39,7 +39,7 @@ var Architectures = map[string]*ArchConfig{
 		Console:        "ttyAMA0",
 		GCCBinary:      "aarch64-unknown-linux-gnu-gcc",
 		GDBBinary:      "aarch64-unknown-linux-gnu-gdb",
-		ToolchainPkg:   "messense/macos-cross-toolchains/aarch64-unknown-linux-gnu",
+		ToolchainPkg:   "",
 	},
 	"arm": {
 		Name:           "arm",
@@ -53,7 +53,7 @@ var Architectures = map[string]*ArchConfig{
 		Console:        "ttyAMA0",
 		GCCBinary:      "arm-cortex_a15-linux-gnueabihf-gcc",
 		GDBBinary:      "arm-cortex_a15-linux-gnueabihf-gdb",
-		ToolchainPkg:   "messense/macos-cross-toolchains/arm-unknown-linux-gnueabihf",
+		ToolchainPkg:   "",
 	},
 	"riscv": {
 		Name:           "riscv",

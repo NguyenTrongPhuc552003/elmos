@@ -1,0 +1,60 @@
+@startuml class
+!theme plain
+
+title Core Domain Classes
+
+package "domain/builder" {
+    class KernelBuilder {
+        -cfg: *Config
+        -ctx: *Context
+        -exec: Executor
+        -fs: FileSystem
+        +Build(targets []string) error
+        +Configure(configType string) error
+        +Clean() error
+    }
+}
+
+package "domain/emulator" {
+    class QEMURunner {
+        -cfg: *Config
+        -ctx: *Context
+        -exec: Executor
+        +Run(opts RunOptions) error
+        +GetListMachines() []MachineInfo
+    }
+    
+    class RunOptions {
+        +Debug: bool
+        +Run: bool
+        +Graphical: bool
+        +Targets: []Target
+        +Machine: string
+    }
+}
+
+package "domain/rootfs" {
+    class RootfsManager {
+        -cfg: *Config
+        -exec: Executor
+        -fs: FileSystem
+        +Create() error
+        +UpdateDisk() error
+    }
+}
+
+package "config" {
+    class Config {
+        +Image: ImageConfig
+        +Build: BuildConfig
+        +QEMU: QEMUConfig
+        +Paths: PathsConfig
+    }
+}
+
+KernelBuilder --> Config
+QEMURunner --> Config
+QEMURunner --> RunOptions
+RootfsManager --> Config
+
+@enduml

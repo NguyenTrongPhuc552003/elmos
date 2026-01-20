@@ -39,14 +39,14 @@ func (ctx *Context) IsMounted() bool {
 
 	// Check if the directory exists first
 	if !ctx.FS.IsDir(mountPoint) {
-		// It might be mounted at a different location (e.g. with " 1" suffix)
-		// Fallback to checking hdiutil info for the volume name
+		// It might be mounted at a different location
+		// Check hdiutil info for our image file path
 		out, err := ctx.Exec.Output(gocontext.Background(), "hdiutil", "info")
 		if err != nil {
 			return false
 		}
-		// Check if our volume name is in the output
-		return strings.Contains(string(out), "/Volumes/"+ctx.Config.Image.VolumeName)
+		// Check if our image file is mounted (regardless of mount point)
+		return strings.Contains(string(out), ctx.Config.Image.Path)
 	}
 
 	// Verify it's actually a mount point using 'mount'
@@ -76,29 +76,49 @@ func (ctx *Context) GetActualMountPoint() (string, error) {
 		return mountPoint, nil
 	}
 
-	// Slow path: check hdiutil info
+	// Slow path: check hdiutil info for our specific image file
 	out, err := ctx.Exec.Output(gocontext.Background(), "hdiutil", "info")
 	if err != nil {
 		return "", err
 	}
 
-	// Look for the volume name
-	volumeSuffix := "/Volumes/" + ctx.Config.Image.VolumeName
-	outputStr := string(out)
+	return parseMountPointFromHdiutil(string(out), ctx.Config.Image.Path)
+}
 
-	lines := strings.Split(outputStr, "\n")
-	for _, line := range lines {
-		if idx := strings.Index(line, volumeSuffix); idx != -1 {
-			// Extract the full path from this line
-			// Format is typically: /dev/diskXsY  UUID  /Volumes/VolumeName 1
-			// We take everything after the UUID or just the last part?
-			// hdiutil output is tabular but separated by tabs/spaces.
-			// Let's find the substring starting with /Volumes/
-			return strings.TrimSpace(line[idx:]), nil
+// parseMountPointFromHdiutil extracts the mount point for an image from hdiutil info output.
+func parseMountPointFromHdiutil(output, imagePath string) (string, error) {
+	lines := strings.Split(output, "\n")
+
+	// Find the image block and look for mount point
+	foundImage := false
+	for i, line := range lines {
+		if strings.Contains(line, imagePath) {
+			foundImage = true
+			// Look for /Volumes/ in subsequent lines (up to 20 lines)
+			if mp := findMountPointInLines(lines, i+1, i+20); mp != "" {
+				return mp, nil
+			}
+			break
 		}
 	}
 
+	if !foundImage {
+		return "", fmt.Errorf("image not mounted: %s", imagePath)
+	}
 	return "", fmt.Errorf("volume not found")
+}
+
+// findMountPointInLines searches for a /Volumes/ path in a range of lines.
+func findMountPointInLines(lines []string, start, end int) string {
+	for j := start; j < len(lines) && j < end; j++ {
+		if idx := strings.Index(lines[j], "/Volumes/"); idx != -1 {
+			mountStr := strings.TrimSpace(lines[j][idx:])
+			if parts := strings.Fields(mountStr); len(parts) > 0 {
+				return parts[0]
+			}
+		}
+	}
+	return ""
 }
 
 // KernelExists checks if the kernel source directory exists.

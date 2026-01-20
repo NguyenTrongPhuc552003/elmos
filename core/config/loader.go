@@ -124,62 +124,49 @@ func setDefaults(v *viper.Viper) {
 
 // applyComputedDefaults fills in paths based on project root.
 func applyComputedDefaults(cfg *Config) {
-	// Find project root (where go.mod or elmos.yaml exists)
+	applyProjectRoot(cfg)
+	applyImageDefaults(cfg)
+	applyPathDefaults(cfg)
+}
+
+// applyProjectRoot sets the project root if not already set.
+func applyProjectRoot(cfg *Config) {
 	if cfg.Paths.ProjectRoot == "" {
 		if cwd, err := os.Getwd(); err == nil {
 			cfg.Paths.ProjectRoot = cwd
 		}
 	}
+}
 
+// applyImageDefaults sets image-related defaults.
+func applyImageDefaults(cfg *Config) {
 	root := cfg.Paths.ProjectRoot
-
-	// Image path (in build directory)
 	if cfg.Image.Path == "" {
-		cfg.Image.Path = filepath.Join(root, "build", "img.sparseimage")
+		cfg.Image.Path = filepath.Join(root, "data", fmt.Sprintf("%s.sparseimage", cfg.Image.VolumeName))
 	}
-
-	// Mount point
 	if cfg.Image.MountPoint == "" {
 		cfg.Image.MountPoint = filepath.Join("/Volumes", cfg.Image.VolumeName)
 	}
+}
 
-	// Kernel directory (inside mount)
-	if cfg.Paths.KernelDir == "" {
-		cfg.Paths.KernelDir = filepath.Join(cfg.Image.MountPoint, "linux")
-	}
+// applyPathDefaults sets path-related defaults.
+func applyPathDefaults(cfg *Config) {
+	root := cfg.Paths.ProjectRoot
+	mount := cfg.Image.MountPoint
 
-	// Modules directory (project root)
-	if cfg.Paths.ModulesDir == "" {
-		cfg.Paths.ModulesDir = filepath.Join(root, "modules")
-	}
+	setIfEmpty(&cfg.Paths.KernelDir, filepath.Join(mount, "linux"))
+	setIfEmpty(&cfg.Paths.ModulesDir, filepath.Join(root, "examples", "modules"))
+	setIfEmpty(&cfg.Paths.AppsDir, filepath.Join(root, "examples", "apps"))
+	setIfEmpty(&cfg.Paths.LibrariesDir, filepath.Join(root, "assets", "libraries"))
+	setIfEmpty(&cfg.Paths.PatchesDir, filepath.Join(root, "patches"))
+	setIfEmpty(&cfg.Paths.RootfsDir, filepath.Join(mount, "rootfs"))
+	setIfEmpty(&cfg.Paths.DiskImage, filepath.Join(mount, "disk.img"))
+	setIfEmpty(&cfg.Paths.ToolchainsDir, filepath.Join(mount, "toolchains"))
+}
 
-	// Apps directory (project root)
-	if cfg.Paths.AppsDir == "" {
-		cfg.Paths.AppsDir = filepath.Join(root, "apps")
-	}
-
-	// Libraries directory (project root)
-	if cfg.Paths.LibrariesDir == "" {
-		cfg.Paths.LibrariesDir = filepath.Join(root, "libraries")
-	}
-
-	// Patches directory (project root)
-	if cfg.Paths.PatchesDir == "" {
-		cfg.Paths.PatchesDir = filepath.Join(root, "patches")
-	}
-
-	// Rootfs directory (inside mount)
-	if cfg.Paths.RootfsDir == "" {
-		cfg.Paths.RootfsDir = filepath.Join(cfg.Image.MountPoint, "rootfs")
-	}
-
-	// Disk image (inside mount)
-	if cfg.Paths.DiskImage == "" {
-		cfg.Paths.DiskImage = filepath.Join(cfg.Image.MountPoint, "disk.img")
-	}
-
-	// Toolchains directory (inside mount for case-sensitivity)
-	if cfg.Paths.ToolchainsDir == "" {
-		cfg.Paths.ToolchainsDir = filepath.Join(cfg.Image.MountPoint, "toolchains")
+// setIfEmpty sets the target to value if target is empty.
+func setIfEmpty(target *string, value string) {
+	if *target == "" {
+		*target = value
 	}
 }

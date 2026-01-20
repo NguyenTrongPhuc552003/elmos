@@ -38,27 +38,52 @@ func (c *Creator) Create(ctx context.Context, opts CreateOptions) error {
 	diskImage := c.cfg.Paths.DiskImage
 	rootfsDir := c.cfg.Paths.RootfsDir
 
-	// Step 1: Clean old rootfs directory (must use sudo since debootstrap creates root-owned files)
+	if err := c.cleanRootfsDir(ctx, rootfsDir); err != nil {
+		return err
+	}
+
+	if err := c.runDebootstrap(ctx, rootfsDir); err != nil {
+		return err
+	}
+
+	if err := c.createInitScript(rootfsDir); err != nil {
+		return fmt.Errorf("failed to create init script: %w", err)
+	}
+
+	if err := c.removeDiskImage(ctx, diskImage); err != nil {
+		return err
+	}
+
+	if err := c.fixAptLists(rootfsDir); err != nil {
+		fmt.Printf("Warning: failed to fix apt lists: %v\n", err)
+	}
+
+	return c.createDiskImage(ctx, diskImage, rootfsDir, size)
+}
+
+// cleanRootfsDir cleans old rootfs directory and creates fresh one.
+func (c *Creator) cleanRootfsDir(ctx context.Context, rootfsDir string) error {
 	if c.fs.Exists(rootfsDir) {
 		if err := c.exec.Run(ctx, "sudo", "rm", "-rf", rootfsDir); err != nil {
 			return fmt.Errorf("failed to clean old rootfs: %w", err)
 		}
 	}
-
-	// Create fresh rootfs directory
 	if err := c.exec.Run(ctx, "mkdir", "-p", rootfsDir); err != nil {
 		return fmt.Errorf("failed to create rootfs directory: %w", err)
 	}
+	return nil
+}
 
-	// Step 2: Get Debian architecture and run debootstrap
+// runDebootstrap runs debootstrap to create the base Debian rootfs.
+func (c *Creator) runDebootstrap(ctx context.Context, rootfsDir string) error {
 	arch := c.getDebianArch()
 	debootstrapDir := filepath.Join(c.cfg.Paths.ProjectRoot, "tools", "debootstrap")
 	debootstrapPath := filepath.Join(debootstrapDir, "debootstrap")
+
 	if !c.fs.Exists(debootstrapPath) {
 		return fmt.Errorf("debootstrap not found at %s", debootstrapPath)
 	}
 
-	// Execute debootstrap with DEBOOTSTRAP_DIR set via env command
 	if err := c.exec.Run(ctx,
 		"sudo", "-E", "DEBOOTSTRAP_DIR="+debootstrapDir,
 		"fakeroot", debootstrapPath,
@@ -71,26 +96,21 @@ func (c *Creator) Create(ctx context.Context, opts CreateOptions) error {
 	); err != nil {
 		return fmt.Errorf("debootstrap failed: %w", err)
 	}
+	return nil
+}
 
-	// Step 3: Create init script in rootfs directory
-	if err := c.createInitScript(rootfsDir); err != nil {
-		return fmt.Errorf("failed to create init script: %w", err)
-	}
-
-	// Step 4: Remove old disk image if exists
+// removeDiskImage removes old disk image if exists.
+func (c *Creator) removeDiskImage(ctx context.Context, diskImage string) error {
 	if c.fs.Exists(diskImage) {
 		if err := c.exec.Run(ctx, "rm", "-f", diskImage); err != nil {
 			return fmt.Errorf("failed to remove old disk image: %w", err)
 		}
 	}
+	return nil
+}
 
-	// Step 4.5: Fix apt list filenames (host debootstrap may include protocol prefix, guest might not expect it)
-	if err := c.fixAptLists(rootfsDir); err != nil {
-		fmt.Printf("Warning: failed to fix apt lists: %v\n", err)
-	}
-
-	// Step 5: Create ext4 disk image and populate it from rootfs directory using mke2fs -d
-	// Using sudo since debootstrap created root-owned files that mke2fs needs to copy
+// createDiskImage creates ext4 disk image from rootfs directory.
+func (c *Creator) createDiskImage(ctx context.Context, diskImage, rootfsDir, size string) error {
 	if err := c.exec.Run(ctx,
 		"sudo", "mke2fs", "-t", "ext4",
 		"-E", "lazy_itable_init=0,lazy_journal_init=0",
@@ -99,7 +119,6 @@ func (c *Creator) Create(ctx context.Context, opts CreateOptions) error {
 	); err != nil {
 		return fmt.Errorf("failed to create disk image: %w", err)
 	}
-
 	return nil
 }
 

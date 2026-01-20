@@ -1,43 +1,44 @@
-# Allocated linux kernel workspace (legacy, now in build/)
-# *.sparseimage
+# MacOS
+.DS_Store
 
-# Configuration files (kernel related)
-build.cfg
+# Core Build
+/build/
+*.log
 
-# Kernel build artifacts (not Go)
+# Workspace & Data
+/data/
+*.sparseimage
+
+# Kernel Build Artifacts
 *.ko
-*.o
+*.o*
+*.mod*
 *.symvers
 *.order
 *.cmd
-*.tmp_versions/
-
-# Kernel module files (not Go)
-modules/**/*.mod
-modules/**/*.mod.c
-modules/**/*.mod.o
-
-# Auto-generated kernel module scripts
-guesync.sh
+.tmp_versions/
+build.cfg
 module.cfg
+guesync.sh
 
-# Go build output directory
-/build/
+# Examples: Apps
+# Ignore built binaries (non-extension) but keep sources
+examples/apps/*/[!.]*
+!examples/apps/*/*.c
+!examples/apps/*/*.h
+!examples/apps/*/Makefile
+!examples/apps/*/README*
 
-# Built userspace apps (binaries without extension)
-apps/*/[!.]*
-!apps/*/*.c
-!apps/*/*.h
-!apps/*/Makefile
-!apps/*/README*
+# Examples: Modules
+# (Handled by global *.ko, *.o rules, but keeping it clean)
 
-# Task cache
+# Task Runner
 .task/
 
-# IDE
-.idea
-.vscode
+# IDEs
+.idea/
+.vscode/
 
-# Test coverage
+# Testing
 coverage.out
 coverage.html

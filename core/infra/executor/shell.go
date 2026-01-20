@@ -76,6 +76,20 @@ func (e *ShellExecutor) OutputWithEnv(ctx context.Context, env []string, cmd str
 	return c.Output()
 }
 
+// RunWithEnvSilent executes a command with custom environment, suppressing stderr.
+func (e *ShellExecutor) RunWithEnvSilent(ctx context.Context, env []string, cmd string, args ...string) error {
+	c := exec.CommandContext(ctx, cmd, args...)
+	c.Stdout = e.Stdout
+	c.Stderr = nil // Suppress stderr
+	c.Stdin = e.Stdin
+
+	if len(env) > 0 {
+		c.Env = append(os.Environ(), env...)
+	}
+
+	return c.Run()
+}
+
 // LookPath searches for an executable in the system PATH.
 func (e *ShellExecutor) LookPath(cmd string) (string, error) {
 	return exec.LookPath(cmd)

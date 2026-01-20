@@ -42,7 +42,7 @@ func BuildPatch(ctx *Context) *cobra.Command {
 			}
 			ctx.Printer.Print("Patches:")
 			for _, p := range patches {
-				ctx.Printer.Print("  %s/%s", p.Version, p.Name)
+				ctx.Printer.Print("  %s/%s/%s", p.Version, p.Arch, p.Name)
 			}
 			return nil
 		},

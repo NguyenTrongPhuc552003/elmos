@@ -1,0 +1,36 @@
+From 2dd9e741802f8c324f0be349a3e6723fdfc7b24a Mon Sep 17 00:00:00 2001
+From: Phuc Nguyen <trong552003@gmail.com>
+Date: Thu, 15 Jan 2026 22:37:48 +0700
+Subject: [PATCH] drivers: ata: libahci: Fix build error on 32-bit ARM with GCC
+ 13
+
+On 32-bit ARM (and other 32-bit architectures), GCC 13+ promotes the
+ahci.h enum to 64-bit due to the presence of (1 << 31), causing
+sizeof(enum) > sizeof(long).
+
+This triggers the BUILD_BUG_ON check inside array_index_nospec().
+
+Explicitly cast both the index and the size limit to (unsigned long) to
+ensure they match the system long size and pass the size check.
+
+Signed-off-by: Phuc Nguyen <trong552003@gmail.com>
+---
+ drivers/ata/libahci.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/ata/libahci.c b/drivers/ata/libahci.c
+index cf8c7fd59ada..494738d0075a 100644
+--- a/drivers/ata/libahci.c
++++ b/drivers/ata/libahci.c
+@@ -1158,7 +1158,7 @@ static ssize_t ahci_led_store(struct ata_port *ap, const char *buf,
+ 	/* get the slot number from the message */
+ 	pmp = (state & EM_MSG_LED_PMP_SLOT) >> 8;
+ 	if (pmp < EM_MAX_SLOTS) {
+-		pmp = array_index_nospec(pmp, EM_MAX_SLOTS);
++		pmp = array_index_nospec((unsigned long)pmp, (unsigned long)EM_MAX_SLOTS);
+ 		emp = &pp->em_priv[pmp];
+ 	} else {
+ 		return -EINVAL;
+-- 
+2.52.0
+

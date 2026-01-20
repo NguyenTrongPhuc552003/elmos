@@ -1,0 +1,73 @@
+site_name: ELMOS Documentation
+site_description: Embedded Linux on MacOS - Complete SDK for kernel development
+site_author: Phuc Nguyen
+site_url: https://nguyentrongphuc552003.github.io/elmos/
+site_dir: build/site
+
+repo_url: https://github.com/NguyenTrongPhuc552003/elmos
+repo_name: elmos
+
+nav:
+  - Home: index.md
+  - User Guide:
+    - Overview: user/index.md
+    - Installation: user/installation.md
+    - Getting Started: user/getting-started.md
+    - Toolchains: user/toolchains.md
+    - Kernel Building: user/kernel-building.md
+    - Modules and Apps: user/modules-and-apps.md
+    - QEMU Integration: user/qemu-integration.md
+    - TUI Guide: user/tui-guide.md
+    - Troubleshooting: user/troubleshooting.md
+    - FAQ: user/faq.md
+    - Changelog: user/changelog.md
+  - Developer Guide:
+    - Overview: developer/index.md
+    - Architecture: developer/architecture.md
+    - Diagrams: developer/diagrams.md
+    - Contributing: developer/contributing.md
+    - API Reference:
+      - Core App: developer/api/core-app.md
+      - Core Domain: developer/api/core-domain.md
+      - Core Infra: developer/api/core-infra.md
+      - Package Version: developer/api/pkg-version.md
+    - Code Patterns: developer/code-patterns.md
+    - Build System: developer/build-system.md
+    - Embedded Assets: developer/embedded-assets.md
+    - Testing: developer/testing.md
+    - Roadmap: developer/roadmap.md
+
+theme:
+  name: material
+  palette:
+    primary: blue
+    accent: blue
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - toc.integrate
+    - search.suggest
+    - search.highlight
+  icon:
+    repo: fontawesome/brands/github
+
+plugins:
+  - search
+  - plantuml:
+      puml_url: https://www.plantuml.com/plantuml/
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/NguyenTrongPhuc552003/elmos
+
+markdown_extensions:
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed
+  - admonition
+  - footnotes
+  - toc:
+      permalink: true

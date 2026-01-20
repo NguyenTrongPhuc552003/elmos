@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	elconfig "github.com/NguyenTrongPhuc552003/elmos/core/config"
@@ -221,8 +222,16 @@ echo '  [GUEST] Processing module queues...'
 
 # Load all built modules found in the shared directory
 if [ -d "/mnt/modules" ]; then
-    echo "  [GUEST] Loading modules from /mnt/modules..."
-    find /mnt/modules -name "*.ko" -type f -exec insmod {} \; 2>/dev/null
+    for ko in $(find /mnt/modules -name "*.ko" -type f 2>/dev/null); do
+        modname=$(basename "$ko" .ko)
+        echo "  [GUEST] Loading: $modname"
+        insmod "$ko"
+        if [ $? -eq 0 ]; then
+            echo "  [GUEST]   -> $modname loaded OK"
+        else
+            echo "  [GUEST]   -> $modname FAILED (already loaded or error)"
+        fi
+    done
 else
     echo "  [GUEST] Warning: /mnt/modules not found"
 fi
@@ -244,26 +253,13 @@ func (q *QEMURunner) CheckDebugConfig() error {
 	}
 
 	configStr := string(content)
-	hasDebugKernel := contains(configStr, "CONFIG_DEBUG_KERNEL=y")
-	hasDWARF := contains(configStr, "CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT=y") ||
-		contains(configStr, "CONFIG_DEBUG_INFO_DWARF5=y")
+	hasDebugKernel := strings.Contains(configStr, "CONFIG_DEBUG_KERNEL=y")
+	hasDWARF := strings.Contains(configStr, "CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT=y") ||
+		strings.Contains(configStr, "CONFIG_DEBUG_INFO_DWARF5=y")
 
 	if !hasDebugKernel || !hasDWARF {
 		return fmt.Errorf("kernel debugging not enabled in .config (need CONFIG_DEBUG_KERNEL and DWARF info)")
 	}
 
 	return nil
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsImpl(s, substr))
-}
-
-func containsImpl(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }

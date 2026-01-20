@@ -43,9 +43,9 @@ class Elmos < Formula
 
     ldflags = %W[
       -s -w
-      -X github.com/NguyenTrongPhuc552003/elmos/pkg/version.Version=#{version_str}
-      -X github.com/NguyenTrongPhuc552003/elmos/pkg/version.Commit=#{commit}
-      -X github.com/NguyenTrongPhuc552003/elmos/pkg/version.BuildDate=#{build_date}
+      -X github.com/NguyenTrongPhuc552003/elmos/core/app/version.Version=#{version_str}
+      -X github.com/NguyenTrongPhuc552003/elmos/core/app/version.Commit=#{commit}
+      -X github.com/NguyenTrongPhuc552003/elmos/core/app/version.BuildDate=#{build_date}
     ]
 
     system "go", "build", *std_go_args(ldflags:)
@@ -70,9 +70,6 @@ class Elmos < Formula
         elmos kernel config
         elmos build
         elmos qemu run
-
-      Required Homebrew tap for cross-toolchains:
-        brew tap messense/macos-cross-toolchains
 
       Shell completions have been installed for bash, zsh, and fish.
     EOS
