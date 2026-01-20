@@ -209,10 +209,10 @@ tasks:
     desc: Install documentation dependencies if missing
     internal: true
     cmds:
-      - python3 -m pip install mkdocs-material "mkdocstrings[python]" --break-system-packages
+      - python3 -m pip install mkdocs-material "mkdocstrings[python]" mkdocs_puml --break-system-packages
     status:
-      # Only run if both packages are NOT found in the python environment
-      - python3 -c "import material, mkdocstrings" 2>/dev/null
+      # Only run if all packages are found in the python environment
+      - python3 -c "import material, mkdocstrings, mkdocs_puml" 2>/dev/null
 
   docs:clean:
     desc: Remove generated documentation build files
