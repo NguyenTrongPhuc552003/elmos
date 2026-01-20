@@ -1,0 +1,27 @@
+@startuml sequence-build
+!theme plain
+
+title Kernel Build Workflow
+
+actor User
+participant "elmos CLI" as CLI
+participant "KernelBuilder" as Builder
+participant "Executor" as Exec
+participant "FileSystem" as FS
+participant "Make" as Make
+
+User -> CLI: elmos kernel build
+CLI -> Builder: Build(targets)
+Builder -> FS: Check kernel dir exists
+FS --> Builder: OK
+
+Builder -> Builder: getToolchainEnv()
+Builder -> Exec: Run make with env
+Exec -> Make: make ARCH=arm64 LLVM=1 Image
+
+Make --> Exec: Output stream
+Exec --> Builder: Success
+Builder --> CLI: Build complete
+CLI --> User: ✓ Kernel built
+
+@enduml
