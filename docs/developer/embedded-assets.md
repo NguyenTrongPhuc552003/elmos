@@ -1,57 +1,130 @@
 # Embedded Assets
 
-ELMOS embeds templates and configs using Go's `embed` package.
+ELMOS embeds templates and headers at compile time using Go's `embed` package.
 
-## Structure
+---
+
+## Directory Structure
 
 ```
 assets/
-├── embed.go          # Embed directives
-├── libraries/        # Shims (elf.h, endian.h, etc.)
+├── embed.go              # Embed directives and accessor functions
+├── libraries/            # macOS compatibility headers
+│   ├── elf.h             # ELF definitions
+│   ├── byteswap.h        # Byte swapping macros
+│   └── asm/
+│       └── bitsperlong.h # Architecture bit width
 ├── templates/
-│   ├── app/          # App templates (main.c, Makefile)
-│   ├── configs/      # YAML configs (elmos.yaml)
-│   ├── init/         # Init scripts (guesync.sh, init.sh)
-│   └── module/       # Module templates (module.c, Makefile)
+│   ├── app/              # Userspace app templates
+│   │   ├── main.c.tmpl
+│   │   └── Makefile.tmpl
+│   ├── configs/          # Configuration templates
+│   │   └── elmos.yaml.tmpl
+│   ├── init/             # Guest init scripts
+│   │   ├── init.sh.tmpl
+│   │   └── guesync.sh.tmpl
+│   └── module/           # Kernel module templates
+│       ├── module.c.tmpl
+│       └── Makefile.tmpl
 └── toolchains/
-    └── configs/      # Crosstool-ng configs
+    └── configs/          # Crosstool-ng configurations
 ```
 
-## Embedding
+---
 
-In `assets/embed.go`:
+## Embed Directives
 
 ```go
-//go:embed libraries/*
+// assets/embed.go
+package assets
+
+import "embed"
+
 //go:embed templates/*
-//go:embed toolchains/configs/*
-var FS embed.FS
+var Templates embed.FS
 ```
 
-Accessed via `assets.FS`.
+---
 
-## Usage
+## Accessor Functions
 
-Templates used for code generation:
+| Function              | Returns                             |
+| --------------------- | ----------------------------------- |
+| `GetModuleTemplate()` | `templates/module/module.c.tmpl`    |
+| `GetModuleMakefile()` | `templates/module/Makefile.tmpl`    |
+| `GetAppTemplate()`    | `templates/app/main.c.tmpl`         |
+| `GetAppMakefile()`    | `templates/app/Makefile.tmpl`       |
+| `GetInitScript()`     | `templates/init/init.sh.tmpl`       |
+| `GetGuestSync()`      | `templates/init/guesync.sh.tmpl`    |
+| `GetConfigTemplate()` | `templates/configs/elmos.yaml.tmpl` |
 
-- **Modules**: `templates/module/` for `elmos module create`
-- **Apps**: `templates/app/` for `elmos app create`
-- **Configs**: `templates/configs/` for workspace init
+**Usage:**
 
-## Libraries
+```go
+tmpl, err := assets.GetModuleTemplate()
+if err != nil {
+    return err
+}
+// Use tmpl bytes...
+```
 
-Shims for macOS compatibility:
+---
 
-- `elf.h`: libelf headers
-- `endian.h`: Byte order functions
-- `asm/bitsperlong.h`: Architecture defines
+## Template Variables
 
-Used in kernel builds to replace missing macOS headers.
+### Module Template
 
-## Toolchains
+```c
+// templates/module/module.c.tmpl
+#include <linux/module.h>
+#include <linux/kernel.h>
 
-Pre-configured crosstool-ng `.config` files for targets.
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("{{.Author}}");
+MODULE_DESCRIPTION("{{.Description}}");
 
-## Maintenance
+static int __init {{.Name}}_init(void) {
+    pr_info("{{.Name}}: loaded\n");
+    return 0;
+}
+module_init({{.Name}}_init);
+```
 
-Update templates in `assets/`, rebuild to embed changes.
+### App Template
+
+```c
+// templates/app/main.c.tmpl
+#include <stdio.h>
+
+int main(void) {
+    printf("Hello from {{.Name}}!\n");
+    return 0;
+}
+```
+
+---
+
+## macOS Compatibility Headers
+
+The `assets/libraries/` directory contains headers missing on macOS:
+
+| Header              | Purpose                |
+| ------------------- | ---------------------- |
+| `elf.h`             | ELF format definitions |
+| `byteswap.h`        | Byte swapping macros   |
+| `asm/bitsperlong.h` | Architecture bit width |
+
+These are included via `HOSTCFLAGS=-I<assets/libraries>`.
+
+---
+
+## Adding New Templates
+
+1. Create template in `assets/templates/<category>/`
+2. Add accessor function in `assets/embed.go`:
+   ```go
+   func GetNewTemplate() ([]byte, error) {
+       return Templates.ReadFile("templates/category/new.tmpl")
+   }
+   ```
+3. Rebuild: `task build`
