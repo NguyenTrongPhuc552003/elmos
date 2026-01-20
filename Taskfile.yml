@@ -203,7 +203,7 @@ tasks:
     desc: Build the documentation site
     deps: [docs:install]
     cmds:
-      - mkdocs build
+      - python3 -m mkdocs build
 
   docs:install:
     desc: Install documentation dependencies if missing
@@ -223,4 +223,4 @@ tasks:
     desc: Serve the documentation site locally and open in browser
     deps: [docs]
     cmds:
-      - mkdocs serve --open
+      - python3 -m mkdocs serve --open
