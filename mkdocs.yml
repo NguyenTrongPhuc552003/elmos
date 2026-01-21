@@ -1,7 +1,7 @@
 site_name: ELMOS Documentation
 site_description: Embedded Linux on MacOS - Complete SDK for kernel development
 site_author: Phuc Nguyen
-site_url: https://nguyentrongphuc552003.github.io/elmos/
+site_url: https://elmos.vercel.app/
 site_dir: build/site
 
 repo_url: https://github.com/NguyenTrongPhuc552003/elmos
@@ -27,6 +27,7 @@ nav:
     - Diagrams: developer/diagrams.md
     - Contributing: developer/contributing.md
     - API Reference:
+      - Overview: developer/api/index.md
       - Core App: developer/api/core-app.md
       - Core Domain: developer/api/core-domain.md
       - Core Infra: developer/api/core-infra.md
