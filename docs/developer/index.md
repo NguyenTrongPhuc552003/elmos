@@ -10,7 +10,7 @@ This section is for contributors to ELMOS. Learn the architecture, APIs, and pro
 
 ## Code Reference
 
-- [API Docs](api/) - Detailed interfaces
+- [API Docs](api/index.md) - Detailed interfaces
 - [Code Patterns](code-patterns.md) - Go idioms used
 - [Testing](testing.md) - Unit tests and mocks
 - [Embedded Assets](embedded-assets.md) - Templates and resources
