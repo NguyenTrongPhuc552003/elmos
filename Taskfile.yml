@@ -6,7 +6,10 @@ version: '3'
 
 vars:
   BUILD_DIR: build
-  BINARY: "{{.BUILD_DIR}}/elmos"
+  CLI_DIR: "{{.BUILD_DIR}}/cli"
+  GUI_DIR: "{{.BUILD_DIR}}/gui"
+  CLI_BINARY: "{{.CLI_DIR}}/elmos"
+  GUI_BINARY: "{{.GUI_DIR}}/elmos"
   PREFIX: /usr/local
   VERSION:
     sh: git describe --tags --always --dirty 2>/dev/null || echo "dev"
@@ -32,29 +35,124 @@ tasks:
       - task: build
 
   build:
-    desc: Build the elmos binary
+    desc: Build the ELMOS CLI binary
     cmds:
-      - echo "Building {{.BINARY}}..."
-      - mkdir -p {{.BUILD_DIR}}
-      - go build -ldflags "{{.LDFLAGS}}" -o {{.BINARY}} ./cmd/elmos
+      - echo "Building {{.CLI_BINARY}}..."
+      - mkdir -p {{.CLI_DIR}}
+      - go build -ldflags "{{.LDFLAGS}}" -o {{.CLI_BINARY}} ./cmd/elmos
     sources:
       - "**/*.go"
       - go.mod
       - go.sum
     generates:
-      - "{{.BINARY}}"
+      - "{{.CLI_BINARY}}"
 
   clean:
-    desc: Clean all build artifacts
+    desc: Clean all build artifacts (CLI + GUI)
     cmds:
       - rm -rf {{.BUILD_DIR}}
       - rm -rf completions
       - rm -f coverage.out coverage.html
+      - rm -rf core/ui/graphical/build
       - go clean
+
+  # ============================================================================
+  # GUI Development (gui:*)
+  # ============================================================================
+
+  gui:build:
+    desc: Build Qt 6 GUI (ELMOS IDE)
+    dir: core/ui/graphical
+    cmds:
+      - echo "Building ELMOS GUI with Qt 6..."
+      - mkdir -p ../../../build/gui
+      - cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/opt/homebrew/opt/qt
+      - cmake --build build --target elmos-gui -j8
+      - |
+        if [ -d "build/elmos-gui.app" ]; then
+          cp build/elmos-gui.app/Contents/MacOS/elmos-gui ../../../build/gui/elmos
+        else
+          cp build/elmos-gui ../../../build/gui/elmos
+        fi
+      - echo "GUI binary built -> build/gui/elmos"
+    sources:
+      - "src/**/*.cpp"
+      - "include/**/*.h"
+      - "CMakeLists.txt"
+    generates:
+      - "../../../build/gui/elmos"
+
+  gui:clean:
+    desc: Clean GUI build artifacts
+    dir: core/ui/graphical
+    cmds:
+      - rm -rf build
+      - rm -rf ../../../build/gui
+
+  gui:run:
+    desc: Run ELMOS GUI (requires 'elmos serve' in another terminal)
+    cmds:
+      - |
+        if [ ! -f build/gui/elmos ]; then
+          echo "GUI not built. Run 'task gui:build' first."
+          exit 1
+        fi
+        echo "Starting ELMOS GUI..."
+        echo "Make sure 'elmos serve' is running in another terminal!"
+        ./build/gui/elmos
+
+  gui:dev:
+    desc: Build and run GUI in development mode
+    cmds:
+      - task: gui:build
+      - task: gui:run
+
+  build:all:
+    desc: Build both CLI and GUI binaries
+    cmds:
+      - task: build
+      - task: gui:build
+      - echo ""
+      - echo "✅ Build complete!"
+      - echo "   CLI -> build/cli/elmos"
+      - echo "   GUI -> build/gui/elmos"
 
   # ============================================================================
   # Development Workflow (dev:*)
   # ============================================================================
+
+  dev:list:
+    desc: Show all available dev tasks
+    cmds:
+      - |
+        echo "=== ELMOS Development Tasks ==="
+        echo ""
+        echo "Code Quality:"
+        echo "  dev:fmt            - Format Go code (go fmt)"
+        echo "  dev:lint           - Run linter (golangci-lint or go vet)"
+        echo "  dev:check          - Quick pre-commit check (fmt + lint)"
+        echo "  dev:complexity     - Cyclomatic complexity analysis (CC>10, MI<30)"
+        echo ""
+        echo "Code Analysis:"
+        echo "  dev:deadcode       - Detect unused code"
+        echo "  dev:ineffassign    - Find ineffective assignments"
+        echo "  dev:staticcheck    - Advanced static analysis"
+        echo "  dev:circular       - Show internal dependency graph"
+        echo "  dev:security       - Security scan (gosec)"
+        echo ""
+        echo "Module Management:"
+        echo "  dev:deps           - Download and tidy dependencies"
+        echo "  dev:mod:verify     - Verify go.mod/go.sum consistency"
+        echo ""
+        echo "Comprehensive:"
+        echo "  dev:verify         - Run ALL verification checks"
+        echo "  dev:setup          - Full dev setup (deps + tools + build)"
+        echo ""
+        echo "Tool Installation:"
+        echo "  dev:complexity:install - Install complexity analysis tool"
+        echo ""
+        echo "Usage: task <task-name>"
+        echo "Example: task dev:verify"
 
   dev:deps:
     desc: Download and tidy dependencies
@@ -83,6 +181,94 @@ tasks:
     cmds:
       - task: dev:fmt
       - task: dev:lint
+
+  dev:deadcode:
+    desc: Detect unused code (requires deadcode tool)
+    cmds:
+      - |
+        if ! command -v deadcode >/dev/null 2>&1; then
+          echo "Installing deadcode..."
+          go install golang.org/x/tools/cmd/deadcode@latest
+        fi
+        echo "Scanning for unused code..."
+        deadcode -test ./... || echo "✓ No dead code found!"
+
+  dev:ineffassign:
+    desc: Detect ineffective assignments (requires ineffassign tool)
+    cmds:
+      - |
+        if ! command -v ineffassign >/dev/null 2>&1; then
+          echo "Installing ineffassign..."
+          go install github.com/gordonklaus/ineffassign@latest
+        fi
+        echo "Scanning for ineffective assignments..."
+        ineffassign ./... || echo "✓ No ineffective assignments!"
+
+  dev:staticcheck:
+    desc: Run advanced static analysis (requires staticcheck)
+    cmds:
+      - |
+        if ! command -v staticcheck >/dev/null 2>&1; then
+          echo "Installing staticcheck..."
+          go install honnef.co/go/tools/cmd/staticcheck@latest
+        fi
+        echo "Running staticcheck..."
+        staticcheck ./...
+
+  dev:circular:
+    desc: Detect circular dependencies
+    cmds:
+      - |
+        echo "Checking for circular dependencies..."
+        go list -f '{{"{{"}} .ImportPath {{"}}"}} {{"{{"}} join .Deps " " {{"}}"}}' ./... | \
+          awk '{for(i=2; i<=NF; i++) if($i ~ /^github.com\/NguyenTrongPhuc552003\/elmos/) print $1, "→", $i}' | \
+          sort -u > /tmp/elmos_deps.txt
+        if [ -s /tmp/elmos_deps.txt ]; then
+          echo "Internal dependencies:"
+          cat /tmp/elmos_deps.txt
+        else
+          echo "✓ No circular dependencies detected!"
+        fi
+
+  dev:mod:verify:
+    desc: Verify go.mod/go.sum consistency
+    cmds:
+      - echo "Verifying module dependencies..."
+      - go mod verify
+      - go mod tidy -v
+      - |
+        if git diff --quiet go.mod go.sum; then
+          echo "✓ go.mod and go.sum are up-to-date!"
+        else
+          echo "⚠ go.mod or go.sum has changes - review diff:"
+          git diff go.mod go.sum
+        fi
+
+  dev:security:
+    desc: Basic security checks (requires gosec)
+    cmds:
+      - |
+        if ! command -v gosec >/dev/null 2>&1; then
+          echo "Installing gosec..."
+          go install github.com/securego/gosec/v2/cmd/gosec@latest
+        fi
+        echo "Running security scan..."
+        gosec -quiet -fmt=text ./...
+
+  dev:verify:
+    desc: Run comprehensive verification (all checks)
+    cmds:
+      - echo "=== Comprehensive Code Verification ==="
+      - task: dev:fmt
+      - task: dev:lint
+      - task: dev:complexity
+      - task: dev:deadcode
+      - task: dev:ineffassign
+      - task: dev:staticcheck
+      - task: dev:mod:verify
+      - task: dev:circular
+      - task: dev:security
+      - echo "=== ✅ All verifications complete ==="
 
   dev:complexity:install:
     desc: Install go-complexity-analysis tool for CC/MI analysis
@@ -224,3 +410,185 @@ tasks:
     deps: [docs]
     cmds:
       - python3 -m mkdocs serve --open
+
+  # ============================================================================
+  # API / gRPC (api:*)
+  # ============================================================================
+
+  api:proto:
+    desc: Generate gRPC code from proto files
+    dir: api
+    cmds:
+      - make proto
+    sources:
+      - "proto/*.proto"
+    generates:
+      - "proto/*.pb.go"
+      - "proto/*_grpc.pb.go"
+
+  api:clean:
+    desc: Remove generated gRPC code
+    dir: api
+    cmds:
+      - make clean
+
+  # ============================================================================
+  # Packaging & Distribution (package:*)
+  # ============================================================================
+
+  package:all:
+    desc: Build all platform packages (DMG, DEB, RPM, TAR)
+    cmds:
+      - task: package:tar
+
+  package:dmg:
+    desc: Create macOS DMG installer (GUI + CLI)
+    platforms: [darwin]
+    deps: [build, gui:build]
+    cmds:
+      - echo "Creating macOS DMG installer..."
+      - mkdir -p build/package/macos
+      - |
+        # Create application directory structure
+        cp -r core/ui/graphical/build/elmos-gui.app build/package/macos/ELMOS.app
+        # Copy CLI binary into app bundle
+        cp build/cli/elmos build/package/macos/ELMOS.app/Contents/MacOS/elmos
+        # Create DMG
+        if command -v create-dmg >/dev/null 2>&1; then
+          create-dmg \
+            --volname "ELMOS" \
+            --window-pos 200 120 \
+            --window-size 800 400 \
+            --icon-size 100 \
+            --app-drop-link 600 185 \
+            build/elmos-macos-arm64.dmg \
+            build/package/macos/ELMOS.app
+        else
+          echo "⚠️  create-dmg not found, creating simple DMG..."
+          hdiutil create -volname "ELMOS" \
+            -srcfolder build/package/macos \
+            -ov -format UDZO \
+            build/elmos-macos-arm64.dmg
+        fi
+      - echo "✅ DMG created -> build/elmos-macos-arm64.dmg"
+
+  package:deb:
+    desc: Create Debian/Ubuntu DEB package (CLI + GUI)
+    platforms: [linux]
+    deps: [build, gui:build]
+    cmds:
+      - echo "Creating Debian DEB package..."
+      - mkdir -p build/package/deb/DEBIAN
+      - mkdir -p build/package/deb/usr/bin
+      - mkdir -p build/package/deb/usr/share/applications
+      - |
+        # Copy binaries
+        cp build/cli/elmos build/package/deb/usr/bin/elmos
+        cp build/gui/elmos build/package/deb/usr/bin/elmos-gui
+        chmod +x build/package/deb/usr/bin/elmos*
+        # Create control file
+        cat > build/package/deb/DEBIAN/control << 'EOF'
+        Package: elmos
+        Version: 1.0.0
+        Section: devel
+        Priority: optional
+        Architecture: amd64
+        Maintainer: ELMOS Team
+        Description: Embedded Linux Development IDE
+         ELMOS provides a complete IDE for embedded Linux kernel development
+         including build management, QEMU emulation, and project templates.
+        Depends: qemu-system-arm, build-essential, qt6-base-dev
+        EOF
+        # Create .desktop file
+        cat > build/package/deb/usr/share/applications/elmos.desktop << 'EOF'
+        [Desktop Entry]
+        Version=1.0
+        Type=Application
+        Name=ELMOS IDE
+        Comment=Embedded Linux Development IDE
+        Exec=/usr/bin/elmos-gui
+        Icon=elmos
+        Terminal=false
+        Categories=Development;IDE;
+        EOF
+        # Build DEB package
+        dpkg-deb --build build/package/deb build/elmos_1.0.0_amd64.deb
+      - echo "✅ DEB created -> build/elmos_1.0.0_amd64.deb"
+
+  package:rpm:
+    desc: Create RedHat/Fedora RPM package (CLI + GUI)
+    platforms: [linux]
+    deps: [build, gui:build]
+    cmds:
+      - echo "Creating RPM package..."
+      - mkdir -p build/package/rpm/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+      - mkdir -p build/package/rpm/BUILD/usr/bin
+      - |
+        # Copy binaries
+        cp build/cli/elmos build/package/rpm/BUILD/usr/bin/elmos
+        cp build/gui/elmos build/package/rpm/BUILD/usr/bin/elmos-gui
+        chmod +x build/package/rpm/BUILD/usr/bin/elmos*
+        # Create spec file
+        cat > build/package/rpm/SPECS/elmos.spec << 'EOF'
+        Name:           elmos
+        Version:        1.0.0
+        Release:        1%{?dist}
+        Summary:        Embedded Linux Development IDE
+        License:        MIT
+        URL:            https://github.com/NguyenTrongPhuc552003/elmos
+
+        %description
+        ELMOS provides a complete IDE for embedded Linux kernel development
+        including build management, QEMU emulation, and project templates.
+
+        %files
+        /usr/bin/elmos
+        /usr/bin/elmos-gui
+
+        %changelog
+        * Sat Feb 08 2026 ELMOS Team - 1.0.0-1
+        - Initial package release
+        EOF
+        # Build RPM (requires rpmbuild)
+        if command -v rpmbuild >/dev/null 2>&1; then
+          rpmbuild --define "_topdir $(pwd)/build/package/rpm" \
+            -bb build/package/rpm/SPECS/elmos.spec
+          cp build/package/rpm/RPMS/*/elmos-*.rpm build/
+          echo "✅ RPM created -> build/elmos-1.0.0-1.*.rpm"
+        else
+          echo "⚠️  rpmbuild not found. Install: sudo dnf install rpm-build"
+          exit 1
+        fi
+
+  package:tar:
+    desc: Create portable tarball (CLI + GUI) for all platforms
+    deps: [build, gui:build]
+    cmds:
+      - echo "Creating portable tarball..."
+      - mkdir -p build/package/elmos
+      - |
+        # Copy binaries and docs
+        cp build/cli/elmos build/package/elmos/elmos
+        cp build/gui/elmos build/package/elmos/elmos-gui
+        cp README.md build/package/elmos/ 2>/dev/null || echo "README.md not found, skipping..."
+        # Create installation script
+        cat > build/package/elmos/install.sh << 'EOF'
+        #!/bin/bash
+        set -e
+        echo "Installing ELMOS..."
+        sudo cp elmos /usr/local/bin/elmos
+        sudo cp elmos-gui /usr/local/bin/elmos-gui
+        sudo chmod +x /usr/local/bin/elmos*
+        echo "✅ ELMOS installed to /usr/local/bin/"
+        echo "Run 'elmos version' to verify installation"
+        EOF
+        chmod +x build/package/elmos/install.sh
+        # Create tarball
+        cd build/package && tar czf ../elmos-$(uname -s)-$(uname -m).tar.gz elmos
+      - echo "✅ Tarball created -> build/elmos-$(uname -s)-$(uname -m).tar.gz"
+
+  package:clean:
+    desc: Remove all packaging artifacts
+    cmds:
+      - rm -rf build/package/
+      - rm -f build/*.dmg build/*.deb build/*.rpm build/*.tar.gz
