@@ -2,6 +2,8 @@
 package app
 
 import (
+	"log"
+
 	"github.com/spf13/cobra"
 
 	"github.com/NguyenTrongPhuc552003/elmos/core/app/commands"
@@ -16,6 +18,9 @@ import (
 	"github.com/NguyenTrongPhuc552003/elmos/core/domain/toolchain"
 	"github.com/NguyenTrongPhuc552003/elmos/core/infra/executor"
 	"github.com/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
+	"github.com/NguyenTrongPhuc552003/elmos/core/infra/packages"
+	"github.com/NguyenTrongPhuc552003/elmos/core/infra/platform"
+	"github.com/NguyenTrongPhuc552003/elmos/core/infra/volume"
 	"github.com/NguyenTrongPhuc552003/elmos/core/ui"
 )
 
@@ -25,6 +30,9 @@ type App struct {
 	FS               filesystem.FileSystem
 	Config           *config.Config
 	Context          *elcontext.Context
+	PlatformFactory  *platform.Factory
+	VolumeManager    volume.Manager
+	PackageResolver  packages.Resolver
 	KernelBuilder    *builder.KernelBuilder
 	ModuleBuilder    *builder.ModuleBuilder
 	AppBuilder       *builder.AppBuilder
@@ -41,7 +49,22 @@ type App struct {
 
 // New creates a new App with all dependencies wired up.
 func New(exec executor.Executor, fs filesystem.FileSystem, cfg *config.Config) *App {
-	ctx := elcontext.New(cfg, exec, fs)
+	// Create platform factory
+	platformFactory := platform.NewFactory(exec, fs)
+
+	// Get platform-specific implementations
+	volumeManager, err := platformFactory.GetVolumeManager()
+	if err != nil {
+		log.Fatalf("Failed to initialize volume manager: %v", err)
+	}
+
+	pkgResolver, err := platformFactory.GetPackageResolver()
+	if err != nil {
+		log.Fatalf("Failed to initialize package resolver: %v", err)
+	}
+
+	// Create context with package resolver
+	ctx := elcontext.New(cfg, exec, fs, pkgResolver)
 	printer := ui.NewPrinter()
 	tm := toolchain.NewManager(exec, fs, cfg, printer)
 
@@ -50,6 +73,9 @@ func New(exec executor.Executor, fs filesystem.FileSystem, cfg *config.Config) *
 		FS:               fs,
 		Config:           cfg,
 		Context:          ctx,
+		PlatformFactory:  platformFactory,
+		VolumeManager:    volumeManager,
+		PackageResolver:  pkgResolver,
 		KernelBuilder:    builder.NewKernelBuilder(exec, fs, cfg, ctx, tm),
 		ModuleBuilder:    builder.NewModuleBuilder(exec, fs, cfg, ctx, tm),
 		AppBuilder:       builder.NewAppBuilder(exec, fs, cfg, ctx, tm),
@@ -105,6 +131,9 @@ Common workflow:
 		FS:               a.FS,
 		Config:           a.Config,
 		AppContext:       a.Context,
+		PlatformFactory:  a.PlatformFactory,
+		VolumeManager:    a.VolumeManager,
+		PackageResolver:  a.PackageResolver,
 		KernelBuilder:    a.KernelBuilder,
 		ModuleBuilder:    a.ModuleBuilder,
 		AppBuilder:       a.AppBuilder,
