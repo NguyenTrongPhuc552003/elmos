@@ -1,11 +1,12 @@
-package commands
+package build
 
 import (
+	"github.com/NguyenTrongPhuc552003/elmos/core/app/commands/types"
 	"github.com/spf13/cobra"
 )
 
 // BuildApps creates the app command tree for userspace application management.
-func BuildApps(ctx *Context) *cobra.Command {
+func BuildApps(ctx *types.Context) *cobra.Command {
 	appCmd := &cobra.Command{
 		Use:   "app",
 		Short: "Manage userspace applications",
