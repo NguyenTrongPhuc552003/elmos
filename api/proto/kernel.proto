@@ -1,0 +1,75 @@
+syntax = "proto3";
+package elmos.v1;
+
+import "api/proto/common.proto";
+
+option go_package = "github.com/NguyenTrongPhuc552003/elmos/api/proto;proto";
+
+// KernelService manages kernel operations (clone, configure, build).
+service KernelService {
+  // Clone clones the kernel repository with progress updates.
+  rpc Clone(CloneRequest) returns (stream CloneProgress);
+  
+  // Configure configures the kernel (defconfig, menuconfig, etc.).
+  rpc Configure(ConfigureRequest) returns (ConfigureResponse);
+  
+  // Build builds the kernel with streaming logs and progress.
+  rpc Build(BuildRequest) returns (stream BuildProgress);
+  
+  // Clean cleans build artifacts.
+  rpc Clean(CleanRequest) returns (CleanResponse);
+  
+  // GetStatus returns the current kernel status.
+  rpc GetStatus(KernelStatusRequest) returns (KernelStatus);
+  
+  // ListVersions lists available kernel versions.
+  rpc ListVersions(ListVersionsRequest) returns (ListVersionsResponse);
+}
+
+message CloneRequest {
+  string version = 1;  // Kernel version (e.g., "v6.18")
+  string repo_url = 2; // Custom repo URL (optional)
+}
+
+message CloneProgress {
+  int32 progress = 1;  // 0-100
+  string message = 2;   // Status message
+}
+
+message ConfigureRequest {
+  string config_type = 1;  // "defconfig", "menuconfig", "oldconfig"
+  map<string, string> options = 2;  // Additional config options
+}
+
+message ConfigureResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+message BuildRequest {
+  repeated string targets = 1;  // Build targets: ["Image", "dtbs", "modules"]
+  int32 jobs = 2;                // Number of parallel jobs (0 = auto)
+  string arch = 3;               // Target architecture
+  bool verbose = 4;              // Verbose build output
+}
+
+message KernelStatusRequest {}
+
+message KernelStatus {
+  bool cloned = 1;
+  bool configured = 2;
+  bool built = 3;
+  string version = 4;
+  string arch = 5;
+  string image_path = 6;
+  int64 image_size_bytes = 7;
+  string last_build_time = 8;
+}
+
+message ListVersionsRequest {
+  int32 limit = 1;  // Max versions to return
+}
+
+message ListVersionsResponse {
+  repeated string versions = 1;
+}
