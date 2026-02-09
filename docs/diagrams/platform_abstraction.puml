@@ -1,0 +1,303 @@
+@startuml Platform Abstraction Layer
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam packageStyle rectangle
+
+title ELMOS Platform Abstraction Layer Design
+
+' ================================
+' Interfaces
+' ================================
+package "Abstraction Interfaces" as Interfaces {
+    interface "VolumeProvider" as IVolume {
+        + Create(name, size string) error
+        + Mount(volumePath string) (mountPoint, error)
+        + Unmount(mountPoint string, force bool) error
+        + IsMounted(volumePath string) (bool, error)
+        + GetStatus(volumePath string) (*VolumeStatus, error)
+    }
+    
+    interface "PackageResolver" as IPackage {
+        + GetBinPath(pkg string) string
+        + GetLibPath(pkg string) string
+        + GetIncludePath(pkg string) string
+        + IsInstalled(pkg string) bool
+        + ListInstalled() ([]string, error)
+    }
+    
+    interface "PlatformEnvironment" as IEnv {
+        + GetWorkspaceRoot() string
+        + GetPathSeparator() string
+        + GetTempDir() string
+        + GetCustomHeaders() []string
+        + GetHostCFlags() []string
+        + GetPlatformName() string
+    }
+}
+
+' ================================
+' macOS Implementations
+' ================================
+package "macOS Implementation" as macOS {
+    class macOSVolumeProvider {
+        - exec: Executor
+        - fs: FileSystem
+        --
+        + Create(name, size) error
+        + Mount(volumePath) (string, error)
+        + Unmount(mountPoint, force) error
+        + IsMounted(volumePath) (bool, error)
+        --
+        **Implementation:**
+        - Uses hdiutil create/attach/detach
+        - Sparse APFS images
+        - Path: ~/Library/data/<name>.sparseimage
+        - Mount: /Volumes/<name>
+    }
+    
+    class HomebrewResolver {
+        - exec: Executor
+        - cache: map[string]string
+        --
+        + GetBinPath(pkg) string
+        + GetLibPath(pkg) string
+        + GetIncludePath(pkg) string
+        + IsInstalled(pkg) bool
+        --
+        **Implementation:**
+        - Calls 'brew --prefix <pkg>'
+        - Caches results
+        - Handles /opt/homebrew (Apple Silicon)
+        - Handles /usr/local (Intel)
+    }
+    
+    class macOSEnvironment {
+        - librariesDir: string
+        --
+        + GetWorkspaceRoot() string
+        + GetCustomHeaders() []string
+        + GetHostCFlags() []string
+        --
+        **Specifics:**
+        - Workspace: /Volumes/<name>
+        - Custom headers: elf.h, byteswap.h, asm/*
+        - HOSTCFLAGS: -D_UUID_T, -D__GETHOSTUUID_H
+    }
+    
+    macOSVolumeProvider ..|> IVolume
+    HomebrewResolver ..|> IPackage
+    macOSEnvironment ..|> IEnv
+}
+
+' ================================
+' Linux Implementations
+' ================================
+package "Linux Implementation" as Linux {
+    class linuxVolumeProvider {
+        - exec: Executor
+        - fs: FileSystem
+        --
+        + Create(name, size) error
+        + Mount(volumePath) (string, error)
+        + Unmount(mountPoint, force) error
+        + IsMounted(volumePath) (bool, error)
+        --
+        **Implementation:**
+        - Uses fallocate + mkfs.ext4
+        - Loopback device (mount -o loop)
+        - Path: ~/.elmos/data/<name>.img
+        - Mount: /mnt/<name>
+    }
+    
+    class AptResolver {
+        - exec: Executor
+        --
+        + GetBinPath(pkg) string
+        + IsInstalled(pkg) bool
+        --
+        **Implementation:**
+        - Checks 'dpkg -l | grep <pkg>'
+        - Uses 'which' for bin paths
+        - Standard paths: /usr/bin, /usr/lib
+    }
+    
+    class PacmanResolver {
+        - exec: Executor
+        --
+        + GetBinPath(pkg) string
+        + IsInstalled(pkg) bool
+        --
+        **Implementation:**
+        - Checks 'pacman -Q <pkg>'
+        - Uses 'which' for bin paths
+        - Standard paths: /usr/bin, /usr/lib
+    }
+    
+    class linuxEnvironment {
+        --
+        + GetWorkspaceRoot() string
+        + GetCustomHeaders() []string
+        + GetHostCFlags() []string
+        --
+        **Specifics:**
+        - Workspace: /mnt/<name>
+        - No custom headers (native)
+        - Standard HOSTCFLAGS
+    }
+    
+    linuxVolumeProvider ..|> IVolume
+    AptResolver ..|> IPackage
+    PacmanResolver ..|> IPackage
+    linuxEnvironment ..|> IEnv
+}
+
+' ================================
+' WSL2 Implementations
+' ================================
+package "WSL2 Implementation" as WSL {
+    class wslVolumeProvider {
+        - exec: Executor
+        - fs: FileSystem
+        --
+        + Create(name, size) error
+        + Mount(volumePath) (string, error)
+        + Unmount(mountPoint, force) error
+        --
+        **Implementation:**
+        - Hybrid: Windows path + Linux mount
+        - Path: /mnt/c/Users/<user>/.elmos/<name>.img
+        - Mount: /mnt/wsl/<name>
+        - Falls back to Linux loopback
+    }
+    
+    class wslEnvironment {
+        --
+        + GetWorkspaceRoot() string
+        + GetCustomHeaders() []string
+        --
+        **Specifics:**
+        - Workspace: /mnt/wsl/<name> or /mnt/c/...
+        - No custom headers (native Linux kernel)
+        - Detects WSL via /proc/version
+    }
+    
+    wslVolumeProvider ..|> IVolume
+    wslEnvironment ..|> IEnv
+    
+    note right of wslVolumeProvider
+        **WSL Detection:**
+        ```go
+        func isWSL() bool {
+            data, _ := os.ReadFile("/proc/version")
+            return strings.Contains(
+                strings.ToLower(string(data)),
+                "microsoft")
+        }
+        ```
+    end note
+}
+
+' ================================
+' Factory Pattern
+' ================================
+package "Factory & Registry" as Factory {
+    class PlatformFactory {
+        + NewVolumeProvider() VolumeProvider
+        + NewPackageResolver() PackageResolver
+        + NewEnvironment() PlatformEnvironment
+        --
+        **Runtime Detection:**
+        - runtime.GOOS (darwin, linux, windows)
+        - /proc/version (WSL)
+        - $HOMEBREW_PREFIX (Homebrew)
+    }
+    
+    PlatformFactory ..> macOSVolumeProvider : <<creates>>
+    PlatformFactory ..> linuxVolumeProvider : <<creates>>
+    PlatformFactory ..> wslVolumeProvider : <<creates>>
+    PlatformFactory ..> HomebrewResolver : <<creates>>
+    PlatformFactory ..> AptResolver : <<creates>>
+}
+
+' ================================
+' Usage Example
+' ================================
+note as UsageExample
+    **Usage in Domain Layer:**
+    
+    ```go
+    // core/domain/builder/kernel.go
+    type KernelBuilder struct {
+        volumeProvider VolumeProvider  // Interface
+        pkgResolver    PackageResolver
+        env            PlatformEnvironment
+    }
+    
+    func (b *KernelBuilder) Build(ctx context.Context, opts BuildOptions) error {
+        // Check workspace mounted
+        if mounted, _ := b.volumeProvider.IsMounted(b.cfg.Image.Path); !mounted {
+            return errors.New("workspace not mounted")
+        }
+        
+        // Get LLVM path (cross-platform)
+        llvmPath := b.pkgResolver.GetBinPath("llvm")
+        
+        // Get custom headers (macOS only, empty on Linux)
+        headers := b.env.GetCustomHeaders()
+        
+        // Build make environment
+        env := []string{
+            "PATH=" + llvmPath + ":" + os.Getenv("PATH"),
+            "HOSTCFLAGS=" + strings.Join(b.env.GetHostCFlags(), " "),
+        }
+        
+        return b.exec.RunWithEnv(ctx, env, "make", args...)
+    }
+    ```
+    
+    **Initialization:**
+    ```go
+    // core/app/app.go
+    func New(cfg *config.Config) *App {
+        volumeProvider := platform.NewVolumeProvider()
+        pkgResolver := platform.NewPackageResolver()
+        platformEnv := platform.NewEnvironment()
+        
+        kernelBuilder := builder.NewKernelBuilder(
+            exec, fs, cfg, volumeProvider, pkgResolver, platformEnv)
+        
+        return &App{KernelBuilder: kernelBuilder, ...}
+    }
+    ```
+end note
+
+UsageExample .. Interfaces
+
+' ================================
+' Comparison Table
+' ================================
+note as ComparisonTable
+    **Platform Comparison:**
+    
+    | Feature | macOS | Linux | WSL2 |
+    |---------|-------|-------|------|
+    | **Volume Type** | Sparse APFS | ext4 image | ext4 or Windows |
+    | **Creation** | hdiutil create | fallocate + mkfs | fallocate |
+    | **Mount** | hdiutil attach | mount -o loop | mount |
+    | **Mount Path** | /Volumes/<name> | /mnt/<name> | /mnt/wsl/<name> |
+    | **Package Mgr** | Homebrew | apt / pacman | apt (native) |
+    | **Custom Headers** | ✅ Required | ❌ Not needed | ❌ Not needed |
+    | **HOSTCFLAGS** | -D_UUID_T, etc. | Standard | Standard |
+    
+    **Common Operations (Same Interface):**
+    ```go
+    volumeProvider.Create("elmos", "40G")    // Platform-specific impl
+    mountPoint, _ := volumeProvider.Mount(volumePath)
+    isInstalled := pkgResolver.IsInstalled("llvm")
+    ```
+end note
+
+ComparisonTable .. Factory
+
+@enduml
