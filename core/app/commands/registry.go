@@ -1,61 +1,42 @@
 // Package commands provides individual CLI command builders for elmos.
-// Each command group is in its own file for maintainability.
+// Each command group is in its own subsystem package for maintainability.
 package commands
 
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/NguyenTrongPhuc552003/elmos/core/config"
-	elcontext "github.com/NguyenTrongPhuc552003/elmos/core/context"
-	"github.com/NguyenTrongPhuc552003/elmos/core/domain/builder"
-	"github.com/NguyenTrongPhuc552003/elmos/core/domain/doctor"
-	"github.com/NguyenTrongPhuc552003/elmos/core/domain/emulator"
-	"github.com/NguyenTrongPhuc552003/elmos/core/domain/patch"
-	"github.com/NguyenTrongPhuc552003/elmos/core/domain/rootfs"
-	"github.com/NguyenTrongPhuc552003/elmos/core/domain/toolchain"
-	"github.com/NguyenTrongPhuc552003/elmos/core/infra/executor"
-	"github.com/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
-	"github.com/NguyenTrongPhuc552003/elmos/core/ui"
+	"github.com/NguyenTrongPhuc552003/elmos/core/app/commands/build"
+	"github.com/NguyenTrongPhuc552003/elmos/core/app/commands/env"
+	"github.com/NguyenTrongPhuc552003/elmos/core/app/commands/ops"
+	"github.com/NguyenTrongPhuc552003/elmos/core/app/commands/runtime"
+	"github.com/NguyenTrongPhuc552003/elmos/core/app/commands/ui"
 )
-
-// Context provides dependencies for command builders.
-// This avoids circular imports by passing only what commands need.
-type Context struct {
-	Exec             executor.Executor
-	FS               filesystem.FileSystem
-	Config           *config.Config
-	AppContext       *elcontext.Context
-	KernelBuilder    *builder.KernelBuilder
-	ModuleBuilder    *builder.ModuleBuilder
-	AppBuilder       *builder.AppBuilder
-	QEMURunner       *emulator.QEMURunner
-	HealthChecker    *doctor.HealthChecker
-	AutoFixer        *doctor.AutoFixer
-	RootfsCreator    *rootfs.Creator
-	PatchManager     *patch.Manager
-	ToolchainManager *toolchain.Manager
-	Printer          *ui.Printer
-
-	// Flags that can be modified
-	Verbose    *bool
-	ConfigFile *string
-}
 
 // Register adds all subcommands to the root command.
 func Register(ctx *Context, rootCmd *cobra.Command) {
-	rootCmd.AddCommand(BuildVersion(ctx))
-	rootCmd.AddCommand(BuildTUI(ctx))
-	rootCmd.AddCommand(BuildInit(ctx))
-	rootCmd.AddCommand(BuildExit(ctx))
-	rootCmd.AddCommand(BuildArch(ctx))
-	rootCmd.AddCommand(BuildDoctor(ctx))
-	rootCmd.AddCommand(BuildKernel(ctx))
-	rootCmd.AddCommand(BuildModule(ctx))
-	rootCmd.AddCommand(BuildApps(ctx))
-	rootCmd.AddCommand(BuildQEMU(ctx))
-	rootCmd.AddCommand(BuildGDB(ctx))
-	rootCmd.AddCommand(BuildStatus(ctx))
-	rootCmd.AddCommand(BuildRootfs(ctx))
-	rootCmd.AddCommand(BuildPatch(ctx))
-	rootCmd.AddCommand(BuildToolchains(ctx))
+	// UI commands
+	rootCmd.AddCommand(ui.BuildVersion(ctx))
+	rootCmd.AddCommand(ui.BuildTUI(ctx))
+
+	// Environment setup commands
+	rootCmd.AddCommand(env.BuildInit(ctx))
+	rootCmd.AddCommand(env.BuildExit(ctx))
+	rootCmd.AddCommand(env.BuildArch(ctx))
+	rootCmd.AddCommand(env.BuildToolchains(ctx))
+	rootCmd.AddCommand(env.BuildRootfs(ctx))
+
+	// Build commands
+	rootCmd.AddCommand(build.BuildKernel(ctx))
+	rootCmd.AddCommand(build.BuildModule(ctx))
+	rootCmd.AddCommand(build.BuildApps(ctx))
+
+	// Runtime commands
+	rootCmd.AddCommand(runtime.BuildQEMU(ctx))
+	rootCmd.AddCommand(runtime.BuildGDB(ctx))
+	rootCmd.AddCommand(runtime.BuildPatch(ctx))
+	rootCmd.AddCommand(runtime.BuildServe(ctx)) // gRPC API server
+
+	// Operations commands
+	rootCmd.AddCommand(ops.BuildDoctor(ctx))
+	rootCmd.AddCommand(ops.BuildStatus(ctx))
 }
