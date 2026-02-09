@@ -4,6 +4,18 @@ This page contains visual diagrams of the ELMOS architecture.
 
 ---
 
+## GUI Architecture
+
+![GUI Architecture](../diagrams/gui_architecture.puml)
+
+## GUI Build Sequence
+
+![GUI Build Sequence](../diagrams/gui_build_sequence.puml)
+
+## Platform Abstraction
+
+![Platform Abstraction](../diagrams/platform_abstraction.puml)
+
 ## Component
 
 High-level component architecture showing package relationships.
