@@ -1,0 +1,83 @@
+syntax = "proto3";
+package elmos.v1;
+
+import "api/proto/common.proto";
+
+option go_package = "github.com/NguyenTrongPhuc552003/elmos/api/proto;proto";
+
+// ToolchainService manages crosstool-ng toolchain operations.
+service ToolchainService {
+  // Install installs crosstool-ng.
+  rpc Install(InstallRequest) returns (stream InstallProgress);
+  
+  // ListSamples lists available toolchain targets.
+  rpc ListSamples(ListSamplesRequest) returns (stream SampleTarget);
+  
+  // SelectTarget selects a toolchain target.
+  rpc SelectTarget(SelectTargetRequest) returns (SelectTargetResponse);
+  
+  // Build builds the selected toolchain with streaming progress.
+  rpc Build(BuildToolchainRequest) returns (stream BuildProgress);
+  
+  // GetStatus returns toolchain installation status.
+  rpc GetStatus(ToolchainStatusRequest) returns (ToolchainStatusResponse);
+  
+  // Clean cleans toolchain build artifacts.
+  rpc Clean(CleanRequest) returns (CleanResponse);
+}
+
+message InstallRequest {}
+
+message InstallProgress {
+  enum Stage {
+    DOWNLOADING = 0;
+    EXTRACTING = 1;
+    CONFIGURING = 2;
+    BUILDING = 3;
+    INSTALLING = 4;
+    COMPLETE = 5;
+  }
+  Stage stage = 1;
+  int32 progress = 2;
+  string message = 3;
+}
+
+message ListSamplesRequest {}
+
+message SampleTarget {
+  string name = 1;            // e.g., "riscv64-unknown-linux-gnu"
+  string description = 2;      // Human-readable description
+  bool has_custom_config = 3;  // Whether custom config exists
+  string arch = 4;             // Target architecture
+}
+
+message SelectTargetRequest {
+  string target = 1;  // Target name
+}
+
+message SelectTargetResponse {
+  bool success = 1;
+  string error_message = 2;
+  string config_path = 3;  // Path to generated config
+}
+
+message BuildToolchainRequest {
+  int32 jobs = 1;  // Parallel jobs (0 = auto)
+}
+
+message ToolchainStatusRequest {}
+
+message ToolchainStatusResponse {
+  bool crosstool_ng_installed = 1;
+  string crosstool_ng_version = 2;
+  repeated ToolchainInfo installed = 3;
+  string selected_target = 4;
+}
+
+message ToolchainInfo {
+  string target = 1;
+  string gcc_version = 2;
+  string path = 3;
+  bool fully_built = 4;
+  int64 size_bytes = 5;
+}
