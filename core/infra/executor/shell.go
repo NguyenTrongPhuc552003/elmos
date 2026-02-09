@@ -2,6 +2,7 @@
 package executor
 
 import (
+	"bufio"
 	"context"
 	"os"
 	"os/exec"
@@ -98,6 +99,79 @@ func (e *ShellExecutor) LookPath(cmd string) (string, error) {
 // Exec replaces the current process with the specified command.
 func (e *ShellExecutor) Exec(cmd string, args []string, env []string) error {
 	return syscall.Exec(cmd, args, env)
+}
+
+// RunWithEnvStreaming executes a command and streams its output line-by-line.
+func (e *ShellExecutor) RunWithEnvStreaming(ctx context.Context, env []string, cmd string, args ...string) (<-chan string, <-chan error) {
+	linesCh := make(chan string, 100)
+	errCh := make(chan error, 1)
+
+	go func() {
+		defer close(linesCh)
+		defer close(errCh)
+
+		c := exec.CommandContext(ctx, cmd, args...)
+
+		if len(env) > 0 {
+			c.Env = append(os.Environ(), env...)
+		}
+
+		// Create pipes for stdout and stderr
+		stdout, err := c.StdoutPipe()
+		if err != nil {
+			errCh <- err
+			return
+		}
+
+		stderr, err := c.StderrPipe()
+		if err != nil {
+			errCh <- err
+			return
+		}
+
+		// Start the command
+		if err := c.Start(); err != nil {
+			errCh <- err
+			return
+		}
+
+		// Create a combined reader for stdout and stderr
+		// We'll use goroutines to read from both pipes
+		done := make(chan struct{})
+
+		// Read stdout
+		go func() {
+			scanner := bufio.NewScanner(stdout)
+			for scanner.Scan() {
+				select {
+				case linesCh <- scanner.Text():
+				case <-ctx.Done():
+					return
+				}
+			}
+		}()
+
+		// Read stderr
+		go func() {
+			scanner := bufio.NewScanner(stderr)
+			for scanner.Scan() {
+				select {
+				case linesCh <- scanner.Text():
+				case <-ctx.Done():
+					return
+				}
+			}
+		}()
+
+		// Wait for command to complete
+		if err := c.Wait(); err != nil {
+			errCh <- err
+		}
+
+		close(done)
+	}()
+
+	return linesCh, errCh
 }
 
 // Ensure ShellExecutor implements Executor.
