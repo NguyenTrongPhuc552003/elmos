@@ -126,6 +126,29 @@ func (m *MockExecutor) RunWithEnvSilent(ctx context.Context, env []string, cmd s
 	return m.RunError
 }
 
+// RunWithEnvStreaming records the command and returns mock streaming channels.
+func (m *MockExecutor) RunWithEnvStreaming(ctx context.Context, env []string, cmd string, args ...string) (<-chan string, <-chan error) {
+	m.Calls = append(m.Calls, CommandCall{Cmd: cmd, Args: args, Env: env})
+
+	linesCh := make(chan string, 10)
+	errCh := make(chan error, 1)
+
+	go func() {
+		defer close(linesCh)
+		defer close(errCh)
+
+		// Send some mock lines
+		if m.RunError == nil {
+			linesCh <- "Mock build output line 1"
+			linesCh <- "Mock build output line 2"
+		} else {
+			errCh <- m.RunError
+		}
+	}()
+
+	return linesCh, errCh
+}
+
 // Reset clears all recorded calls.
 func (m *MockExecutor) Reset() {
 	m.Calls = make([]CommandCall, 0)
