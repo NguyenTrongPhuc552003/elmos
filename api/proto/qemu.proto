@@ -1,0 +1,83 @@
+syntax = "proto3";
+package elmos.v1;
+
+option go_package = "github.com/NguyenTrongPhuc552003/elmos/api/proto;proto";
+
+// QEMUService manages QEMU emulator operations.
+service QEMUService {
+  // Run runs QEMU with streaming console output.
+  rpc Run(QEMURunRequest) returns (stream QEMUOutput);
+  
+  // Stop stops the running QEMU instance.
+  rpc Stop(QEMUStopRequest) returns (QEMUStopResponse);
+  
+  // SendInput sends input to the QEMU console.
+  rpc SendInput(QEMUInputRequest) returns (QEMUInputResponse);
+  
+  // GetStatus returns the QEMU instance status.
+  rpc GetStatus(QEMUStatusRequest) returns (QEMUStatus);
+}
+
+message QEMURunRequest {
+  bool graphical = 1;            // Launch with graphical console
+  bool debug = 2;                // Enable GDB debugging (port 1234)
+  int32 memory_mb = 3;           // RAM size in MB (0 = default)
+  int32 cpus = 4;                // Number of CPUs (0 = default)
+  repeated string extra_args = 5; // Additional QEMU arguments
+  string kernel_cmdline = 6;     // Custom kernel command line
+}
+
+message QEMUOutput {
+  oneof event {
+    QEMUStarted started = 1;
+    ConsoleOutput console = 2;
+    QEMUStopped stopped = 3;
+    QEMUError error = 4;
+  }
+}
+
+message QEMUStarted {
+  int32 pid = 1;
+  string qemu_version = 2;
+  string command = 3;  // Full QEMU command line
+}
+
+message ConsoleOutput {
+  bytes data = 1;        // Raw console bytes (for terminal emulator)
+  int64 timestamp_ms = 2;
+}
+
+message QEMUStopped {
+  int32 exit_code = 1;
+  int64 uptime_ms = 2;
+}
+
+message QEMUError {
+  string message = 1;
+}
+
+message QEMUStopRequest {}
+
+message QEMUStopResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message QEMUInputRequest {
+  bytes data = 1;  // Input bytes to send
+}
+
+message QEMUInputResponse {
+  bool success = 1;
+}
+
+message QEMUStatusRequest {}
+
+message QEMUStatus {
+  bool running = 1;
+  int32 pid = 2;
+  int64 uptime_ms = 3;
+  string arch = 4;
+  int32 memory_mb = 5;
+  int32 cpus = 6;
+}
