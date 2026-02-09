@@ -4,32 +4,34 @@ package context
 import (
 	gocontext "context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/NguyenTrongPhuc552003/elmos/core/config"
+	"github.com/NguyenTrongPhuc552003/elmos/core/domain/environment"
 	"github.com/NguyenTrongPhuc552003/elmos/core/infra/executor"
 	"github.com/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
-	"github.com/NguyenTrongPhuc552003/elmos/core/infra/homebrew"
+	"github.com/NguyenTrongPhuc552003/elmos/core/infra/packages"
 )
 
 // Context holds the current build context and state.
 type Context struct {
-	Config  *config.Config
-	Exec    executor.Executor
-	FS      filesystem.FileSystem
-	Brew    *homebrew.Resolver
-	Verbose bool
+	Config     *config.Config
+	Exec       executor.Executor
+	FS         filesystem.FileSystem
+	PkgRes     packages.Resolver
+	EnvBuilder *environment.Builder
+	Verbose    bool
 }
 
 // New creates a new build context with the given dependencies.
-func New(cfg *config.Config, exec executor.Executor, fs filesystem.FileSystem) *Context {
+func New(cfg *config.Config, exec executor.Executor, fs filesystem.FileSystem, pkgRes packages.Resolver) *Context {
 	return &Context{
-		Config: cfg,
-		Exec:   exec,
-		FS:     fs,
-		Brew:   homebrew.NewResolver(exec),
+		Config:     cfg,
+		Exec:       exec,
+		FS:         fs,
+		PkgRes:     pkgRes,
+		EnvBuilder: environment.New(cfg, pkgRes),
 	}
 }
 
@@ -153,81 +155,10 @@ func (ctx *Context) HasKernelImage() bool {
 }
 
 // GetMakeEnv returns environment variables for kernel make commands.
+// GetMakeEnv returns environment variables for kernel make commands.
+// Delegates to EnvironmentBuilder for actual construction.
 func (ctx *Context) GetMakeEnv() []string {
-	cfg := ctx.Config
-
-	var env []string
-	originalPath := os.Getenv("PATH")
-	newPath := originalPath
-
-	// Prepend GNU tools to PATH
-	if gnuSed := ctx.Brew.GetLibexecBin("gnu-sed"); gnuSed != "" {
-		newPath = gnuSed + string(os.PathListSeparator) + newPath
-	}
-	if coreutils := ctx.Brew.GetLibexecBin("coreutils"); coreutils != "" {
-		newPath = coreutils + string(os.PathListSeparator) + newPath
-	}
-
-	// LLVM toolchain
-	if llvmBin := ctx.Brew.GetBin("llvm"); llvmBin != "" {
-		newPath = llvmBin + string(os.PathListSeparator) + newPath
-	}
-	if lldBin := ctx.Brew.GetBin("lld"); lldBin != "" {
-		newPath = lldBin + string(os.PathListSeparator) + newPath
-	}
-
-	// e2fsprogs (sbin)
-	if e2fsBin := ctx.Brew.GetSbin("e2fsprogs"); e2fsBin != "" {
-		newPath = e2fsBin + string(os.PathListSeparator) + newPath
-	}
-
-	// Reconstruct env, skipping original PATH
-	for _, e := range os.Environ() {
-		if !strings.HasPrefix(e, "PATH=") {
-			env = append(env, e)
-		}
-	}
-	env = append(env, "PATH="+newPath)
-
-	// Add build-specific environment
-	env = append(env,
-		"ARCH="+cfg.Build.Arch,
-		"LLVM=1",
-		"CROSS_COMPILE="+cfg.Build.CrossCompile,
-	)
-
-	// Add HOSTCFLAGS for macOS compatibility
-	hostcflags := ctx.buildHostCFlags()
-	if hostcflags != "" {
-		env = append(env, "HOSTCFLAGS="+hostcflags)
-	}
-
-	return env
-}
-
-// buildHostCFlags constructs the HOSTCFLAGS for macOS kernel builds.
-func (ctx *Context) buildHostCFlags() string {
-	var flags []string
-
-	// Custom macOS headers
-	if ctx.Config.Paths.LibrariesDir != "" {
-		flags = append(flags, "-I"+ctx.Config.Paths.LibrariesDir)
-	}
-
-	// libelf include path (from Homebrew)
-	if libelfInclude := ctx.Brew.GetInclude("libelf"); libelfInclude != "" {
-		flags = append(flags, "-I"+libelfInclude)
-	}
-
-	// macOS compatibility flags
-	flags = append(flags,
-		"-D_UUID_T",
-		"-D__GETHOSTUUID_H",
-		"-D_DARWIN_C_SOURCE",
-		"-D_FILE_OFFSET_BITS=64",
-	)
-
-	return strings.Join(flags, " ")
+	return ctx.EnvBuilder.BuildMakeEnv()
 }
 
 // GetDefaultTargets returns the default build targets for the current architecture.
