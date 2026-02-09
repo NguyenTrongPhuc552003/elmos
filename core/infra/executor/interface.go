@@ -35,4 +35,10 @@ type Executor interface {
 	// Exec replaces the current process with the specified command (syscall.Exec).
 	// This is used for handing off to interactive programs like GDB.
 	Exec(cmd string, args []string, env []string) error
+
+	// RunWithEnvStreaming executes a command with custom environment and streams
+	// stdout/stderr line-by-line to the provided channel. The channel is closed
+	// when the command completes or encounters an error.
+	// Returns an error channel that will receive the final command error (if any).
+	RunWithEnvStreaming(ctx context.Context, env []string, cmd string, args ...string) (lines <-chan string, errCh <-chan error)
 }
