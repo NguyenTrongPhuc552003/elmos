@@ -1,0 +1,264 @@
+@startuml ELMOS GUI Architecture
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam packageStyle rectangle
+
+title ELMOS Proposed GUI Integration Architecture
+
+' ================================
+' GUI Layer
+' ================================
+package "GUI Layer (C++/Rust)" as GUI {
+    component [Qt 6 / egui / Tauri\nGUI Application] as GUIApp
+    
+    package "UI Components" {
+        component [Workspace Manager] as WSManager
+        component [Kernel Build UI] as KernelUI
+        component [Toolchain Dashboard] as ToolchainUI
+        component [QEMU Console] as QEMUConsole
+        component [Configuration Editor] as ConfigEditor
+    }
+    
+    GUIApp --> WSManager
+    GUIApp --> KernelUI
+    GUIApp --> ToolchainUI
+    GUIApp --> QEMUConsole
+    GUIApp --> ConfigEditor
+}
+
+' ================================
+' gRPC Interface Layer
+' ================================
+package "gRPC Interface Layer (Go)" as GRPC {
+    component [gRPC Server\n(Unix Socket / TCP)] as GRPCServer
+    
+    package "Service Implementations" {
+        component [WorkspaceService] as WSService
+        component [KernelService] as KernelService
+        component [ToolchainService] as ToolchainService
+        component [QEMUService] as QEMUService
+        component [RootfsService] as RootfsService
+    }
+    
+    GRPCServer --> WSService
+    GRPCServer --> KernelService
+    GRPCServer --> ToolchainService
+    GRPCServer --> QEMUService
+    GRPCServer --> RootfsService
+    
+    note right of GRPCServer
+        **Features:**
+        - Bidirectional streaming
+        - Real-time build logs
+        - State notifications
+        - Structured errors
+        
+        **Connection:**
+        - Unix socket: /tmp/elmos.sock
+        - TCP: localhost:50051 (optional)
+    end note
+}
+
+' ================================
+' Domain Layer
+' ================================
+package "Domain Layer (Go)" as Domain {
+    component [KernelBuilder] as KBuilder
+    component [ModuleBuilder] as MBuilder
+    component [AppBuilder] as ABuilder
+    component [QEMURunner] as QRunner
+    component [RootfsCreator] as RCreator
+    component [ToolchainManager] as TManager
+    component [HealthChecker] as HChecker
+    component [PatchManager] as PManager
+    component [Context Manager] as CtxManager
+    
+    note right of Domain
+        **Pure Business Logic:**
+        - Platform-agnostic
+        - Interface-based
+        - Testable
+        - No UI dependencies
+    end note
+}
+
+' ================================
+' Platform Abstraction Layer
+' ================================
+package "Platform Abstraction Layer (Go)" as Platform {
+    interface "VolumeProvider" as IVolume
+    interface "PackageResolver" as IPackage
+    interface "PlatformEnvironment" as IEnv
+    
+    package "macOS" {
+        component [macOSVolumeProvider\n(hdiutil)] as MacVolume
+        component [HomebrewResolver] as Homebrew
+        component [macOSEnvironment\n(Custom headers)] as MacEnv
+    }
+    
+    package "Linux" {
+        component [linuxVolumeProvider\n(loopback)] as LinuxVolume
+        component [AptResolver / PacmanResolver] as LinuxPkg
+        component [linuxEnvironment\n(Native headers)] as LinuxEnv
+    }
+    
+    package "WSL2" {
+        component [wslVolumeProvider\n(Windows paths)] as WSLVolume
+        component [AptResolver\n(WSL native)] as WSLPkg
+        component [wslEnvironment] as WSLEnv
+    }
+    
+    IVolume <|.. MacVolume
+    IVolume <|.. LinuxVolume
+    IVolume <|.. WSLVolume
+    
+    IPackage <|.. Homebrew
+    IPackage <|.. LinuxPkg
+    IPackage <|.. WSLPkg
+    
+    IEnv <|.. MacEnv
+    IEnv <|.. LinuxEnv
+    IEnv <|.. WSLEnv
+    
+    note right of Platform
+        **Runtime Selection:**
+        - Detect OS (darwin / linux)
+        - Detect WSL (/proc/version)
+        - Load appropriate provider
+        
+        **Factory Pattern:**
+        ```go
+        volumeProvider := platform.NewVolumeProvider()
+        pkgResolver := platform.NewPackageResolver()
+        ```
+    end note
+}
+
+' ================================
+' Infrastructure Layer
+' ================================
+package "Infrastructure Layer (Go)" as Infra {
+    component [ShellExecutor] as Executor
+    component [OSFileSystem] as FS
+    component [ConfigLoader] as ConfigLoader
+}
+
+' ================================
+' Connections: GUI → gRPC
+' ================================
+GUIApp .[#blue,thickness=4].> GRPCServer : **gRPC Calls**\n(Unix Socket)
+note on link
+    **Protocol Buffers:**
+    - BuildRequest / BuildProgress
+    - WorkspaceStatus
+    - ToolchainInfo
+    - QEMUOutput stream
+end note
+
+' ================================
+' Connections: gRPC → Domain
+' ================================
+WSService --> CtxManager
+KernelService --> KBuilder
+KernelService --> MBuilder
+ToolchainService --> TManager
+QEMUService --> QRunner
+RootfsService --> RCreator
+
+' ================================
+' Connections: Domain → Platform
+' ================================
+KBuilder --> IVolume
+KBuilder --> IPackage
+KBuilder --> Executor
+KBuilder --> FS
+
+TManager --> IVolume
+TManager --> IPackage
+TManager --> Executor
+
+CtxManager --> IVolume
+CtxManager --> IEnv
+
+QRunner --> Executor
+RCreator --> Executor
+RCreator --> FS
+
+' ================================
+' Streaming Example
+' ================================
+note as StreamExample
+    **Streaming Example: Kernel Build**
+    
+    ```protobuf
+    service KernelService {
+      rpc Build(BuildRequest) returns (stream BuildProgress);
+    }
+    
+    message BuildProgress {
+      oneof event {
+        BuildStage stage = 1;      // Progress: 75%
+        LogLine log = 2;            // [CC] arch/arm64/kernel/setup.o
+        BuildError error = 3;       // Compilation failed
+        BuildComplete complete = 4; // Success
+      }
+    }
+    ```
+    
+    **C++ Client:**
+    ```cpp
+    auto stream = stub->Build(&context, request);
+    while (stream->Read(&response)) {
+        if (response.has_log())
+            logTextEdit->append(response.log().message());
+        else if (response.has_stage())
+            progressBar->setValue(response.stage().progress());
+    }
+    ```
+end note
+
+StreamExample .. KernelUI
+
+' ================================
+' Platform Selection Example
+' ================================
+note as PlatformExample
+    **Platform Selection (Runtime)**
+    
+    ```go
+    // Factory detects OS at startup
+    func NewVolumeProvider() VolumeProvider {
+        switch runtime.GOOS {
+        case "darwin":
+            return &macOSVolumeProvider{}
+        case "linux":
+            if isWSL() {
+                return &wslVolumeProvider{}
+            }
+            return &linuxVolumeProvider{}
+        }
+    }
+    ```
+    
+    **macOS:**
+    - hdiutil create (sparse APFS)
+    - hdiutil attach/detach
+    - Homebrew for tools
+    - Custom elf.h, byteswap.h
+    
+    **Linux:**
+    - fallocate + mkfs.ext4
+    - mount -o loop
+    - apt/pacman for tools
+    - Native headers
+    
+    **WSL2:**
+    - Windows paths (/mnt/c/...)
+    - Native Linux mount
+    - apt (Ubuntu) or pacman (Arch)
+end note
+
+PlatformExample .. Platform
+
+@enduml
