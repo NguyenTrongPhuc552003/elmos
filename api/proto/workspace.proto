@@ -1,0 +1,68 @@
+syntax = "proto3";
+package elmos.v1;
+
+option go_package = "github.com/NguyenTrongPhuc552003/elmos/api/proto;proto";
+
+// WorkspaceService manages workspace initialization and volume operations.
+service WorkspaceService {
+  // Init initializes a new workspace with streaming progress updates.
+  rpc Init(InitRequest) returns (stream InitProgress);
+  
+  // Mount mounts an existing workspace volume.
+  rpc Mount(MountRequest) returns (MountResponse);
+  
+  // Unmount unmounts the workspace volume.
+  rpc Unmount(UnmountRequest) returns (UnmountResponse);
+  
+  // GetStatus returns the current workspace status.
+  rpc GetStatus(WorkspaceStatusRequest) returns (WorkspaceStatus);
+}
+
+message InitRequest {
+  string name = 1;  // Workspace name (default: "elmos")
+  string size = 2;  // Volume size (e.g., "40G")
+}
+
+message InitProgress {
+  enum Stage {
+    VALIDATING = 0;
+    CREATING_VOLUME = 1;
+    MOUNTING = 2;
+    SAVING_CONFIG = 3;
+    COMPLETE = 4;
+  }
+  Stage stage = 1;
+  int32 progress = 2;  // 0-100
+  string message = 3;   // Human-readable status message
+}
+
+message MountRequest {
+  string volume_path = 1;  // Path to volume file
+}
+
+message MountResponse {
+  string mount_point = 1;
+  bool success = 2;
+  string error_message = 3;
+}
+
+message UnmountRequest {
+  string mount_point = 1;
+  bool force = 2;  // Force unmount if busy
+}
+
+message UnmountResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+message WorkspaceStatusRequest {}
+
+message WorkspaceStatus {
+  bool mounted = 1;
+  string mount_point = 2;
+  string volume_path = 3;
+  int64 size_bytes = 4;
+  int64 used_bytes = 5;
+  int64 avail_bytes = 6;
+}
