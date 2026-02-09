@@ -1,0 +1,67 @@
+syntax = "proto3";
+package elmos.v1;
+
+option go_package = "github.com/NguyenTrongPhuc552003/elmos/api/proto;proto";
+
+// Common types shared across services.
+
+// BuildProgress represents progress updates during build operations.
+message BuildProgress {
+  oneof event {
+    BuildStage stage = 1;
+    LogLine log = 2;
+    BuildError error = 3;
+    BuildComplete complete = 4;
+  }
+}
+
+// BuildStage represents a build stage with progress information.
+message BuildStage {
+  string name = 1;          // Stage name
+  int32 progress = 2;       // 0-100
+  int32 current_file = 3;   // Current file number (optional)
+  int32 total_files = 4;    // Total files to process (optional)
+  string component = 5;     // Component being built (optional)
+}
+
+// LogLine represents a log message.
+message LogLine {
+  enum Level {
+    DEBUG = 0;
+    INFO = 1;
+    WARN = 2;
+    ERROR = 3;
+  }
+  Level level = 1;
+  string message = 2;
+  int64 timestamp_ms = 3;
+}
+
+// BuildError represents a build error.
+message BuildError {
+  string message = 1;
+  string file = 2;          // Source file (optional)
+  int32 line = 3;           // Line number (optional)
+  string column = 4;        // Column (optional)
+  string component = 5;     // Component name (optional)
+}
+
+// BuildComplete indicates build completion.
+message BuildComplete {
+  bool success = 1;
+  int64 duration_ms = 2;
+  string install_path = 3;  // Installation path (optional)
+  string image_path = 4;    // Image path for kernel builds (optional)
+  int64 image_size_bytes = 5; // Image size (optional)
+}
+
+// CleanRequest represents a clean operation request.
+message CleanRequest {
+  bool deep_clean = 1;  // Deep clean vs normal clean
+}
+
+// CleanResponse represents a clean operation response.
+message CleanResponse {
+  bool success = 1;
+  string message = 2;
+}
