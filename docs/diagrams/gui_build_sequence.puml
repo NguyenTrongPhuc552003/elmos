@@ -1,0 +1,149 @@
+@startuml GUI Kernel Build Sequence
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam sequenceMessageAlign center
+
+title ELMOS GUI Kernel Build Sequence (gRPC Streaming)
+
+actor User
+participant "Qt GUI\n(C++)" as GUI
+participant "gRPC Server\n(Go)" as GRPC
+participant "KernelService" as KService
+participant "KernelBuilder\n(Domain)" as KBuilder
+participant "VolumeProvider\n(Platform)" as Volume
+participant "ShellExecutor\n(Infra)" as Executor
+
+== Initialization ==
+User -> GUI: Launch GUI
+GUI -> GRPC: Connect(unix:///tmp/elmos.sock)
+activate GRPC
+GRPC --> GUI: Connected
+deactivate GRPC
+
+GUI -> GRPC: GetStatus()
+activate GRPC
+GRPC -> KService: GetKernelStatus()
+activate KService
+KService -> KBuilder: HasConfig(), HasKernelImage()
+activate KBuilder
+KBuilder -> Volume: IsMounted()
+activate Volume
+Volume --> KBuilder: true
+deactivate Volume
+KBuilder --> KService: Status{configured: true, built: false}
+deactivate KBuilder
+KService --> GRPC: KernelStatus
+deactivate KService
+GRPC --> GUI: Status
+deactivate GRPC
+
+GUI --> User: Display status:\n✓ Workspace mounted\n✓ Kernel configured\n✗ Not built
+
+== User Initiates Build ==
+User -> GUI: Click "Build Kernel"
+GUI -> GUI: Show progress dialog
+
+GUI -> GRPC: Build(targets=["Image", "modules"], jobs=8)
+activate GRPC
+note right
+    **BuildRequest:**
+    ```protobuf
+    {
+      targets: ["Image", "modules"],
+      jobs: 8,
+      arch: "arm64"
+    }
+    ```
+end note
+
+GRPC -> KService: Build(request)
+activate KService
+KService -> KBuilder: Build(ctx, BuildOptions{...})
+activate KBuilder
+
+KBuilder -> Volume: IsMounted()
+activate Volume
+Volume --> KBuilder: true
+deactivate Volume
+
+KBuilder -> Executor: RunWithEnv("make", ["-j8", "Image", "modules"])
+activate Executor
+note right
+    **Environment:**
+    - PATH=/opt/homebrew/llvm/bin:...
+    - ARCH=arm64
+    - LLVM=1
+    - CROSS_COMPILE=llvm-
+end note
+
+== Streaming Build Progress ==
+Executor --> KBuilder: stdout: "  CC arch/arm64/kernel/setup.o"
+KBuilder --> KService: BuildProgress{log: "CC arch/arm64/kernel/setup.o"}
+KService --> GRPC: stream.Send(progress)
+GRPC --> GUI: **Stream: BuildProgress**
+GUI --> User: Append to log:\n"[CC] arch/arm64/kernel/setup.o"
+
+Executor --> KBuilder: stdout: "  LD vmlinux"
+KBuilder --> KService: BuildProgress{stage: "Linking", progress: 75}
+KService --> GRPC: stream.Send(progress)
+GRPC --> GUI: **Stream: BuildProgress**
+GUI --> User: Update progress bar: 75%
+
+Executor --> KBuilder: stdout: "  OBJCOPY arch/arm64/boot/Image"
+KBuilder --> KService: BuildProgress{log: "OBJCOPY Image"}
+KService --> GRPC: stream.Send(progress)
+GRPC --> GUI: **Stream: BuildProgress**
+GUI --> User: Append to log:\n"[OBJCOPY] Image"
+
+Executor --> KBuilder: exit code: 0
+deactivate Executor
+KBuilder --> KService: BuildProgress{complete: true}
+KService --> GRPC: stream.Send(complete)
+GRPC --> GUI: **Stream: Complete**
+deactivate KBuilder
+deactivate KService
+deactivate GRPC
+
+GUI --> User: Show notification:\n✅ Kernel built successfully!
+
+== Post-Build Status ==
+GUI -> GRPC: GetStatus()
+activate GRPC
+GRPC -> KService: GetKernelStatus()
+activate KService
+KService -> KBuilder: HasKernelImage()
+activate KBuilder
+KBuilder --> KService: true, ImagePath="/Volumes/elmos/linux/arch/arm64/boot/Image"
+deactivate KBuilder
+KService --> GRPC: Status{built: true, image_size: 42MB}
+deactivate KService
+GRPC --> GUI: Status
+deactivate GRPC
+
+GUI --> User: Enable "Run QEMU" button
+
+== Error Handling Example ==
+User -> GUI: Click "Build Kernel" (missing toolchain)
+GUI -> GRPC: Build(request)
+activate GRPC
+GRPC -> KService: Build(request)
+activate KService
+KService -> KBuilder: Build(ctx, opts)
+activate KBuilder
+
+KBuilder -> Executor: RunWithEnv("make", ...)
+activate Executor
+Executor --> KBuilder: exit code: 2, stderr: "clang: command not found"
+deactivate Executor
+
+KBuilder --> KService: BuildProgress{error: "clang not found"}
+KService --> GRPC: stream.Send(error)
+GRPC --> GUI: **Stream: Error**
+deactivate KBuilder
+deactivate KService
+deactivate GRPC
+
+GUI --> User: Show error dialog:\n❌ Build failed: clang not found\n\nSuggestion: Run 'elmos doctor'
+
+@enduml
