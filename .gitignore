@@ -42,3 +42,15 @@ examples/apps/*/[!.]*
 # Testing
 coverage.out
 coverage.html
+
+# Go Build Artifacts (prevent Vercel deployment issues)
+*.pb.go
+*.pb.cc
+*.pb.h
+*.grpc.pb.go
+*.grpc.pb.cc
+*.grpc.pb.h
+_api/
+vendor/
+go.work
+go.work.sum
