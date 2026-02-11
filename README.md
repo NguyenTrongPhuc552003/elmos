@@ -1,6 +1,6 @@
 # ELMOS – Embedded Linux on MacOS
 
-[![Build Status](https://img.shields.io/badge/build-v6.18%20ARM64-green)](https://github.com/NguyenTrongPhuc552003/elmos) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Docs](https://img.shields.io/badge/docs-gh--pages-blue)](https://nguyentrongphuc552003.github.io/elmos/)
+[![Build Status](https://img.shields.io/badge/build-v6.18%20ARM64-green)](https://github.com/NguyenTrongPhuc552003/elmos) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Docs](https://img.shields.io/badge/docs-gh--pages-blue)](https://elmos.vercel.app/)
 
 A complete embedded Linux SDK for macOS. Build kernels, cross-compile with native toolchains, develop kernel modules and userspace apps—all without Docker or VMs. ELMOS provides an integrated development environment with interactive TUI, automatic toolchain management (crosstool-ng), and seamless QEMU integration. Targeting RISC-V, ARM64, ARM, and more, with full support for Linux v6.18+.
 
@@ -93,6 +93,7 @@ ELMOS integrates [crosstool-ng](https://crosstool-ng.github.io/) for building na
 | `elmos toolchains clean`      | Clean toolchain build artifacts                     |
 
 **Pre-configured targets** with optimized settings:
+
 - `aarch64-unknown-linux-gnu` (ARM64)
 - `arm-cortex_a15-linux-gnueabihf` (ARM 32-bit)
 - `riscv64-unknown-linux-gnu` (RISC-V 64-bit)
@@ -149,17 +150,21 @@ task release:all         # Full release with completions
 ## Key Workarounds
 
 ### 1. v6.18 `copy_file_range()` Incompatibility
+
 - **Issue**: v6.18 uses Linux-only syscall in `gen_init_cpio`
 - **Fix**: Patch replaces with `copyfile(COPYFILE_DATA)` on macOS
 - **Apply**: `./build/elmos patch apply patches/v6.18/0001-usr-gen_init_cpio-Replace-linux-kernel-syscall-with-.patch`
 
 ### 2. Automatic Toolchain Detection
+
 - Kernel, module, and app builds auto-detect installed toolchains
 - `CROSS_COMPILE` and `PATH` set automatically for the target architecture
 - Falls back to Homebrew LLVM if no toolchain installed
 
 ### 3. HOSTCFLAGS for macOS
+
 The CLI sets these automatically:
+
 - `-I${MACOS_HEADERS}`: Custom shims (`elf.h`, `byteswap.h`)
 - `-I${LIBELF_INCLUDE}`: libelf for ELF parsing
 - `-D_UUID_T -D__GETHOSTUUID_H`: Suppress uuid_t conflicts
