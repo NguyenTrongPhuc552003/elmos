@@ -42,3 +42,4 @@ examples/apps/*/[!.]*
 # Testing
 coverage.out
 coverage.html
+.env
