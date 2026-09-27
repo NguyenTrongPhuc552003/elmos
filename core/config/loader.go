@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/NguyenTrongPhuc552003/elmos/assets"
 	"github.com/spf13/viper"
 )
 
@@ -36,18 +35,6 @@ func Load(configPath string) (*Config, error) {
 		v.AddConfigPath(filepath.Join(os.Getenv("HOME"), ".config", "elmos")) // User config
 		v.AddConfigPath("/etc/elmos")                                         // System config
 
-		// Auto-create elmos.yaml from embedded template in build/ if it doesn't exist
-		cwd, _ := os.Getwd()
-		buildDir := filepath.Join(cwd, "build")
-		configFile := filepath.Join(buildDir, "elmos.yaml")
-		if _, err := os.Stat(configFile); os.IsNotExist(err) {
-			// Ensure build directory exists
-			_ = os.MkdirAll(buildDir, 0755)
-			// Use embedded template
-			if tmplData, err := assets.GetConfigTemplate(); err == nil {
-				_ = os.WriteFile(configFile, tmplData, 0644)
-			}
-		}
 	}
 
 	// Environment variables
@@ -72,6 +59,11 @@ func Load(configPath string) (*Config, error) {
 	cfg = &Config{}
 	if err := v.Unmarshal(cfg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+	cfg.ExplicitPaths = ExplicitWorkspacePaths{
+		KernelDir: cfg.Paths.KernelDir != "",
+		RootfsDir: cfg.Paths.RootfsDir != "",
+		DiskImage: cfg.Paths.DiskImage != "",
 	}
 
 	// Apply computed defaults

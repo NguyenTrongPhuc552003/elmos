@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -8,12 +9,22 @@ import (
 
 // BuildDoctor creates the doctor command for environment checking.
 func BuildDoctor(ctx *Context) *cobra.Command {
-	return &cobra.Command{
+	var fix bool
+	doctorCmd := &cobra.Command{
 		Use:   "doctor",
 		Short: "Check environment and dependencies",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx.Printer.Info("ELMOS Doctor - Environment Check")
 			ctx.Printer.Print("")
+			var fixErr error
+			if fix && ctx.AutoFixer.CanFixElfH() {
+				ctx.Printer.Step("Downloading missing elf.h...")
+				fixErr = ctx.AutoFixer.FixElfH()
+				if fixErr == nil {
+					ctx.Printer.Success("elf.h downloaded")
+				}
+				ctx.Printer.Print("")
+			}
 			results, issues := ctx.HealthChecker.CheckAll(cmd.Context())
 			currentSection := ""
 			for _, r := range results {
@@ -38,15 +49,9 @@ func BuildDoctor(ctx *Context) *cobra.Command {
 					ctx.Printer.Print("  ○ %s - optional", displayName)
 				}
 			}
-			if ctx.AutoFixer.CanFixElfH() {
+			if !fix && ctx.AutoFixer.CanFixElfH() {
 				ctx.Printer.Print("")
-				ctx.Printer.Step("Downloading missing elf.h...")
-				if err := ctx.AutoFixer.FixElfH(); err != nil {
-					ctx.Printer.Error("Failed to download elf.h: %v", err)
-				} else {
-					ctx.Printer.Success("elf.h downloaded")
-					issues--
-				}
+				ctx.Printer.Info("Run 'elmos doctor --fix' to download missing elf.h")
 			}
 			ctx.Printer.Print("")
 			if issues == 0 {
@@ -54,9 +59,14 @@ func BuildDoctor(ctx *Context) *cobra.Command {
 			} else {
 				ctx.Printer.Warn("Found %d issue(s)", issues)
 			}
+			if fixErr != nil {
+				return fmt.Errorf("failed to download elf.h: %w", fixErr)
+			}
 			return nil
 		},
 	}
+	doctorCmd.Flags().BoolVar(&fix, "fix", false, "download missing elf.h")
+	return doctorCmd
 }
 
 // getSection extracts section name from a check name.

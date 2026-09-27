@@ -117,6 +117,15 @@ func updateInitConfig(ctx *Context, workspaceName, volumeSize string) error {
 	ctx.Config.Image.Path = fmt.Sprintf("%s/data/%s.sparseimage",
 		ctx.Config.Paths.ProjectRoot, workspaceName)
 	ctx.Config.Paths.ToolchainsDir = fmt.Sprintf("/Volumes/%s/toolchains", workspaceName)
+	if !ctx.Config.ExplicitPaths.KernelDir {
+		ctx.Config.Paths.KernelDir = fmt.Sprintf("%s/linux", ctx.Config.Image.MountPoint)
+	}
+	if !ctx.Config.ExplicitPaths.RootfsDir {
+		ctx.Config.Paths.RootfsDir = fmt.Sprintf("%s/rootfs", ctx.Config.Image.MountPoint)
+	}
+	if !ctx.Config.ExplicitPaths.DiskImage {
+		ctx.Config.Paths.DiskImage = fmt.Sprintf("%s/disk.img", ctx.Config.Image.MountPoint)
+	}
 
 	// Determine config file path
 	configPath := ctx.Config.ConfigFile

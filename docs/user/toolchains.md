@@ -40,6 +40,8 @@ Shows available configurations.
 
 Example: `./build/elmos toolchains riscv64-unknown-linux-gnu`
 
+Selection requires an initialized, mounted workspace and crosstool-ng. It writes the selected target's configuration under the workspace toolchains directory. For the supported targets above, it also saves the matching ELMOS architecture. Other sample names are passed to crosstool-ng for validation.
+
 ### Build Toolchain
 
 ```bash

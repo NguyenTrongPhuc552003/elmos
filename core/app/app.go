@@ -2,6 +2,9 @@
 package app
 
 import (
+	"errors"
+	"os"
+
 	"github.com/spf13/cobra"
 
 	"github.com/NguyenTrongPhuc552003/elmos/core/app/commands"
@@ -79,17 +82,21 @@ Common workflow:
   elmos tui               # Launch interactive TUI`,
 		Version: version.Get().String(),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if cmd.Name() == "version" || cmd.Name() == "help" || cmd.Name() == "completion" || cmd.Name() == "tui" || cmd.Name() == "init" {
-				return nil
-			}
 			// Reload config if custom path is provided
 			if a.ConfigFile != "" {
 				newCfg, err := config.Load(a.ConfigFile)
 				if err != nil {
-					return err
+					if cmd.Name() != "init" || !errors.Is(err, os.ErrNotExist) {
+						return err
+					}
+					// An explicit init may create a new config at the requested path.
+					newCfg.ConfigFile = a.ConfigFile
 				}
 				// update the struct contents so pointers passed to builders remain valid
 				*a.Config = *newCfg
+			}
+			if cmd.Name() == "version" || cmd.Name() == "help" || cmd.Name() == "completion" || cmd.Name() == "tui" || cmd.Name() == "init" {
+				return nil
 			}
 			a.Context.Verbose = a.Verbose
 			return nil

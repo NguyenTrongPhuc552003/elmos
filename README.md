@@ -50,7 +50,7 @@ task build                # Build to build/elmos
 ```bash
 ./build/elmos toolchains install       # Install crosstool-ng
 ./build/elmos toolchains list          # List available targets
-./build/elmos arch riscv               # Select arch (auto-selects toolchain)
+./build/elmos toolchains riscv64-unknown-linux-gnu  # Select target and architecture
 ./build/elmos toolchains build         # Build the toolchain (~30-60 min)
 ./build/elmos toolchains status        # Verify installation
 ```
@@ -85,7 +85,7 @@ ELMOS integrates [crosstool-ng](https://crosstool-ng.github.io/) for building na
 | ----------------------------- | --------------------------------------------------- |
 | `elmos toolchains install`    | Clone & build crosstool-ng                          |
 | `elmos toolchains list`       | List available target configurations                |
-| `elmos toolchains <target>`   | Select a target (e.g., `riscv64-unknown-linux-gnu`) |
+| `elmos toolchains <target>`   | Select a target and matching architecture            |
 | `elmos toolchains build`      | Build selected toolchain                            |
 | `elmos toolchains status`     | Show installed toolchains                           |
 | `elmos toolchains env`        | Display environment variables                       |
@@ -103,6 +103,7 @@ Uses [Task](https://taskfile.dev) with namespaced commands:
 
 ```bash
 task --list              # Show all targets
+task help                # Show all targets
 
 # Core
 task build               # Build elmos binary → build/elmos
@@ -110,7 +111,7 @@ task clean               # Clean all artifacts
 
 # Development
 task dev:check           # Run fmt, lint, test (pre-commit style)
-task dev:setup           # Full setup (deps + build + init)
+task dev:setup           # Set up dependencies and tools, then build
 task test                # Run tests
 task test:cover          # Tests with coverage report
 

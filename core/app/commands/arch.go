@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"os"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
@@ -17,7 +16,7 @@ func BuildArch(ctx *Context) *cobra.Command {
 		Long: `Manage target architecture for cross-compilation.
 
 Examples:
-  elmos arch           # Show current config (or init if none)
+  elmos arch           # Show current architecture
   elmos arch arm64     # Set architecture to arm64
   elmos arch show      # Show detailed configuration`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -37,22 +36,6 @@ Examples:
 
 // handleArchNoArgs handles the case when no arguments are provided.
 func handleArchNoArgs(ctx *Context) error {
-	if ctx.Config.ConfigFile == "" {
-		cwd, _ := os.Getwd()
-		configPath := filepath.Join(cwd, "elmos.yaml")
-		if !ctx.FS.Exists(configPath) {
-			cfg := &config.Config{
-				Build: config.BuildConfig{Arch: "arm64", LLVM: true, CrossCompile: "llvm-"},
-				Image: config.ImageConfig{Size: config.DefaultImageSize, VolumeName: config.DefaultVolumeName},
-				QEMU:  config.QEMUConfig{Memory: "2G", GDBPort: 1234, SSHPort: 2222},
-			}
-			if err := cfg.Save(configPath); err != nil {
-				return err
-			}
-			ctx.Printer.Success("Initialized config: %s", configPath)
-			return nil
-		}
-	}
 	ctx.Printer.Print("Architecture: %s", ctx.Config.Build.Arch)
 	return nil
 }

@@ -10,12 +10,13 @@ import (
 // BuildToolchains creates the toolchains command tree for crosstool-ng management.
 func BuildToolchains(ctx *Context) *cobra.Command {
 	toolchainsCmd := &cobra.Command{
-		Use:   "toolchains",
+		Use:   "toolchains [target]",
 		Short: "Manage cross-compiler toolchains (crosstool-ng)",
 		Long: `Manage cross-compiler toolchains using crosstool-ng.
 
 Subcommands allow you to install crosstool-ng, list available targets,
 select a target configuration, build toolchains, and more.
+Selecting a supported target also saves its matching ELMOS architecture.
 
 Examples:
   elmos toolchains install              # Install crosstool-ng
@@ -23,6 +24,20 @@ Examples:
   elmos toolchains riscv64-unknown-linux-gnu  # Select target
   elmos toolchains build                # Build the selected toolchain
   elmos toolchains build -j8            # Build with 8 parallel jobs`,
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				return cmd.Help()
+			}
+			archName, target := resolveArchAndToolchain(args[0])
+			if err := selectToolchain(ctx, cmd, target); err != nil {
+				return err
+			}
+			if archName != "" {
+				return saveArchConfig(ctx, archName)
+			}
+			return nil
+		},
 	}
 
 	toolchainsCmd.AddCommand(
