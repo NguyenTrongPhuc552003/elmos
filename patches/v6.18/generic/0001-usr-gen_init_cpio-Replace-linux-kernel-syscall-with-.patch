@@ -19,7 +19,7 @@ index b7296edc6626..d8d8c3748029 100644
  
 +#ifdef __APPLE__
 +#include <copyfile.h>
-+/* macOS has no O_LARGEFILE — file offsets are always 64-bit */
++/* macOS has no O_LARGEFILE - file offsets are always 64-bit */
 +#define O_LARGEFILE 0
 +#endif
 +

@@ -2,7 +2,7 @@
 
 [![Build Status](https://img.shields.io/badge/build-v6.18%20ARM64-green)](https://github.com/NguyenTrongPhuc552003/elmos) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Docs](https://img.shields.io/badge/docs-gh--pages-blue)](https://nguyentrongphuc552003.github.io/elmos/)
 
-A complete embedded Linux SDK for macOS. Build kernels, cross-compile with native toolchains, develop kernel modules and userspace apps—all without Docker or VMs. ELMOS provides an integrated development environment with interactive TUI, automatic toolchain management (crosstool-ng), and seamless QEMU integration. Targeting RISC-V, ARM64, ARM, and more, with full support for Linux v6.18+.
+A complete embedded Linux SDK for macOS. Build kernels, cross-compile with native toolchains, develop kernel modules and userspace apps-all without Docker or VMs. ELMOS provides an integrated development environment with interactive TUI, automatic toolchain management (crosstool-ng), and seamless QEMU integration. Targeting RISC-V, ARM64, ARM, and more, with full support for Linux v6.18+.
 
 Inspired by [Seiya's tutorial](https://seiya.me/blog/building-linux-on-macos-natively) (which fixed older kernels like v6.17), we extended it for v6.18's new challenges, like the `copy_file_range()` incompatibility.
 
@@ -81,16 +81,16 @@ Launch with `./build/elmos tui` for a rich interactive interface:
 
 ELMOS integrates [crosstool-ng](https://crosstool-ng.github.io/) for building native cross-compilers:
 
-| Command                       | Description                                         |
-| ----------------------------- | --------------------------------------------------- |
-| `elmos toolchains install`    | Clone & build crosstool-ng                          |
-| `elmos toolchains list`       | List available target configurations                |
-| `elmos toolchains <target>`   | Select a target and matching architecture            |
-| `elmos toolchains build`      | Build selected toolchain                            |
-| `elmos toolchains status`     | Show installed toolchains                           |
-| `elmos toolchains env`        | Display environment variables                       |
-| `elmos toolchains menuconfig` | Interactive toolchain configuration                 |
-| `elmos toolchains clean`      | Clean toolchain build artifacts                     |
+| Command                       | Description                               |
+| ----------------------------- | ----------------------------------------- |
+| `elmos toolchains install`    | Clone & build crosstool-ng                |
+| `elmos toolchains list`       | List available target configurations      |
+| `elmos toolchains <target>`   | Select a target and matching architecture |
+| `elmos toolchains build`      | Build selected toolchain                  |
+| `elmos toolchains status`     | Show installed toolchains                 |
+| `elmos toolchains env`        | Display environment variables             |
+| `elmos toolchains menuconfig` | Interactive toolchain configuration       |
+| `elmos toolchains clean`      | Clean toolchain build artifacts           |
 
 **Pre-configured targets** with optimized settings:
 - `aarch64-unknown-linux-gnu` (ARM64)
@@ -183,4 +183,4 @@ The CLI sets these automatically:
 
 ## License
 
-MIT — fork, extend, build freely.
+MIT - fork, extend, build freely.
