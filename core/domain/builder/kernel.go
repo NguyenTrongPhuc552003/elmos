@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"path/filepath"
 
-	elconfig "github.com/NguyenTrongPhuc552003/elmos/core/config"
-	elcontext "github.com/NguyenTrongPhuc552003/elmos/core/context"
-	"github.com/NguyenTrongPhuc552003/elmos/core/domain/toolchain"
-	"github.com/NguyenTrongPhuc552003/elmos/core/infra/executor"
-	"github.com/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
+	elconfig "codeberg.org/NguyenTrongPhuc552003/elmos/core/config"
+	elcontext "codeberg.org/NguyenTrongPhuc552003/elmos/core/context"
+	"codeberg.org/NguyenTrongPhuc552003/elmos/core/domain/toolchain"
+	"codeberg.org/NguyenTrongPhuc552003/elmos/core/infra/executor"
+	"codeberg.org/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
 )
 
 // KernelBuilder orchestrates kernel build operations.

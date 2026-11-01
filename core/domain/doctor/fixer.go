@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"path/filepath"
 
-	elconfig "github.com/NguyenTrongPhuc552003/elmos/core/config"
-	"github.com/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
+	elconfig "codeberg.org/NguyenTrongPhuc552003/elmos/core/config"
+	"codeberg.org/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
 )
 
 // AutoFixer provides methods to automatically fix common issues.

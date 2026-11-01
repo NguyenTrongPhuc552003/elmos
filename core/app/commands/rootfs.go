@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/NguyenTrongPhuc552003/elmos/core/domain/rootfs"
+	"codeberg.org/NguyenTrongPhuc552003/elmos/core/domain/rootfs"
 )
 
 // BuildRootfs creates the rootfs command tree for root filesystem management.

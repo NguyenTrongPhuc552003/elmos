@@ -7,9 +7,9 @@ import (
 	"os"
 	"path/filepath"
 
-	elconfig "github.com/NguyenTrongPhuc552003/elmos/core/config"
-	"github.com/NguyenTrongPhuc552003/elmos/core/infra/executor"
-	"github.com/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
+	elconfig "codeberg.org/NguyenTrongPhuc552003/elmos/core/config"
+	"codeberg.org/NguyenTrongPhuc552003/elmos/core/infra/executor"
+	"codeberg.org/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
 )
 
 // Creator handles rootfs creation.

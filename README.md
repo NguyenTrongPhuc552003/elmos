@@ -1,6 +1,6 @@
 # ELMOS – Embedded Linux on MacOS
 
-[![Build Status](https://img.shields.io/badge/build-v6.18%20ARM64-green)](https://github.com/NguyenTrongPhuc552003/elmos) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Docs](https://img.shields.io/badge/docs-gh--pages-blue)](https://nguyentrongphuc552003.github.io/elmos/)
+[![Build Status](https://img.shields.io/badge/build-v6.18%20ARM64-green)](https://codeberg.org/NguyenTrongPhuc552003/elmos) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Docs](https://img.shields.io/badge/docs-gh--pages-blue)](https://codeberg.org/NguyenTrongPhuc552003/elmos/src/branch/main/docs)
 
 A complete embedded Linux SDK for macOS. Build kernels, cross-compile with native toolchains, develop kernel modules and userspace apps-all without Docker or VMs. ELMOS provides an integrated development environment with interactive TUI, automatic toolchain management (crosstool-ng), and seamless QEMU integration. Targeting RISC-V, ARM64, ARM, and more, with full support for Linux v6.18+.
 
@@ -20,7 +20,7 @@ Inspired by [Seiya's tutorial](https://seiya.me/blog/building-linux-on-macos-nat
 
 ## Documentation
 
-Comprehensive documentation is hosted on GitHub Pages:
+Documentation is in the repository's `docs/` folder:
 
 - **[User Guide](https://elmos.vercel.app/user/)**: Usage, kernel building, toolchains.
 - **[Developer Guide](https://elmos.vercel.app/developer/)**: Architecture, APIs, code patterns.
@@ -38,7 +38,7 @@ xcode-select --install  # For SDK headers
 ### 2. Build & Initialize
 
 ```bash
-git clone https://github.com/NguyenTrongPhuc552003/elmos.git
+git clone https://codeberg.org/NguyenTrongPhuc552003/elmos.git
 cd elmos
 task build                # Build to build/elmos
 ./build/elmos init        # Create workspace (sparseimage + config)
@@ -179,7 +179,7 @@ The CLI sets these automatically:
 
 - **Original Tutorial**: [Building Linux on macOS Natively](https://seiya.me/blog/building-linux-on-macos-natively) by Seiya Suzuki
 - **Upstream**: [Clang Built Linux](https://clangbuiltlinux.github.io/) for LLVM guidance
-- **Author**: Phuc Nguyen ([@NguyenTrongPhuc552003](https://github.com/NguyenTrongPhuc552003))
+- **Author**: Phuc Nguyen ([@NguyenTrongPhuc552003](https://codeberg.org/NguyenTrongPhuc552003))
 
 ## License
 

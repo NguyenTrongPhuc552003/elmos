@@ -3,7 +3,7 @@ package commands
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/NguyenTrongPhuc552003/elmos/core/ui/tui"
+	"codeberg.org/NguyenTrongPhuc552003/elmos/core/ui/tui"
 )
 
 // BuildTUI creates the tui command for launching interactive mode.

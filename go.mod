@@ -1,4 +1,4 @@
-module github.com/NguyenTrongPhuc552003/elmos
+module codeberg.org/NguyenTrongPhuc552003/elmos
 
 go 1.26.0
 

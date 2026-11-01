@@ -24,7 +24,7 @@ xcode-select --install
 Clone the repository and build the binary:
 
 ```bash
-git clone https://github.com/NguyenTrongPhuc552003/elmos.git
+git clone https://codeberg.org/NguyenTrongPhuc552003/elmos.git
 cd elmos
 task build  # Builds to build/elmos
 ```

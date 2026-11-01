@@ -7,19 +7,19 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/NguyenTrongPhuc552003/elmos/core/app/commands"
-	"github.com/NguyenTrongPhuc552003/elmos/core/app/version"
-	"github.com/NguyenTrongPhuc552003/elmos/core/config"
-	elcontext "github.com/NguyenTrongPhuc552003/elmos/core/context"
-	"github.com/NguyenTrongPhuc552003/elmos/core/domain/builder"
-	"github.com/NguyenTrongPhuc552003/elmos/core/domain/doctor"
-	"github.com/NguyenTrongPhuc552003/elmos/core/domain/emulator"
-	"github.com/NguyenTrongPhuc552003/elmos/core/domain/patch"
-	"github.com/NguyenTrongPhuc552003/elmos/core/domain/rootfs"
-	"github.com/NguyenTrongPhuc552003/elmos/core/domain/toolchain"
-	"github.com/NguyenTrongPhuc552003/elmos/core/infra/executor"
-	"github.com/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
-	"github.com/NguyenTrongPhuc552003/elmos/core/ui"
+	"codeberg.org/NguyenTrongPhuc552003/elmos/core/app/commands"
+	"codeberg.org/NguyenTrongPhuc552003/elmos/core/app/version"
+	"codeberg.org/NguyenTrongPhuc552003/elmos/core/config"
+	elcontext "codeberg.org/NguyenTrongPhuc552003/elmos/core/context"
+	"codeberg.org/NguyenTrongPhuc552003/elmos/core/domain/builder"
+	"codeberg.org/NguyenTrongPhuc552003/elmos/core/domain/doctor"
+	"codeberg.org/NguyenTrongPhuc552003/elmos/core/domain/emulator"
+	"codeberg.org/NguyenTrongPhuc552003/elmos/core/domain/patch"
+	"codeberg.org/NguyenTrongPhuc552003/elmos/core/domain/rootfs"
+	"codeberg.org/NguyenTrongPhuc552003/elmos/core/domain/toolchain"
+	"codeberg.org/NguyenTrongPhuc552003/elmos/core/infra/executor"
+	"codeberg.org/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
+	"codeberg.org/NguyenTrongPhuc552003/elmos/core/ui"
 )
 
 // App holds all the application dependencies.

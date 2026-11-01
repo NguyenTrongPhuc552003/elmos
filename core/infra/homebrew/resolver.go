@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/NguyenTrongPhuc552003/elmos/core/infra/executor"
+	"codeberg.org/NguyenTrongPhuc552003/elmos/core/infra/executor"
 )
 
 // Resolver provides methods to resolve Homebrew package paths.

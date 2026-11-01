@@ -9,12 +9,12 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/NguyenTrongPhuc552003/elmos/assets"
-	elconfig "github.com/NguyenTrongPhuc552003/elmos/core/config"
-	elcontext "github.com/NguyenTrongPhuc552003/elmos/core/context"
-	"github.com/NguyenTrongPhuc552003/elmos/core/domain/toolchain"
-	"github.com/NguyenTrongPhuc552003/elmos/core/infra/executor"
-	"github.com/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
+	"codeberg.org/NguyenTrongPhuc552003/elmos/assets"
+	elconfig "codeberg.org/NguyenTrongPhuc552003/elmos/core/config"
+	elcontext "codeberg.org/NguyenTrongPhuc552003/elmos/core/context"
+	"codeberg.org/NguyenTrongPhuc552003/elmos/core/domain/toolchain"
+	"codeberg.org/NguyenTrongPhuc552003/elmos/core/infra/executor"
+	"codeberg.org/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
 )
 
 // ModuleInfo contains information about a kernel module.
