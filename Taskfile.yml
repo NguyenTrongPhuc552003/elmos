@@ -244,6 +244,42 @@ tasks:
   # ============================================================================
   # Documentation (docs:*)
   # ============================================================================
+  # ============================================================================
+  # HAVEN on macOS (haven:*) - build, test and boot the HAVEN hypervisor.
+  # Needs: brew install cmake ninja qemu aarch64-unknown-linux-gnu
+  # Uses ../haven by default; override with HAVEN=/path/to/haven.
+  # A macOS learner who does not use HAVEN never needs these tasks.
+  # ============================================================================
+
+  haven:test:
+    desc: Build and run HAVEN host unit tests
+    dir: '{{.HAVEN | default "../haven"}}'
+    cmds:
+      - cmake --preset host-tests
+      - cmake --build build-host
+      - ctest --test-dir build-host --output-on-failure --timeout 60 -E bench_temporal_isolation
+
+  haven:build:
+    desc: Cross-compile HAVEN for QEMU virt (ARM64, qemu-direct profile)
+    dir: '{{.HAVEN | default "../haven"}}'
+    cmds:
+      - cmake --preset arm64-qemu -DHAVEN_BOOT_PROFILE=qemu-direct
+      - cmake --build build
+
+  haven:smoke:
+    desc: Boot the built HAVEN image in QEMU and check the partition markers
+    dir: '{{.HAVEN | default "../haven"}}'
+    cmds:
+      - ./scripts/qemu/qemu-direct-check.sh build cortex-a72
+      - ./scripts/qemu/qemu-direct-check.sh build max
+
+  haven:all:
+    desc: "HAVEN in one command: host tests, ARM64 build, QEMU boot (logs in <haven>/build/evidence)"
+    cmds:
+      - task: haven:test
+      - task: haven:build
+      - task: haven:smoke
+
   docs:
     desc: Build the documentation site
     deps: [docs:install]
