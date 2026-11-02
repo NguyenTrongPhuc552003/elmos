@@ -273,12 +273,22 @@ tasks:
       - ./scripts/qemu/qemu-direct-check.sh build cortex-a72
       - ./scripts/qemu/qemu-direct-check.sh build max
 
+  haven:partb:
+    desc: Build HAVEN with QEMU's built-in PSCI (qemu-psci) and check partition B on CPU 2
+    dir: '{{.HAVEN | default "../haven"}}'
+    cmds:
+      - cmake --preset arm64-qemu -B build-psci -DHAVEN_BOOT_PROFILE=qemu-psci
+      - cmake --build build-psci
+      - python3 scripts/qemu/partition-b-check.py build-psci cortex-a72
+      - python3 scripts/qemu/partition-b-check.py build-psci max
+
   haven:all:
-    desc: "HAVEN in one command: host tests, ARM64 build, QEMU boot (logs in <haven>/build/evidence)"
+    desc: "HAVEN in one command: host tests, ARM64 builds, QEMU checks of both partitions (logs in <haven>/build*/evidence)"
     cmds:
       - task: haven:test
       - task: haven:build
       - task: haven:smoke
+      - task: haven:partb
 
   docs:
     desc: Build the documentation site

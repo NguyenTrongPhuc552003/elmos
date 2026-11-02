@@ -1,6 +1,6 @@
-# ELMOS – Embedded Linux on MacOS
+# ELMOS - Embedded Linux on macOS
 
-[![Build Status](https://img.shields.io/badge/build-v6.18%20ARM64-green)](https://codeberg.org/NguyenTrongPhuc552003/elmos) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Docs](https://img.shields.io/badge/docs-gh--pages-blue)](https://codeberg.org/NguyenTrongPhuc552003/elmos/src/branch/main/docs)
+[![Build Status](https://img.shields.io/badge/build-v6.18%20ARM64-green)](https://codeberg.org/NguyenTrongPhuc552003/elmos) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Docs](https://img.shields.io/badge/docs-repository-blue)](https://codeberg.org/NguyenTrongPhuc552003/elmos/src/branch/main/docs)
 
 A complete embedded Linux SDK for macOS. Build kernels, cross-compile with native toolchains, develop kernel modules and userspace apps-all without Docker or VMs. ELMOS provides an integrated development environment with interactive TUI, automatic toolchain management (crosstool-ng), and seamless QEMU integration. Targeting RISC-V, ARM64, ARM, and more, with full support for Linux v6.18+.
 
@@ -70,6 +70,27 @@ task build                # Build to build/elmos
 ./build/elmos qemu run                 # Boot in QEMU
 ./build/elmos qemu debug               # With GDB stub (port 1234)
 ```
+
+## Use with HAVEN (thesis toolchain)
+
+ELMOS is the host side of the HAVEN thesis
+([HAVEN](https://codeberg.org/NguyenTrongPhuc552003/haven), a static-partitioning
+hypervisor for the CIX P1 SoC; [KDAL](https://codeberg.org/NguyenTrongPhuc552003/kdal),
+the Linux-partition device layer). With a HAVEN checkout next to this one
+(or `HAVEN=/path/to/haven`):
+
+```bash
+brew install cmake ninja qemu aarch64-unknown-linux-gnu
+task haven:all     # host tests, ARM64 builds, QEMU checks of both partitions
+task haven:test    # host unit tests only
+task haven:smoke   # boot check, partition A (qemu-direct)
+task haven:partb   # partition B on CPU 2 (qemu-psci)
+```
+
+Logs go to `<haven>/build/evidence` and `<haven>/build-psci/evidence`. A
+macOS learner who does not use HAVEN never needs these tasks. Next ELMOS step
+for the thesis: build a Linux guest image with the KDAL module for a HAVEN
+partition.
 
 ## Interactive TUI
 
