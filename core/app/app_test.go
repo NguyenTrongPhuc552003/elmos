@@ -86,6 +86,38 @@ func TestInitCreatesConfigOnlyOnExplicitCommand(t *testing.T) {
 	}
 }
 
+func TestInitReopensConfiguredImage(t *testing.T) {
+	root := t.TempDir()
+	changeDir(t, root)
+	t.Setenv("HOME", filepath.Join(root, "home"))
+	image := filepath.Join(root, "elsewhere", "demo.sparseimage")
+	if err := os.MkdirAll(filepath.Dir(image), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(image, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	configPath := filepath.Join(root, "elmos.yaml")
+	yaml := "image:\n  path: " + image + "\n  volume_name: demo\n  size: 40G\n  mount_point: /Volumes/demo\n"
+	if err := os.WriteFile(configPath, []byte(yaml), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	application, mock := newTestApp(t)
+	cmd := application.BuildRootCommand()
+	cmd.SetArgs([]string{"--config", configPath, "init", "demo"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if application.Config.Image.Path != image {
+		t.Fatalf("image path = %q, want %q", application.Config.Image.Path, image)
+	}
+	for _, c := range mock.Calls {
+		if len(c.Args) > 0 && c.Args[0] == "create" {
+			t.Fatalf("re-init created a new image: %v", c.Args)
+		}
+	}
+}
+
 func newTestApp(t *testing.T) (*App, *executor.MockExecutor) {
 	t.Helper()
 	cfg, err := config.Load("")

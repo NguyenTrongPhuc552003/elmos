@@ -61,9 +61,11 @@ func Load(configPath string) (*Config, error) {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 	cfg.ExplicitPaths = ExplicitWorkspacePaths{
-		KernelDir: cfg.Paths.KernelDir != "",
-		RootfsDir: cfg.Paths.RootfsDir != "",
-		DiskImage: cfg.Paths.DiskImage != "",
+		KernelDir:  cfg.Paths.KernelDir != "",
+		RootfsDir:  cfg.Paths.RootfsDir != "",
+		DiskImage:  cfg.Paths.DiskImage != "",
+		ImagePath:  cfg.Image.Path != "",
+		MountPoint: cfg.Image.MountPoint != "",
 	}
 
 	// Apply computed defaults

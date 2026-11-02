@@ -103,7 +103,8 @@ func ensureWorkspaceVolume(ctx *Context, cmd *cobra.Command) error {
 func updateInitConfig(ctx *Context, workspaceName, volumeSize string) error {
 	// Check if we need to update config
 	configChanged := false
-	if ctx.Config.Image.VolumeName != workspaceName {
+	renamed := ctx.Config.Image.VolumeName != workspaceName
+	if renamed {
 		ctx.Config.Image.VolumeName = workspaceName
 		configChanged = true
 	}
@@ -112,10 +113,17 @@ func updateInitConfig(ctx *Context, workspaceName, volumeSize string) error {
 		configChanged = true
 	}
 
-	// Update derived paths
-	ctx.Config.Image.MountPoint = fmt.Sprintf("/Volumes/%s", workspaceName)
-	ctx.Config.Image.Path = fmt.Sprintf("%s/data/%s.sparseimage",
-		ctx.Config.Paths.ProjectRoot, workspaceName)
+	// Update derived paths. Re-initializing the same workspace keeps an image
+	// path and mount point that the configuration states explicitly, so an
+	// existing image is reopened instead of a new one being created next to
+	// the project.
+	if renamed || !ctx.Config.ExplicitPaths.MountPoint {
+		ctx.Config.Image.MountPoint = fmt.Sprintf("/Volumes/%s", workspaceName)
+	}
+	if renamed || !ctx.Config.ExplicitPaths.ImagePath {
+		ctx.Config.Image.Path = fmt.Sprintf("%s/data/%s.sparseimage",
+			ctx.Config.Paths.ProjectRoot, workspaceName)
+	}
 	ctx.Config.Paths.ToolchainsDir = fmt.Sprintf("/Volumes/%s/toolchains", workspaceName)
 	if !ctx.Config.ExplicitPaths.KernelDir {
 		ctx.Config.Paths.KernelDir = fmt.Sprintf("%s/linux", ctx.Config.Image.MountPoint)

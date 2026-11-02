@@ -27,9 +27,11 @@ type Config struct {
 
 // ExplicitWorkspacePaths distinguishes configured paths from computed defaults.
 type ExplicitWorkspacePaths struct {
-	KernelDir bool
-	RootfsDir bool
-	DiskImage bool
+	KernelDir  bool
+	RootfsDir  bool
+	DiskImage  bool
+	ImagePath  bool
+	MountPoint bool
 }
 
 // ImageConfig holds disk image configuration.
