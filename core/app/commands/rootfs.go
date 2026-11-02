@@ -16,17 +16,31 @@ func BuildRootfs(ctx *Context) *cobra.Command {
 	}
 
 	// Create command
-	var size string
+	var size, engine, image string
 	createCmd := &cobra.Command{
 		Use:   "create",
-		Short: "Create rootfs with Debian",
-		Long:  "Create an ext4 disk image with Debian rootfs using debootstrap",
+		Short: "Create the root filesystem disk image",
+		Long: `Create the ext4 disk image that 'elmos qemu run' boots.
+
+Engines:
+  oci          (default) pull a container image for the target architecture
+               and write it straight into ext4. No sudo, no debootstrap,
+               about a minute on a normal connection.
+  debootstrap  Debian foreign install; needs sudo, fakeroot and debootstrap
+               in tools/debootstrap, and finishes on first boot.
+
+Both engines write the same /init (embedded in elmos).
+
+Examples:
+  elmos rootfs create                               # alpine:3 (insmod, ip)
+  elmos rootfs create --image debian:stable-slim -s 8G
+  elmos rootfs create --engine debootstrap`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := ctx.AppContext.EnsureMounted(); err != nil {
 				return err
 			}
 			ctx.Printer.Step("Creating rootfs...")
-			if err := ctx.RootfsCreator.Create(cmd.Context(), rootfs.CreateOptions{Size: size}); err != nil {
+			if err := ctx.RootfsCreator.Create(cmd.Context(), rootfs.CreateOptions{Size: size, Engine: engine, Image: image}); err != nil {
 				return err
 			}
 			ctx.Printer.Success("Rootfs created!")
@@ -34,6 +48,8 @@ func BuildRootfs(ctx *Context) *cobra.Command {
 		},
 	}
 	createCmd.Flags().StringVarP(&size, "size", "s", "5G", "Disk image size (e.g., 5G, 10G)")
+	createCmd.Flags().StringVar(&engine, "engine", rootfs.EngineOCI, "Rootfs engine: oci or debootstrap")
+	createCmd.Flags().StringVar(&image, "image", rootfs.DefaultOCIImage, "Container image for the oci engine")
 
 	// Status command
 	statusCmd := &cobra.Command{

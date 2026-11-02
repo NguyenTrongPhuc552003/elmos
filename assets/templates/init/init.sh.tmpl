@@ -1,37 +1,53 @@
 #!/bin/sh
-# elmos init script - {{.Version}}
+# elmos /init for QEMU guests. Embedded in the elmos binary and written into
+# every root filesystem that 'elmos rootfs create' makes (both engines).
 
-echo "Booting Debian root filesystem..."
+echo "Booting elmos root filesystem..."
 
-# Mount essential filesystems
-mount -t proc proc /proc
-mount -t sysfs sysfs /sys
-mount -t devtmpfs devtmpfs /dev
-
-# Create pts
-mkdir -p /dev/pts
+# Mount essential virtual filesystems first: the debootstrap second stage
+# and the tools below need them.
+mount -t proc  proc  /proc
+mount -t sysfs sys   /sys
+mount -t devtmpfs dev /dev 2>/dev/null || mount -t tmpfs dev /dev
+[ -d /dev/pts ] || mkdir /dev/pts
 mount -t devpts devpts /dev/pts
 
-# Setup root filesystem if needed
-if [ ! -f /etc/passwd ]; then
-    echo "Setting up root filesystem..."
-    echo "root:x:0:0:root:/root:/bin/sh" > /etc/passwd
-    echo "root::0:0:::::" > /etc/shadow
-    mkdir -p /root
+# debootstrap engine: finish the foreign install on first boot.
+MARKER="/.rootfs-setup-complete"
+if [ -x /debootstrap/debootstrap ] && [ ! -f "$MARKER" ]; then
+    echo "First boot: running debootstrap second stage..."
+    if /debootstrap/debootstrap --second-stage; then
+        touch "$MARKER"
+        echo "Second stage completed."
+    else
+        echo "Second stage failed, dropping to a shell."
+        [ -f /debootstrap/debootstrap.log ] && cat /debootstrap/debootstrap.log
+        exec /bin/sh
+    fi
 fi
 
-echo "Root filesystem already set up."
+# Network for QEMU user-mode networking, when iproute2 is installed
+# (container base images such as debian:stable-slim do not ship it).
+if command -v ip >/dev/null 2>&1; then
+    ip link set lo up
+    ip link set eth0 up
+    ip addr add 10.0.2.15/24 dev eth0
+    ip route add default via 10.0.2.2
+    echo "nameserver 10.0.2.3" > /etc/resolv.conf
+else
+    echo "No 'ip' command: network not configured."
+fi
 
-# Mount 9p shared modules directory
+# Shared folder from the host (modules built by 'elmos module build').
 mkdir -p /mnt/modules
-mount -t 9p -o trans=virtio modules_mount /mnt/modules 2>/dev/null || true
-
-# Run module sync if available
-if [ -x /mnt/modules/guesync.sh ]; then
-    /mnt/modules/guesync.sh
+if mount -t 9p -o trans=virtio,version=9p2000.L modules_mount /mnt/modules 2>/dev/null; then
+    if [ -x /mnt/modules/guesync.sh ]; then
+        echo "Running guest module synchronization script..."
+        /mnt/modules/guesync.sh
+    fi
+else
+    echo "No host share mounted at /mnt/modules."
 fi
 
 echo "System ready."
-
-# Start shell
 exec /bin/sh

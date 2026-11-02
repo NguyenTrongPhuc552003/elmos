@@ -4,8 +4,13 @@ package rootfs
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+
+	v1 "github.com/google/go-containerregistry/pkg/v1"
+
+	"codeberg.org/NguyenTrongPhuc552003/elmos/assets"
 
 	elconfig "codeberg.org/NguyenTrongPhuc552003/elmos/core/config"
 	"codeberg.org/NguyenTrongPhuc552003/elmos/core/infra/executor"
@@ -17,6 +22,9 @@ type Creator struct {
 	exec executor.Executor
 	fs   filesystem.FileSystem
 	cfg  *elconfig.Config
+	// pull fetches a flattened OCI image; nil means the registry. Tests
+	// replace it to stay offline.
+	pull func(ctx context.Context, ref string, platform *v1.Platform) (io.ReadCloser, error)
 }
 
 // NewCreator creates a new rootfs Creator.
@@ -37,6 +45,14 @@ func (c *Creator) Create(ctx context.Context, opts CreateOptions) error {
 
 	diskImage := c.cfg.Paths.DiskImage
 	rootfsDir := c.cfg.Paths.RootfsDir
+
+	switch opts.Engine {
+	case "", EngineOCI:
+		return c.createFromOCI(ctx, diskImage, opts.Image, size)
+	case EngineDebootstrap:
+	default:
+		return fmt.Errorf("unknown rootfs engine %q (use %s or %s)", opts.Engine, EngineOCI, EngineDebootstrap)
+	}
 
 	if err := c.cleanRootfsDir(ctx, rootfsDir); err != nil {
 		return err
@@ -172,23 +188,13 @@ func (c *Creator) getDebianArch() string {
 
 // createInitScript creates the /init script for the rootfs.
 func (c *Creator) createInitScript(rootfsDir string) error {
-	initPath := filepath.Join(rootfsDir, "init")
-
-	// Read init script from scripts/init file
-	scriptPath := filepath.Join(c.cfg.Paths.ProjectRoot, "scripts", "init")
-	content, err := c.fs.ReadFile(scriptPath)
+	content, err := assets.GetInitScript()
 	if err != nil {
-		return fmt.Errorf("failed to read init script from %s: %w", scriptPath, err)
-	}
-
-	if err := c.fs.WriteFile(initPath, content, 0755); err != nil {
 		return err
 	}
-
-	return nil
+	return c.fs.WriteFile(filepath.Join(rootfsDir, "init"), content, 0755)
 }
 
-// RootfsInfo contains information about the rootfs.
 type RootfsInfo struct {
 	DiskImageExists bool
 	DiskImagePath   string
