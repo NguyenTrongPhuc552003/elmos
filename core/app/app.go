@@ -82,6 +82,9 @@ Common workflow:
   elmos tui               # Launch interactive TUI`,
 		Version: version.Get().String(),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			// Arguments are valid by now: a later failure is a runtime
+			// error, and the full usage text would only bury it (audit E8).
+			cmd.SilenceUsage = true
 			// Reload config if custom path is provided
 			if a.ConfigFile != "" {
 				newCfg, err := config.Load(a.ConfigFile)

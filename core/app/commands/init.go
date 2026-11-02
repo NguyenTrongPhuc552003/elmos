@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -74,6 +75,10 @@ func ensureWorkspaceVolume(ctx *Context, cmd *cobra.Command) error {
 	// Create disk image if it doesn't exist
 	if !ctx.FS.Exists(ctx.Config.Image.Path) {
 		ctx.Printer.Step("Creating sparse disk image...")
+		// hdiutil does not create missing parent directories (audit E7).
+		if err := ctx.FS.MkdirAll(filepath.Dir(ctx.Config.Image.Path), 0755); err != nil {
+			return fmt.Errorf("failed to create %s: %w", filepath.Dir(ctx.Config.Image.Path), err)
+		}
 		if err := ctx.Exec.Run(cmd.Context(), "hdiutil", "create",
 			"-size", ctx.Config.Image.Size,
 			"-fs", "Case-sensitive APFS",

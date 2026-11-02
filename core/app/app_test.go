@@ -176,3 +176,23 @@ func TestHelpWorkflowCommandsExist(t *testing.T) {
 		t.Fatal("no workflow lines found in the root help")
 	}
 }
+
+// Audit E8: a runtime error must not be followed by the whole usage text;
+// a usage error (wrong arguments) still shows it.
+func TestRuntimeErrorDoesNotPrintUsage(t *testing.T) {
+	root := t.TempDir()
+	changeDir(t, root)
+	t.Setenv("HOME", filepath.Join(root, "home"))
+	application, _ := newTestApp(t)
+	cmd := application.BuildRootCommand()
+	var out strings.Builder
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"kernel", "status"}) // fails: no volume mounted
+	if err := cmd.Execute(); err == nil {
+		t.Skip("kernel status unexpectedly succeeded on this host")
+	}
+	if strings.Contains(out.String(), "USAGE") || strings.Contains(out.String(), "Usage:") {
+		t.Fatalf("runtime error printed usage:\n%s", out.String())
+	}
+}

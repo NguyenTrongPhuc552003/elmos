@@ -1,12 +1,19 @@
 package commands
 
 import (
+	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/spf13/cobra"
+
 	"codeberg.org/NguyenTrongPhuc552003/elmos/core/config"
+	elcontext "codeberg.org/NguyenTrongPhuc552003/elmos/core/context"
+	"codeberg.org/NguyenTrongPhuc552003/elmos/core/infra/executor"
 	"codeberg.org/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
+	"codeberg.org/NguyenTrongPhuc552003/elmos/core/ui"
 )
 
 func TestUpdateInitConfigWorkspacePaths(t *testing.T) {
@@ -73,5 +80,31 @@ func assertWorkspacePaths(t *testing.T, cfg *config.Config, kernelDir, rootfsDir
 		t.Fatalf("paths = (%q, %q, %q), want (%q, %q, %q)",
 			cfg.Paths.KernelDir, cfg.Paths.RootfsDir, cfg.Paths.DiskImage,
 			kernelDir, rootfsDir, diskImage)
+	}
+}
+
+// Audit E7: in a fresh directory the image's parent ("data/") did not
+// exist and hdiutil failed with "No such file or directory".
+func TestEnsureWorkspaceVolumeCreatesImageDirectory(t *testing.T) {
+	root := t.TempDir()
+	cfg := &config.Config{}
+	cfg.Image.Path = filepath.Join(root, "data", "ws.sparseimage")
+	cfg.Image.VolumeName = "ws"
+	cfg.Image.Size = "40G"
+	cfg.Image.MountPoint = filepath.Join(root, "Volumes", "ws")
+	rec := executor.NewRecorder()
+	fs := filesystem.NewOSFileSystem()
+	ctx := &Context{Config: cfg, FS: fs, Exec: rec, Printer: ui.NewPrinter(),
+		AppContext: elcontext.New(cfg, rec, fs)}
+	cmd := &cobra.Command{}
+	cmd.SetContext(context.Background())
+	if err := ensureWorkspaceVolume(ctx, cmd); err != nil {
+		t.Fatal(err)
+	}
+	if !fs.IsDir(filepath.Dir(cfg.Image.Path)) {
+		t.Fatalf("image directory %s not created before hdiutil create", filepath.Dir(cfg.Image.Path))
+	}
+	if len(rec.Calls) == 0 || !strings.HasPrefix(rec.Calls[0], "hdiutil create") {
+		t.Fatalf("first command = %v, want hdiutil create", rec.Calls)
 	}
 }
