@@ -167,6 +167,10 @@ func (ctx *Context) GetMakeEnv() []string {
 	if coreutils := ctx.Brew.GetLibexecBin("coreutils"); coreutils != "" {
 		newPath = coreutils + string(os.PathListSeparator) + newPath
 	}
+	// GNU make 4.0+ (the kernel refuses the make 3.81 shipped with macOS)
+	if gnuMake := ctx.Brew.GetLibexecBin("make"); gnuMake != "" {
+		newPath = gnuMake + string(os.PathListSeparator) + newPath
+	}
 
 	// LLVM toolchain
 	if llvmBin := ctx.Brew.GetBin("llvm"); llvmBin != "" {

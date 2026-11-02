@@ -5,8 +5,39 @@ import (
 	"context"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 	"syscall"
 )
+
+// resolveInEnv finds cmd in the PATH carried by env, when env sets one.
+// os/exec looks a bare name up in the PATH of the elmos process itself, so
+// a tool prepended to the child PATH (for example GNU make from Homebrew)
+// would otherwise be ignored in favour of the system one.
+func resolveInEnv(cmd string, env []string) string {
+	if strings.ContainsRune(cmd, os.PathSeparator) {
+		return cmd
+	}
+	path := ""
+	for _, e := range env {
+		if strings.HasPrefix(e, "PATH=") {
+			path = e[len("PATH="):] // the last PATH wins, as in the child
+		}
+	}
+	if path == "" {
+		return cmd
+	}
+	for _, dir := range filepath.SplitList(path) {
+		if dir == "" {
+			continue
+		}
+		cand := filepath.Join(dir, cmd)
+		if fi, err := os.Stat(cand); err == nil && !fi.IsDir() && fi.Mode()&0111 != 0 {
+			return cand
+		}
+	}
+	return cmd
+}
 
 // ShellExecutor implements Executor using os/exec.
 type ShellExecutor struct {
@@ -44,7 +75,7 @@ func (e *ShellExecutor) RunInDir(ctx context.Context, dir string, cmd string, ar
 
 // RunWithEnvInDir executes a command with custom environment in a specific directory.
 func (e *ShellExecutor) RunWithEnvInDir(ctx context.Context, env []string, dir string, cmd string, args ...string) error {
-	c := exec.CommandContext(ctx, cmd, args...)
+	c := exec.CommandContext(ctx, resolveInEnv(cmd, env), args...)
 	c.Stdout = e.Stdout
 	c.Stderr = e.Stderr
 	c.Stdin = e.Stdin
@@ -68,7 +99,7 @@ func (e *ShellExecutor) Output(ctx context.Context, cmd string, args ...string) 
 
 // OutputWithEnv executes a command with custom environment and returns its stdout.
 func (e *ShellExecutor) OutputWithEnv(ctx context.Context, env []string, cmd string, args ...string) ([]byte, error) {
-	c := exec.CommandContext(ctx, cmd, args...)
+	c := exec.CommandContext(ctx, resolveInEnv(cmd, env), args...)
 	if len(env) > 0 {
 		// Merge custom env with current environment
 		c.Env = append(os.Environ(), env...)
@@ -78,7 +109,7 @@ func (e *ShellExecutor) OutputWithEnv(ctx context.Context, env []string, cmd str
 
 // RunWithEnvSilent executes a command with custom environment, suppressing stderr.
 func (e *ShellExecutor) RunWithEnvSilent(ctx context.Context, env []string, cmd string, args ...string) error {
-	c := exec.CommandContext(ctx, cmd, args...)
+	c := exec.CommandContext(ctx, resolveInEnv(cmd, env), args...)
 	c.Stdout = e.Stdout
 	c.Stderr = nil // Suppress stderr
 	c.Stdin = e.Stdin
