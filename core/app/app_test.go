@@ -3,6 +3,7 @@ package app
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"codeberg.org/NguyenTrongPhuc552003/elmos/core/config"
@@ -144,5 +145,34 @@ func assertMissing(t *testing.T, path string) {
 	t.Helper()
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Fatalf("expected %s to be absent, stat error: %v", path, err)
+	}
+}
+
+// Every command shown in the root help's "Common workflow" must exist
+// (audit E1: the help once showed "elmos build", which never existed).
+func TestHelpWorkflowCommandsExist(t *testing.T) {
+	root := t.TempDir()
+	changeDir(t, root)
+	t.Setenv("HOME", filepath.Join(root, "home"))
+	application, _ := newTestApp(t)
+	cmd := application.BuildRootCommand()
+	seen := 0
+	for _, line := range strings.Split(cmd.Long, "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "elmos ") {
+			continue
+		}
+		if i := strings.Index(line, "#"); i >= 0 {
+			line = line[:i]
+		}
+		args := strings.Fields(line)[1:]
+		found, rest, err := cmd.Find(args)
+		if err != nil || found == cmd || len(rest) != 0 {
+			t.Errorf("help workflow shows %q, which is not a command", line)
+		}
+		seen++
+	}
+	if seen == 0 {
+		t.Fatal("no workflow lines found in the root help")
 	}
 }

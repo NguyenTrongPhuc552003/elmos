@@ -77,7 +77,7 @@ Common workflow:
   elmos init              # Initialize workspace
   elmos doctor            # Check dependencies
   elmos kernel config     # Configure kernel
-  elmos build             # Build kernel
+  elmos kernel build      # Build kernel
   elmos qemu run          # Test in QEMU
   elmos tui               # Launch interactive TUI`,
 		Version: version.Get().String(),
