@@ -314,6 +314,14 @@ func (h *HealthChecker) CheckCrossGCC(ctx context.Context) []CheckResult {
 				message = "Found in elmos toolchains"
 			}
 		}
+		// The app build also uses a compiler found on PATH (for example a
+		// Homebrew cross GCC), so report it as found (audit E16).
+		if !passed {
+			if p, err := h.exec.LookPath(binary); err == nil {
+				passed = true
+				message = "Found on PATH: " + p
+			}
+		}
 
 		results = append(results, CheckResult{
 			Name:     fmt.Sprintf("Cross Compilers: %s (%s)", arch, binary),

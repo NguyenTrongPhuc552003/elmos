@@ -66,8 +66,15 @@ func setArchTarget(ctx *Context, cmd *cobra.Command, target string) error {
 		ctx.Printer.Warn("Could not infer architecture from '%s', only toolchain will be set", target)
 	}
 
-	// Select Toolchain (if applicable)
+	// Select Toolchain (if applicable). Without crosstool-ng the kernel
+	// still builds with LLVM, so setting the architecture is not an error
+	// (audit E9: 'elmos arch arm64' exited 1 after saving the arch).
 	if toolchainTarget != "" {
+		if archName != "" && ctx.ToolchainManager != nil && !ctx.ToolchainManager.IsInstalled() {
+			ctx.Printer.Info("crosstool-ng not installed: the kernel builds with LLVM; "+
+				"'elmos toolchains install' adds a GCC toolchain for %s", toolchainTarget)
+			return nil
+		}
 		return selectToolchain(ctx, cmd, toolchainTarget)
 	}
 	return nil

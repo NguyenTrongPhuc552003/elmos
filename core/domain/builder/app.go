@@ -61,7 +61,10 @@ func (a *AppBuilder) Build(ctx context.Context, name string) error {
 		return fmt.Errorf("failed to configure toolchain environment: %w", err)
 	}
 
-	compiler := a.getCrossCompiler(crossCompile)
+	compiler, err := a.getCrossCompiler(crossCompile)
+	if err != nil {
+		return err
+	}
 
 	for _, app := range apps {
 		if err := a.buildApp(ctx, app, compiler, env); err != nil {
@@ -182,21 +185,25 @@ func (a *AppBuilder) getAppInfo(name, path string) AppInfo {
 }
 
 // getCrossCompiler returns the cross-compiler for the current architecture.
-func (a *AppBuilder) getCrossCompiler(prefix string) string {
-	// If we have a toolchain prefix, prefer it
-	if prefix != "" {
-		// e.g. riscv64-unknown-linux-gnu- + gcc
-		return prefix + "gcc"
+func (a *AppBuilder) getCrossCompiler(prefix string) (string, error) {
+	// A GNU triple prefix (riscv64-unknown-linux-gnu-) names a toolchain
+	// with a Linux libc. "llvm-" is only the kernel's LLVM=1 convention:
+	// LLVM alone has no Linux libc, so it cannot link a userspace program
+	// (audit E12: the host llvm-gcc linked for macOS and failed on crt0.o).
+	if prefix != "" && prefix != "llvm-" {
+		return prefix + "gcc", nil
 	}
 
-	// Fallback to configured binary or clang
 	archCfg := a.cfg.GetArchConfig()
 	if archCfg != nil && archCfg.GCCBinary != "" {
 		if path, err := a.exec.LookPath(archCfg.GCCBinary); err == nil {
-			return path
+			return path, nil
 		}
+		return "", fmt.Errorf("no Linux C toolchain for %s: userspace apps need %s "+
+			"(run 'elmos toolchains install' and 'elmos toolchains build')",
+			a.cfg.Build.Arch, archCfg.GCCBinary)
 	}
-	return "clang"
+	return "", fmt.Errorf("no Linux C toolchain configured for %s", a.cfg.Build.Arch)
 }
 
 // CreateApp creates a new application from template.

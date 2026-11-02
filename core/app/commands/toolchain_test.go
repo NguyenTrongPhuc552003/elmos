@@ -141,3 +141,23 @@ func runToolchainSelection(ctx *Context, target string) error {
 	cmd.SetArgs([]string{target})
 	return cmd.Execute()
 }
+
+// Audit E9: without crosstool-ng, 'elmos arch arm64' saved the arch and
+// then exited 1, although the kernel builds with LLVM alone.
+func TestArchWithoutCrosstoolNGSucceeds(t *testing.T) {
+	ctx, _, _, configPath := newToolchainSelectionContext(t)
+	if err := os.RemoveAll(filepath.Join(ctx.Config.Paths.ToolchainsDir, "crosstool-ng")); err != nil {
+		t.Fatal(err)
+	}
+	cmd := BuildArch(ctx)
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+	cmd.SetArgs([]string{"riscv"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("arch riscv without crosstool-ng: %v", err)
+	}
+	reloaded, err := config.Load(configPath)
+	if err != nil || reloaded.Build.Arch != "riscv" {
+		t.Fatalf("persisted architecture = %q, err=%v", reloaded.Build.Arch, err)
+	}
+}

@@ -2,6 +2,7 @@ package executor
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 )
@@ -17,6 +18,8 @@ type Recorder struct {
 	Outputs map[string]string
 	// Fail maps a command prefix to the error it returns.
 	Fail map[string]error
+	// NotOnPath lists commands that LookPath reports as missing.
+	NotOnPath map[string]bool
 }
 
 // NewRecorder returns an empty Recorder.
@@ -78,6 +81,9 @@ func (r *Recorder) RunWithEnvSilent(_ context.Context, _ []string, cmd string, a
 }
 
 func (r *Recorder) LookPath(cmd string) (string, error) {
+	if r.NotOnPath[cmd] {
+		return "", fmt.Errorf("%s: not found", cmd)
+	}
 	return "/usr/bin/" + cmd, nil
 }
 
