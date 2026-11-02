@@ -4,8 +4,14 @@ package patch
 import (
 	"context"
 	"fmt"
+	"io/fs"
+	"os"
+	"path"
 	"path/filepath"
+	"sort"
 	"strings"
+
+	"codeberg.org/NguyenTrongPhuc552003/elmos/assets"
 
 	elconfig "codeberg.org/NguyenTrongPhuc552003/elmos/core/config"
 	"codeberg.org/NguyenTrongPhuc552003/elmos/core/infra/executor"
@@ -176,4 +182,86 @@ func (m *Manager) GetPatchesForVersion(version string) ([]PatchInfo, error) {
 	}
 
 	return filtered, nil
+}
+
+// Builtin lists the patches embedded in elmos for a kernel ref and an
+// architecture: the "generic" ones first, then the architecture ones, each
+// group in file-name order.
+func Builtin(ref, arch string) []PatchInfo {
+	var out []PatchInfo
+	for _, group := range []string{"generic", arch} {
+		dir := path.Join("patches", ref, group)
+		entries, err := fs.ReadDir(assets.Patches, dir)
+		if err != nil {
+			continue
+		}
+		names := make([]string, 0, len(entries))
+		for _, e := range entries {
+			if !e.IsDir() && strings.HasSuffix(e.Name(), ".patch") {
+				names = append(names, e.Name())
+			}
+		}
+		sort.Strings(names)
+		for _, n := range names {
+			out = append(out, PatchInfo{Name: n, Path: path.Join(dir, n), Version: ref, Arch: group})
+		}
+	}
+	return out
+}
+
+// AllBuiltin lists every embedded patch, for every kernel ref.
+func AllBuiltin() []PatchInfo {
+	var out []PatchInfo
+	refs, err := fs.ReadDir(assets.Patches, "patches")
+	if err != nil {
+		return nil
+	}
+	for _, r := range refs {
+		groups, err := fs.ReadDir(assets.Patches, path.Join("patches", r.Name()))
+		if err != nil {
+			continue
+		}
+		for _, g := range groups {
+			if g.Name() == "generic" {
+				continue // Builtin lists generic with every arch
+			}
+			out = append(out, Builtin(r.Name(), g.Name())...)
+		}
+		if len(groups) == 1 && groups[0].Name() == "generic" {
+			out = append(out, Builtin(r.Name(), "")...)
+		}
+	}
+	return out
+}
+
+// ApplyBuiltin applies the embedded patches for ref and arch to the kernel
+// source and returns the names it applied. A ref without built-in patches
+// is not an error.
+func (m *Manager) ApplyBuiltin(ctx context.Context, ref, arch string) ([]string, error) {
+	patches := Builtin(ref, arch)
+	if len(patches) == 0 {
+		return nil, nil
+	}
+	tmp, err := os.MkdirTemp("", "elmos-patches-")
+	if err != nil {
+		return nil, err
+	}
+	defer os.RemoveAll(tmp)
+
+	var applied []string
+	for i, p := range patches {
+		data, err := fs.ReadFile(assets.Patches, p.Path)
+		if err != nil {
+			return applied, err
+		}
+		file := filepath.Join(tmp, fmt.Sprintf("%02d-%s", i, p.Name))
+		if err := os.WriteFile(file, data, 0o644); err != nil {
+			return applied, err
+		}
+		if err := m.Apply(ctx, file); err != nil {
+			return applied, fmt.Errorf("%s/%s: %w", p.Arch, p.Name, err)
+		}
+		applied = append(applied, p.Arch+"/"+p.Name)
+	}
+	return applied, nil
 }

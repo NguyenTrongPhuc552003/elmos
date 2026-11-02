@@ -11,6 +11,11 @@ const (
 	MinimumImageSize = 40
 	// DefaultArch is the default target architecture.
 	DefaultArch = "arm64"
+	// DefaultKernelRef is the kernel tag that elmos clones by default. The
+	// macOS host patches shipped in assets/patches are made against it.
+	DefaultKernelRef = "v6.18"
+	// DefaultKernelURL is the kernel repository that elmos clones by default.
+	DefaultKernelURL = "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git"
 	// DefaultCrossPrefix is the default cross-compile prefix.
 	DefaultCrossPrefix = "llvm-"
 	// DefaultMemory is the default QEMU memory allocation.
@@ -21,8 +26,6 @@ const (
 	DefaultSSHPort = 2222
 	// DefaultDebianMirror is the default Debian package mirror.
 	DefaultDebianMirror = "http://deb.debian.org/debian"
-	// DefaultGlibcVersion is the glibc version used for downloading elf.h.
-	DefaultGlibcVersion = "2.42"
 )
 
 // RequiredPackage represents a Homebrew package dependency.

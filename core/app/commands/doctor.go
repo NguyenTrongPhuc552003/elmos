@@ -17,11 +17,12 @@ func BuildDoctor(ctx *Context) *cobra.Command {
 			ctx.Printer.Info("ELMOS Doctor - Environment Check")
 			ctx.Printer.Print("")
 			var fixErr error
-			if fix && ctx.AutoFixer.CanFixElfH() {
-				ctx.Printer.Step("Downloading missing elf.h...")
-				fixErr = ctx.AutoFixer.FixElfH()
+			if fix && len(ctx.AutoFixer.MissingHeaders()) > 0 {
+				ctx.Printer.Step("Writing missing host headers...")
+				var written []string
+				written, fixErr = ctx.AutoFixer.FixHeaders()
 				if fixErr == nil {
-					ctx.Printer.Success("elf.h downloaded")
+					ctx.Printer.Success("host headers written: %s", strings.Join(written, ", "))
 				}
 				ctx.Printer.Print("")
 			}
@@ -49,9 +50,9 @@ func BuildDoctor(ctx *Context) *cobra.Command {
 					ctx.Printer.Print("  ○ %s - optional", displayName)
 				}
 			}
-			if !fix && ctx.AutoFixer.CanFixElfH() {
+			if !fix && len(ctx.AutoFixer.MissingHeaders()) > 0 {
 				ctx.Printer.Print("")
-				ctx.Printer.Info("Run 'elmos doctor --fix' to download missing elf.h")
+				ctx.Printer.Info("Run 'elmos doctor --fix' to write the missing host headers")
 			}
 			ctx.Printer.Print("")
 			if issues == 0 {
@@ -60,12 +61,12 @@ func BuildDoctor(ctx *Context) *cobra.Command {
 				ctx.Printer.Warn("Found %d issue(s)", issues)
 			}
 			if fixErr != nil {
-				return fmt.Errorf("failed to download elf.h: %w", fixErr)
+				return fmt.Errorf("failed to write host headers: %w", fixErr)
 			}
 			return nil
 		},
 	}
-	doctorCmd.Flags().BoolVar(&fix, "fix", false, "download missing elf.h")
+	doctorCmd.Flags().BoolVar(&fix, "fix", false, "write missing host headers")
 	return doctorCmd
 }
 

@@ -3,9 +3,11 @@ package doctor
 
 import (
 	"fmt"
-	"io"
-	"net/http"
+	"io/fs"
 	"path/filepath"
+	"strings"
+
+	"codeberg.org/NguyenTrongPhuc552003/elmos/assets"
 
 	elconfig "codeberg.org/NguyenTrongPhuc552003/elmos/core/config"
 	"codeberg.org/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
@@ -25,51 +27,40 @@ func NewAutoFixer(fs filesystem.FileSystem, cfg *elconfig.Config) *AutoFixer {
 	}
 }
 
-// FixElfH downloads elf.h from glibc if it's missing.
-func (f *AutoFixer) FixElfH() error {
-	headersDir := f.cfg.Paths.LibrariesDir
-	elfPath := filepath.Join(headersDir, "elf.h")
-
-	// Check if it already exists
-	if f.fs.Exists(elfPath) {
+// MissingHeaders lists the embedded host headers that are not present in
+// the project's libraries directory.
+func (f *AutoFixer) MissingHeaders() []string {
+	var missing []string
+	_ = fs.WalkDir(assets.Libraries, "libraries", func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		rel := strings.TrimPrefix(p, "libraries/")
+		if !f.fs.Exists(filepath.Join(f.cfg.Paths.LibrariesDir, filepath.FromSlash(rel))) {
+			missing = append(missing, rel)
+		}
 		return nil
-	}
-
-	// Ensure directory exists
-	if err := f.fs.MkdirAll(headersDir, 0755); err != nil {
-		return fmt.Errorf("failed to create directory: %w", err)
-	}
-
-	// Download from glibc
-	url := fmt.Sprintf("https://raw.githubusercontent.com/bminor/glibc/glibc-%s/elf/elf.h",
-		elconfig.DefaultGlibcVersion)
-
-	resp, err := http.Get(url)
-	if err != nil {
-		return fmt.Errorf("download failed: %w", err)
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("download failed: HTTP %d", resp.StatusCode)
-	}
-
-	content, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read response: %w", err)
-	}
-
-	if err := f.fs.WriteFile(elfPath, content, 0644); err != nil {
-		return fmt.Errorf("failed to write file: %w", err)
-	}
-
-	return nil
+	})
+	return missing
 }
 
-// CanFixElfH checks if elf.h can be downloaded (is missing).
-func (f *AutoFixer) CanFixElfH() bool {
-	elfPath := filepath.Join(f.cfg.Paths.LibrariesDir, "elf.h")
-	return !f.fs.Exists(elfPath)
+// FixHeaders writes the missing host headers from the copies embedded in
+// elmos (audit E14: a project made by 'elmos init' had none of them, so the
+// kernel host tools failed on byteswap.h). Existing files are left alone.
+func (f *AutoFixer) FixHeaders() ([]string, error) {
+	missing := f.MissingHeaders()
+	for _, rel := range missing {
+		data, err := fs.ReadFile(assets.Libraries, "libraries/"+rel)
+		if err != nil {
+			return nil, err
+		}
+		dst := filepath.Join(f.cfg.Paths.LibrariesDir, filepath.FromSlash(rel))
+		if err := f.fs.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+			return nil, fmt.Errorf("failed to create directory: %w", err)
+		}
+		if err := f.fs.WriteFile(dst, data, 0644); err != nil {
+			return nil, fmt.Errorf("failed to write %s: %w", rel, err)
+		}
+	}
+	return missing, nil
 }

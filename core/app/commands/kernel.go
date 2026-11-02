@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"codeberg.org/NguyenTrongPhuc552003/elmos/core/config"
 	"codeberg.org/NguyenTrongPhuc552003/elmos/core/domain/builder"
 )
 
@@ -111,26 +112,88 @@ func buildKernelCleanCmd(ctx *Context) *cobra.Command {
 
 // buildKernelCloneCmd creates the kernel clone subcommand.
 func buildKernelCloneCmd(ctx *Context) *cobra.Command {
-	return &cobra.Command{
+	opts := cloneOptions{}
+	cmd := &cobra.Command{
 		Use:   "clone [git-url]",
 		Short: "Clone the Linux kernel source",
+		Long: `Clone the Linux kernel source at a pinned tag and apply the macOS host
+patches that elmos ships for that tag.
+
+By default the clone is shallow (one commit, a few hundred MB instead of
+several GB) and pinned to ` + config.DefaultKernelRef + `.
+
+Examples:
+  elmos kernel clone                  # ` + config.DefaultKernelRef + `, shallow, patched
+  elmos kernel clone --ref v6.12      # another tag
+  elmos kernel clone --full           # full history (needed for 'kernel switch')`,
 		RunE: RunEWithContext(ctx, func(cmd *cobra.Command, args []string) error {
 			if ctx.AppContext.KernelExists() {
 				ctx.Printer.Info("Kernel source already exists at %s", ctx.Config.Paths.KernelDir)
 				return nil
 			}
-			url := "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git"
 			if len(args) > 0 {
-				url = args[0]
+				opts.url = args[0]
 			}
-			ctx.Printer.Step("Cloning kernel from %s...", url)
-			if err := ctx.Exec.Run(cmd.Context(), "git", "clone", url, ctx.Config.Paths.KernelDir); err != nil {
-				return fmt.Errorf("failed to clone: %w", err)
+			if err := cloneKernel(ctx, cmd, opts); err != nil {
+				return err
 			}
 			ctx.Printer.Success("Kernel cloned to %s", ctx.Config.Paths.KernelDir)
 			return nil
 		}),
 	}
+	addCloneFlags(cmd, &opts)
+	return cmd
+}
+
+// cloneOptions selects what 'kernel clone' and 'kernel reset' fetch.
+type cloneOptions struct {
+	url       string
+	ref       string
+	full      bool
+	noPatches bool
+}
+
+func addCloneFlags(cmd *cobra.Command, opts *cloneOptions) {
+	cmd.Flags().StringVar(&opts.ref, "ref", config.DefaultKernelRef, "Kernel tag or branch to check out")
+	cmd.Flags().BoolVar(&opts.full, "full", false, "Clone the full history instead of one commit")
+	cmd.Flags().BoolVar(&opts.noPatches, "no-patches", false, "Do not apply the built-in macOS host patches")
+}
+
+// cloneKernel clones the kernel at opts.ref and applies the built-in patches
+// for that ref (audit E10: an unpinned full clone of mainline took 12 min and
+// produced a tree the shipped patches did not match).
+func cloneKernel(ctx *Context, cmd *cobra.Command, opts cloneOptions) error {
+	url := opts.url
+	if url == "" {
+		url = config.DefaultKernelURL
+	}
+	ref := opts.ref
+	if ref == "" {
+		ref = config.DefaultKernelRef
+	}
+	dir := ctx.Config.Paths.KernelDir
+
+	ctx.Printer.Step("Cloning kernel %s from %s...", ref, url)
+	args := []string{"clone"}
+	if !opts.full {
+		args = append(args, "--depth", "1")
+	}
+	args = append(args, "--branch", ref, url, dir)
+	if err := ctx.Exec.Run(cmd.Context(), "git", args...); err != nil {
+		return fmt.Errorf("failed to clone: %w", err)
+	}
+
+	if opts.noPatches {
+		return nil
+	}
+	applied, err := ctx.PatchManager.ApplyBuiltin(cmd.Context(), ref, ctx.Config.Build.Arch)
+	for _, name := range applied {
+		ctx.Printer.Print("  patched: %s", name)
+	}
+	if err != nil {
+		return fmt.Errorf("built-in patch failed: %w", err)
+	}
+	return nil
 }
 
 // buildKernelStatusCmd creates the kernel status subcommand.
@@ -155,7 +218,8 @@ func buildKernelStatusCmd(ctx *Context) *cobra.Command {
 
 // buildKernelResetCmd creates the kernel reset subcommand.
 func buildKernelResetCmd(ctx *Context) *cobra.Command {
-	return &cobra.Command{
+	opts := cloneOptions{}
+	cmd := &cobra.Command{
 		Use:   "reset",
 		Short: "Reset kernel source (reclone completely)",
 		RunE: RunEWithContext(ctx, func(cmd *cobra.Command, args []string) error {
@@ -165,15 +229,15 @@ func buildKernelResetCmd(ctx *Context) *cobra.Command {
 					return fmt.Errorf("failed to remove kernel: %w", err)
 				}
 			}
-			url := "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git"
-			ctx.Printer.Step("Cloning kernel from %s...", url)
-			if err := ctx.Exec.Run(cmd.Context(), "git", "clone", url, ctx.Config.Paths.KernelDir); err != nil {
-				return fmt.Errorf("failed to clone: %w", err)
+			if err := cloneKernel(ctx, cmd, opts); err != nil {
+				return err
 			}
 			ctx.Printer.Success("Kernel reset complete!")
 			return nil
 		}),
 	}
+	addCloneFlags(cmd, &opts)
+	return cmd
 }
 
 // buildKernelSwitchCmd creates the kernel switch subcommand.
@@ -232,6 +296,15 @@ func buildKernelBuildCmd(ctx *Context) *cobra.Command {
 			if len(targets) == 0 {
 				targets = ctx.KernelBuilder.GetDefaultTargets()
 			}
+			if ctx.AutoFixer != nil {
+				written, err := ctx.AutoFixer.FixHeaders()
+				if err != nil {
+					return err
+				}
+				if len(written) > 0 {
+					ctx.Printer.Print("  host headers written: %s", strings.Join(written, ", "))
+				}
+			}
 			ctx.Printer.Step("Building kernel for %s...", ctx.Config.Build.Arch)
 			if err := ctx.KernelBuilder.Build(cmd.Context(), builder.BuildOptions{Jobs: jobs, Targets: targets}); err != nil {
 				return err
@@ -278,7 +351,7 @@ func printKernelBuildStatus(ctx *Context) {
 	if ctx.AppContext.HasKernelImage() {
 		ctx.Printer.Print("  ✓ Kernel image built")
 	} else {
-		ctx.Printer.Print("  ○ Kernel not built (run 'elmos build')")
+		ctx.Printer.Print("  ○ Kernel not built (run 'elmos kernel build')")
 	}
 }
 

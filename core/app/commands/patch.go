@@ -2,6 +2,8 @@ package commands
 
 import (
 	"github.com/spf13/cobra"
+
+	"codeberg.org/NguyenTrongPhuc552003/elmos/core/domain/patch"
 )
 
 // BuildPatch creates the patch command tree for kernel patch management.
@@ -36,11 +38,25 @@ func BuildPatch(ctx *Context) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if len(patches) == 0 {
+			builtin := patch.AllBuiltin()
+			if len(builtin) > 0 {
+				ctx.Printer.Print("Built-in patches (applied by 'elmos kernel clone'):")
+				seen := map[string]bool{}
+				for _, p := range builtin {
+					if !seen[p.Path] {
+						seen[p.Path] = true
+						ctx.Printer.Print("  %s/%s/%s", p.Version, p.Arch, p.Name)
+					}
+				}
+			}
+			if len(patches) == 0 && len(builtin) == 0 {
 				ctx.Printer.Info("No patches")
 				return nil
 			}
-			ctx.Printer.Print("Patches:")
+			if len(patches) == 0 {
+				return nil
+			}
+			ctx.Printer.Print("Project patches (%s):", ctx.Config.Paths.PatchesDir)
 			for _, p := range patches {
 				ctx.Printer.Print("  %s/%s/%s", p.Version, p.Arch, p.Name)
 			}

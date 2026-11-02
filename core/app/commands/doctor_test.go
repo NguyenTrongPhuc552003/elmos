@@ -39,40 +39,30 @@ func TestDoctorReportsMissingElfHeaderWithoutDownload(t *testing.T) {
 	}
 }
 
-func TestDoctorFixDownloadsElfHeader(t *testing.T) {
+// Audit E14: the headers ship inside elmos, so --fix writes them without
+// the network and restores every missing one, not only elf.h.
+func TestDoctorFixWritesEmbeddedHeaders(t *testing.T) {
 	librariesDir := prepareDoctorLibraries(t)
-	const header = "/* test elf.h */\n"
-	requests := stubHeaderDownload(t, http.StatusOK, header)
+	requests := stubHeaderDownload(t, http.StatusServiceUnavailable, "")
 
 	output, err := executeDoctor(t, newDoctorCommand(librariesDir), "--fix")
 	if err != nil {
 		t.Fatal(err)
 	}
-	content, err := os.ReadFile(filepath.Join(librariesDir, "elf.h"))
-	if err != nil || string(content) != header {
-		t.Fatalf("written elf.h = %q, err=%v", content, err)
+	if *requests != 0 {
+		t.Fatalf("fix made %d HTTP requests, want none", *requests)
 	}
-	if *requests != 1 || !strings.Contains(output, "elf.h downloaded") {
-		t.Fatalf("fix did not report one successful download; requests=%d, output=%s", *requests, output)
+	for _, name := range []string{"elf.h", "endian.h", "asm/types.h"} {
+		if _, err := os.Stat(filepath.Join(librariesDir, name)); err != nil {
+			t.Fatalf("%s not written: %v\n%s", name, err, output)
+		}
 	}
-}
-
-func TestDoctorFixReportsDownloadFailure(t *testing.T) {
-	librariesDir := prepareDoctorLibraries(t)
-	requests := stubHeaderDownload(t, http.StatusServiceUnavailable, "")
-
-	output, err := executeDoctor(t, newDoctorCommand(librariesDir), "--fix")
-	if err == nil || !strings.Contains(err.Error(), "HTTP 503") {
-		t.Fatalf("download error = %v, want HTTP 503", err)
+	content, err := os.ReadFile(filepath.Join(librariesDir, "byteswap.h"))
+	if err != nil || string(content) != "existing" {
+		t.Fatalf("existing byteswap.h overwritten: %q %v", content, err)
 	}
-	if !strings.Contains(output, "elf.h (missing)") {
-		t.Fatalf("doctor did not report the missing header after download failure: %s", output)
-	}
-	if *requests != 1 {
-		t.Fatalf("fix made %d HTTP requests, want 1", *requests)
-	}
-	if _, err := os.Stat(filepath.Join(librariesDir, "elf.h")); !os.IsNotExist(err) {
-		t.Fatalf("elf.h should be absent after failure, stat error: %v", err)
+	if !strings.Contains(output, "host headers written") || strings.Contains(output, "elf.h (missing)") {
+		t.Fatalf("fix output: %s", output)
 	}
 }
 

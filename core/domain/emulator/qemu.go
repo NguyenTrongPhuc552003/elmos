@@ -49,7 +49,7 @@ func (q *QEMURunner) Run(ctx context.Context, opts RunOptions) error {
 	// Check kernel image
 	kernelImage := q.ctx.GetKernelImage()
 	if !q.fs.Exists(kernelImage) {
-		return fmt.Errorf("kernel image not found: %s (run 'elmos build')", kernelImage)
+		return fmt.Errorf("kernel image not found: %s (run 'elmos kernel build')", kernelImage)
 	}
 
 	// Check disk image

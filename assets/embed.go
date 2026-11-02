@@ -6,6 +6,20 @@ import "embed"
 //go:embed templates/*
 var Templates embed.FS
 
+// Patches holds the built-in kernel patches, laid out as
+// patches/<kernel ref>/<arch or generic>/NNNN-name.patch.
+//
+//go:embed patches
+var Patches embed.FS
+
+// Libraries holds the Linux headers that macOS lacks (elf.h, byteswap.h,
+// endian.h, asm/*), needed by the kernel host tools. They are written into
+// the project's libraries directory, which the kernel build adds to
+// HOSTCFLAGS.
+//
+//go:embed libraries
+var Libraries embed.FS
+
 // GetModuleTemplate returns the module source template.
 func GetModuleTemplate() ([]byte, error) {
 	return Templates.ReadFile("templates/module/module.c.tmpl")

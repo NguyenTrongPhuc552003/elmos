@@ -66,6 +66,13 @@ func runInit(ctx *Context, cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Host headers for the kernel host tools (macOS lacks them)
+	if ctx.AutoFixer != nil {
+		if _, err := ctx.AutoFixer.FixHeaders(); err != nil {
+			return err
+		}
+	}
+
 	ctx.Printer.Success("Workspace initialized! Volume mounted at %s", ctx.Config.Image.MountPoint)
 	return nil
 }
