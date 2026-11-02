@@ -58,7 +58,7 @@ task build                # Build to build/elmos
 ### 4. Configure & Build Kernel
 
 ```bash
-./build/elmos kernel clone             # Clone kernel source
+./build/elmos kernel clone             # v6.18, shallow, macOS patches applied
 ./build/elmos kernel config defconfig  # Or: menuconfig
 ./build/elmos kernel build             # Build with detected toolchain
 ```
@@ -66,7 +66,7 @@ task build                # Build to build/elmos
 ### 5. Create RootFS & Run
 
 ```bash
-./build/elmos rootfs create            # Debian rootfs (debootstrap)
+./build/elmos rootfs create            # alpine:3 from a container image, no sudo
 ./build/elmos qemu run                 # Boot in QEMU
 ./build/elmos qemu debug               # With GDB stub (port 1234)
 ```
@@ -151,17 +151,17 @@ task release:all         # Full release with completions
 
 ```bash
 .
-├── assets/               # Embedded templates
-│   └── templates/        # Config, module, app templates
+├── assets/               # Embedded in the binary
+│   ├── libraries/        # Linux headers macOS lacks: byteswap.h, elf.h, asm/
+│   ├── patches/          # Kernel patches per tag, applied by 'kernel clone'
+│   └── templates/        # Config, module, app templates, guest /init
 ├── build/                # Build output (elmos, elmos.yaml, img.sparseimage)
 ├── core/                 # Core domain logic
 │   ├── app/              # CLI application & command wiring
 │   ├── config/           # Configuration management
 │   ├── domain/           # Business logic (builder, toolchain, doctor)
 │   └── ui/               # User Interface (TUI)
-├── libraries/            # Shims: byteswap.h, elf.h, asm/
 ├── modules/              # Kernel modules
-├── patches/              # Versioned kernel patches
 ├── tools/
 │   └── toolchains/       # crosstool-ng & custom configs
 ├── Taskfile.yml          # Build automation
@@ -172,8 +172,8 @@ task release:all         # Full release with completions
 
 ### 1. v6.18 `copy_file_range()` Incompatibility
 - **Issue**: v6.18 uses Linux-only syscall in `gen_init_cpio`
-- **Fix**: Patch replaces with `copyfile(COPYFILE_DATA)` on macOS
-- **Apply**: `./build/elmos patch apply patches/v6.18/0001-usr-gen_init_cpio-Replace-linux-kernel-syscall-with-.patch`
+- **Fix**: an embedded patch (`assets/patches/v6.18/generic/`) makes the host tool build on macOS
+- **Apply**: automatic in `elmos kernel clone` (skip with `--no-patches`); `elmos patch list` shows the built-in patches
 
 ### 2. Automatic Toolchain Detection
 - Kernel, module, and app builds auto-detect installed toolchains
@@ -182,7 +182,7 @@ task release:all         # Full release with completions
 
 ### 3. HOSTCFLAGS for macOS
 The CLI sets these automatically:
-- `-I${MACOS_HEADERS}`: Custom shims (`elf.h`, `byteswap.h`)
+- `-I${MACOS_HEADERS}`: Custom shims (`elf.h`, `byteswap.h`), written into the project by `elmos init`, `elmos kernel build` and `elmos doctor --fix`
 - `-I${LIBELF_INCLUDE}`: libelf for ELF parsing
 - `-D_UUID_T -D__GETHOSTUUID_H`: Suppress uuid_t conflicts
 - `-D_DARWIN_C_SOURCE`: macOS 10.15+ APIs
@@ -191,7 +191,7 @@ The CLI sets these automatically:
 
 | Issue                 | Solution                              |
 | --------------------- | ------------------------------------- |
-| "gmake not found"     | `brew install make` → use `gmake`     |
+| "GNU Make >= 4.0 is required" | `brew install make`; elmos puts its gnubin first on the build PATH |
 | UUID conflicts        | Ensure patch applied                  |
 | Toolchain build fails | Check `elmos doctor` for missing deps |
 | TUI shows help text   | Rebuild with `task build`             |

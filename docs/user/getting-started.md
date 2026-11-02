@@ -24,7 +24,9 @@ Clone the Linux kernel repository:
 ./build/elmos kernel clone
 ```
 
-This clones to `build/linux/` with the selected architecture's branch.
+This makes a shallow clone of the pinned tag (v6.18) into the workspace
+volume and applies the macOS host patches that elmos ships for that tag.
+Use `--ref <tag>` for another tag and `--full` for the whole history.
 
 ## Step 3: Configure Kernel
 
@@ -52,11 +54,18 @@ This may take 10-30 minutes depending on hardware.
 
 ## Step 5: Create RootFS
 
-Create a Debian-based root filesystem:
+Create the root filesystem:
 
 ```bash
 ./build/elmos rootfs create
 ```
+
+By default this pulls `alpine:3` for the target architecture and writes it
+straight into an ext4 image (a few seconds, no sudo). Alpine's busybox
+provides `insmod` and `ip`, so modules load and the network comes up.
+Choose another image with `--image debian:stable-slim` (no `insmod`, no
+`ip`: add them yourself), or the debootstrap path with
+`--engine debootstrap` (needs sudo).
 
 ## Step 6: Run in QEMU
 
