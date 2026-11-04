@@ -90,7 +90,7 @@ func NewCreator(...) *Creator
 func (rc *Creator) Create() error
 ```
 
-Creates the root file system disk image. Default engine `oci`: pulls a container image for the target architecture and writes it into ext4 with tar2ext4, then e2fsprogs makes it writable and resizes it (no sudo). Engine `debootstrap`: Debian foreign install (needs sudo and `tools/debootstrap`).
+Creates the root file system disk image. Default engine `oci`: pulls a container image for the target architecture and writes it straight into a writable ext4 of the requested size in pure Go (`third_party/ext4`, adapted from hcsshim; no sudo, no e2fsprogs). Engine `debootstrap`: Debian foreign install (needs sudo and `tools/debootstrap`).
 
 ## Toolchain Package
 

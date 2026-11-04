@@ -47,7 +47,7 @@ var RequiredPackages = []RequiredPackage{
 	{"git", "Git version control", "Build Tools", true},
 	{"qemu", "QEMU emulator", "Virtualization", true},
 	{"fakeroot", "Fake root for packaging", "Build Tools", true},
-	{"e2fsprogs", "ext4 filesystem tools", "Build Tools", true},
+	{"e2fsprogs", "ext4 tools (debootstrap rootfs engine only)", "Build Tools", false},
 	{"wget", "File downloader", "Build Tools", false},
 	{"coreutils", "GNU core utilities", "Build Tools", true},
 	{"go", "Go programming language", "Build Tools", true},

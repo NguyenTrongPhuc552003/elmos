@@ -6,6 +6,7 @@ import (
 	"context"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -94,16 +95,16 @@ func TestOCIPlatform(t *testing.T) {
 	}
 }
 
-// The default engine is OCI: it writes the image without sudo, then turns
-// the compact read-only ext4 into a writable one of the asked size.
-func TestCreateDefaultsToOCIAndFixesUpTheImage(t *testing.T) {
+// The default engine is OCI: it writes a writable ext4 of the asked size in
+// pure Go, runs nothing on the host (no sudo, no e2fsprogs), and the result
+// passes e2fsck when e2fsck is available.
+func TestCreateDefaultsToOCIAndWritesACleanImage(t *testing.T) {
 	dir := t.TempDir()
 	cfg := &elconfig.Config{}
 	cfg.Build.Arch = "arm64"
 	cfg.Paths.DiskImage = filepath.Join(dir, "disk.img")
 	cfg.Paths.RootfsDir = filepath.Join(dir, "rootfs")
 	rec := executor.NewRecorder()
-	rec.Outputs["brew --prefix e2fsprogs"] = "/brew/e2fsprogs\n"
 	c := NewCreator(rec, filesystem.NewOSFileSystem(), cfg)
 	var gotRef, gotArch string
 	c.pull = func(_ context.Context, ref string, p *v1.Platform) (io.ReadCloser, error) {
@@ -117,26 +118,39 @@ func TestCreateDefaultsToOCIAndFixesUpTheImage(t *testing.T) {
 	if gotRef != DefaultOCIImage || gotArch != "arm64" {
 		t.Fatalf("pulled %s for %s", gotRef, gotArch)
 	}
+	if len(rec.Calls) != 0 {
+		t.Fatalf("OCI engine ran host commands: %v", rec.Calls)
+	}
 	fi, err := os.Stat(cfg.Paths.DiskImage)
-	if err != nil || fi.Size() == 0 {
-		t.Fatalf("disk image not written: %v", err)
-	}
-	var tools []string
-	for _, call := range rec.Calls {
-		if strings.HasPrefix(call, "sudo") {
-			t.Fatalf("OCI engine ran sudo: %s", call)
-		}
-		if strings.HasPrefix(call, "/brew/e2fsprogs/sbin/") {
-			tools = append(tools, strings.Fields(strings.TrimPrefix(call, "/brew/e2fsprogs/sbin/"))[0])
-		}
-	}
-	want := "e2fsck tune2fs resize2fs tune2fs e2fsck"
-	if strings.Join(tools, " ") != want {
-		t.Fatalf("fix-up = %v, want %s", tools, want)
+	if err != nil || fi.Size() != 64<<20 {
+		t.Fatalf("disk image size %v, %v; want 64 MiB", fi, err)
 	}
 	if _, err := assets.GetInitScript(); err != nil {
 		t.Fatal(err)
 	}
+	e2fsck := findE2fsck()
+	if e2fsck == "" {
+		t.Skip("e2fsck not installed: structure not checked")
+	}
+	out, err := exec.Command(e2fsck, "-fn", cfg.Paths.DiskImage).CombinedOutput()
+	if err != nil {
+		t.Fatalf("e2fsck -fn: %v\n%s", err, out)
+	}
+	if strings.Contains(string(out), "read-only") {
+		t.Fatalf("image still read-only:\n%s", out)
+	}
+}
+
+func findE2fsck() string {
+	for _, p := range []string{"/opt/homebrew/opt/e2fsprogs/sbin/e2fsck", "/usr/local/opt/e2fsprogs/sbin/e2fsck"} {
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
+	}
+	if p, err := exec.LookPath("e2fsck"); err == nil {
+		return p
+	}
+	return ""
 }
 
 func TestCreateRejectsUnknownEngine(t *testing.T) {
