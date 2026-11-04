@@ -50,7 +50,12 @@ Build the kernel with the detected toolchain:
 ./build/elmos kernel build
 ```
 
-This may take 10-30 minutes depending on hardware.
+This may take 10-30 minutes depending on hardware (about 7 minutes on an
+Apple M-series Mac for arm64 defconfig).
+
+Building Linux natively on macOS is **experimental**: upstream does not
+support macOS as a build host, and ELMOS's workarounds are kept for the
+pinned v6.18 kernel only.
 
 ## Step 5: Create RootFS
 

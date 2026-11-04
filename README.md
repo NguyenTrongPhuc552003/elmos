@@ -26,6 +26,19 @@ Documentation is in the repository's `docs/` folder:
 - **[Developer Guide](https://elmos.vercel.app/developer/)**: Architecture, APIs, code patterns.
 - **[Diagrams](https://elmos.vercel.app/developer/diagrams/)**: Component, Sequence, and Class diagrams.
 
+## Try it first (no kernel build, no sudo)
+
+```bash
+./build/elmos demo linux   # Linux v6.18 arm64 + alpine:3; the KDAL module loads
+                           # and prints its resource demand. Exit: Ctrl-A X
+./build/elmos demo haven   # HAVEN: two partitions, then read-back finds a seeded
+                           # fault the partitions' own checks miss (about 15 s)
+```
+
+Needs only `qemu-system-aarch64` (plus `python3` and `dtc` for the HAVEN
+demo). Prebuilt assets come from Codeberg releases, are checked against
+their SHA256SUMS and cached in `~/.elmos/demo`, so later runs work offline.
+
 ## Quick Start
 
 ### 1. Prerequisites (macOS Sequoia/Tahoe+ recommended)
@@ -169,6 +182,15 @@ task release:all         # Full release with completions
 ```
 
 ## Key Workarounds
+
+> **Experimental: building Linux natively on macOS.** The kernel does not
+> support macOS as a build host upstream: a 2024 patch series to enable it
+> was mostly not merged, and the kernel's LLVM documentation has no macOS
+> section. ELMOS makes it work with the workarounds below (a patch, host
+> headers, HOSTCFLAGS), maintained for the pinned **v6.18** longterm
+> kernel only (supported upstream until December 2028). Another tag may
+> need new workarounds. If you only want to try things, use the prebuilt
+> kernel and root filesystem (`elmos demo run`) instead of building.
 
 ### 1. v6.18 `copy_file_range()` Incompatibility
 - **Issue**: v6.18 uses Linux-only syscall in `gen_init_cpio`

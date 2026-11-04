@@ -58,4 +58,5 @@ func Register(ctx *Context, rootCmd *cobra.Command) {
 	rootCmd.AddCommand(BuildRootfs(ctx))
 	rootCmd.AddCommand(BuildPatch(ctx))
 	rootCmd.AddCommand(BuildToolchains(ctx))
+	rootCmd.AddCommand(BuildDemo(ctx))
 }
