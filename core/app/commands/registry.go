@@ -59,4 +59,5 @@ func Register(ctx *Context, rootCmd *cobra.Command) {
 	rootCmd.AddCommand(BuildPatch(ctx))
 	rootCmd.AddCommand(BuildToolchains(ctx))
 	rootCmd.AddCommand(BuildDemo(ctx))
+	rootCmd.AddCommand(BuildGenDocs(rootCmd))
 }

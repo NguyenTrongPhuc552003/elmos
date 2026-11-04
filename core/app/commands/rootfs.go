@@ -24,8 +24,8 @@ func BuildRootfs(ctx *Context) *cobra.Command {
 
 Engines:
   oci          (default) pull a container image for the target architecture
-               and write it straight into ext4. No sudo, no debootstrap,
-               about a minute on a normal connection.
+               and write it straight into ext4 (pure Go). No sudo, no
+               debootstrap; a few seconds after the download.
   debootstrap  Debian foreign install; needs sudo, fakeroot and debootstrap
                in tools/debootstrap, and finishes on first boot.
 
