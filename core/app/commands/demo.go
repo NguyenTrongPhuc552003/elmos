@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"codeberg.org/NguyenTrongPhuc552003/elmos/core/domain/demo"
+	"github.com/NguyenTrongPhuc552003/elmos/core/domain/demo"
 )
 
 // BuildDemo creates the demo command: prebuilt quick-start demos that need
@@ -17,7 +17,7 @@ func BuildDemo(ctx *Context) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "demo",
 		Short: "Run a prebuilt demo in QEMU (no kernel build, no sudo)",
-		Long: `Run a prebuilt demo. Assets are downloaded from the project's Codeberg
+		Long: `Run a prebuilt demo. Assets are downloaded from the project's GitHub
 releases, checked against the release's SHA256SUMS and cached, so later
 runs work offline. Needs only qemu-system-aarch64 (and python3 and dtc
 for the HAVEN demo).

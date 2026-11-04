@@ -3,7 +3,7 @@ package commands
 import (
 	"github.com/spf13/cobra"
 
-	"codeberg.org/NguyenTrongPhuc552003/elmos/core/domain/patch"
+	"github.com/NguyenTrongPhuc552003/elmos/core/domain/patch"
 )
 
 // BuildPatch creates the patch command tree for kernel patch management.

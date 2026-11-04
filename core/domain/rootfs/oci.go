@@ -16,7 +16,7 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 
-	"codeberg.org/NguyenTrongPhuc552003/elmos/assets"
+	"github.com/NguyenTrongPhuc552003/elmos/assets"
 )
 
 // The OCI engine builds the root filesystem from a container image instead

@@ -8,7 +8,7 @@ Guidelines for contributing to ELMOS.
 
 ```bash
 # Clone
-git clone https://codeberg.org/NguyenTrongPhuc552003/elmos.git
+git clone https://github.com/NguyenTrongPhuc552003/elmos.git
 cd elmos
 
 # Setup
@@ -42,7 +42,7 @@ Signed-off-by: Your Name <email@example.com>
 | `core: domain: builder` | Kernel builder changes |
 | `core: app: commands`   | CLI command changes    |
 | `docs: user: qemu`      | User doc updates       |
-| `.forgejo: workflows`    | CI changes             |
+| `.github: workflows`     | CI changes             |
 | `Taskfile`              | Build task changes     |
 
 **Examples:**

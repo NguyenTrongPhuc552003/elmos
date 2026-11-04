@@ -1,6 +1,6 @@
 # ELMOS - Embedded Linux on macOS
 
-[![Build Status](https://img.shields.io/badge/build-v6.18%20ARM64-green)](https://codeberg.org/NguyenTrongPhuc552003/elmos) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Docs](https://img.shields.io/badge/docs-repository-blue)](https://codeberg.org/NguyenTrongPhuc552003/elmos/src/branch/main/docs)
+[![Build Status](https://img.shields.io/badge/build-v6.18%20ARM64-green)](https://github.com/NguyenTrongPhuc552003/elmos) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Docs](https://img.shields.io/badge/docs-repository-blue)](https://github.com/NguyenTrongPhuc552003/elmos/blob/main/docs)
 
 A complete embedded Linux SDK for macOS. Build kernels, cross-compile with native toolchains, develop kernel modules and userspace apps-all without Docker or VMs. ELMOS provides an integrated development environment with interactive TUI, automatic toolchain management (crosstool-ng), and seamless QEMU integration. Targeting RISC-V, ARM64, ARM, and more, with full support for Linux v6.18+.
 
@@ -36,7 +36,7 @@ Documentation is in the repository's `docs/` folder:
 ```
 
 Needs only `qemu-system-aarch64` (plus `python3` and `dtc` for the HAVEN
-demo). Prebuilt assets come from Codeberg releases, are checked against
+demo). Prebuilt assets come from GitHub releases, are checked against
 their SHA256SUMS and cached in `~/.elmos/demo`, so later runs work offline.
 
 ## Quick Start
@@ -51,7 +51,7 @@ xcode-select --install  # For SDK headers
 ### 2. Build & Initialize
 
 ```bash
-git clone https://codeberg.org/NguyenTrongPhuc552003/elmos.git
+git clone https://github.com/NguyenTrongPhuc552003/elmos.git
 cd elmos
 task build                # Build to build/elmos
 ./build/elmos init        # Create workspace (sparseimage + config)
@@ -87,8 +87,8 @@ task build                # Build to build/elmos
 ## Use with HAVEN (thesis toolchain)
 
 ELMOS is the host side of the HAVEN thesis
-([HAVEN](https://codeberg.org/NguyenTrongPhuc552003/haven), a static-partitioning
-hypervisor for the CIX P1 SoC; [KDAL](https://codeberg.org/NguyenTrongPhuc552003/kdal),
+([HAVEN](https://github.com/NguyenTrongPhuc552003/haven), a static-partitioning
+hypervisor for the CIX P1 SoC; [KDAL](https://github.com/NguyenTrongPhuc552003/kdal),
 the Linux-partition device layer). With a HAVEN checkout next to this one
 (or `HAVEN=/path/to/haven`):
 
@@ -222,7 +222,7 @@ The CLI sets these automatically:
 
 - **Original Tutorial**: [Building Linux on macOS Natively](https://seiya.me/blog/building-linux-on-macos-natively) by Seiya Suzuki
 - **Upstream**: [Clang Built Linux](https://clangbuiltlinux.github.io/) for LLVM guidance
-- **Author**: Phuc Nguyen ([@NguyenTrongPhuc552003](https://codeberg.org/NguyenTrongPhuc552003))
+- **Author**: Phuc Nguyen ([@NguyenTrongPhuc552003](https://github.com/NguyenTrongPhuc552003))
 
 ## License
 

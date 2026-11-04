@@ -72,8 +72,8 @@ For contributors:
 
 ## Support
 
-- [Issues](https://codeberg.org/NguyenTrongPhuc552003/elmos/issues) - Bug reports
-- [Discussions](https://codeberg.org/NguyenTrongPhuc552003/elmos/discussions) - Questions
+- [Issues](https://github.com/NguyenTrongPhuc552003/elmos/issues) - Bug reports
+- [Discussions](https://github.com/NguyenTrongPhuc552003/elmos/discussions) - Questions
 
 ---
 

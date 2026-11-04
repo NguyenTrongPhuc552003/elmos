@@ -7,10 +7,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"codeberg.org/NguyenTrongPhuc552003/elmos/assets"
+	"github.com/NguyenTrongPhuc552003/elmos/assets"
 
-	elconfig "codeberg.org/NguyenTrongPhuc552003/elmos/core/config"
-	"codeberg.org/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
+	elconfig "github.com/NguyenTrongPhuc552003/elmos/core/config"
+	"github.com/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
 )
 
 // AutoFixer provides methods to automatically fix common issues.

@@ -14,7 +14,7 @@ Planned features and improvements for ELMOS.
 
 - [ ] Plugin system for custom builders
 - [ ] GUI frontend (Electron/Web)
-- [x] CI on Codeberg (Forgejo Actions)
+- [x] CI on GitHub Actions (Linux, macOS, Windows)
 - [ ] Windows/Linux support
 - [ ] Advanced debugging (KGDB)
 

@@ -3,7 +3,7 @@ package commands
 import (
 	"github.com/spf13/cobra"
 
-	"codeberg.org/NguyenTrongPhuc552003/elmos/core/domain/emulator"
+	"github.com/NguyenTrongPhuc552003/elmos/core/domain/emulator"
 )
 
 // BuildQEMU creates the qemu command tree for QEMU emulation.

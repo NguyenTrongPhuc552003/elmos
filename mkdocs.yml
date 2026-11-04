@@ -4,7 +4,7 @@ site_author: Phuc Nguyen
 site_url: https://elmos.vercel.app/
 site_dir: build/site
 
-repo_url: https://codeberg.org/NguyenTrongPhuc552003/elmos
+repo_url: https://github.com/NguyenTrongPhuc552003/elmos
 repo_name: elmos
 
 nav:
@@ -50,7 +50,7 @@ theme:
     - search.suggest
     - search.highlight
   icon:
-    repo: simple/codeberg
+    repo: simple/github
 
 plugins:
   - search
@@ -59,8 +59,8 @@ plugins:
 
 extra:
   social:
-    - icon: simple/codeberg
-      link: https://codeberg.org/NguyenTrongPhuc552003/elmos
+    - icon: simple/github
+      link: https://github.com/NguyenTrongPhuc552003/elmos
 
 markdown_extensions:
   - pymdownx.highlight

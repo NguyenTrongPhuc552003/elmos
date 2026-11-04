@@ -18,4 +18,4 @@ User-facing changes in ELMOS releases.
 - Basic QEMU emulation
 - Module and app templates
 
-For full changelog, see [Releases](https://codeberg.org/NguyenTrongPhuc552003/elmos/releases).
+For full changelog, see [Releases](https://github.com/NguyenTrongPhuc552003/elmos/releases).

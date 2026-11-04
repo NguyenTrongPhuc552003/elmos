@@ -114,9 +114,11 @@ func TestLinuxArgsUseShippedDTB(t *testing.T) {
 }
 
 func TestLinuxArgsKeepCacheClean(t *testing.T) {
-	args := strings.Join(LinuxArgs("/c"), " ")
-	for _, want := range []string{"-kernel /c/Image", "file=/c/rootfs.ext4,format=raw", "-snapshot",
-		"path=/c/modules", "readonly=on", "mount_tag=modules_mount"} {
+	c := filepath.Join(string(os.PathSeparator), "c")
+	args := strings.Join(LinuxArgs(c), " ")
+	for _, want := range []string{"-kernel " + filepath.Join(c, "Image"),
+		"file=" + filepath.Join(c, "rootfs.ext4") + ",format=raw", "-snapshot",
+		"path=" + filepath.Join(c, "modules"), "readonly=on", "mount_tag=modules_mount"} {
 		if !strings.Contains(args, want) {
 			t.Fatalf("args lack %q: %s", want, args)
 		}

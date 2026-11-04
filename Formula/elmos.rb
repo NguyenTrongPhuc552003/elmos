@@ -13,11 +13,11 @@
 
 class Elmos < Formula
   desc "Embedded Linux on MacOS - Native kernel build tools"
-  homepage "https://codeberg.org/NguyenTrongPhuc552003/elmos"
+  homepage "https://github.com/NguyenTrongPhuc552003/elmos"
   license "MIT"
 
-  head "https://codeberg.org/NguyenTrongPhuc552003/elmos.git", branch: "main"
-  url "https://codeberg.org/NguyenTrongPhuc552003/elmos/archive/v3.0.0.tar.gz"
+  head "https://github.com/NguyenTrongPhuc552003/elmos.git", branch: "main"
+  url "https://github.com/NguyenTrongPhuc552003/elmos/archive/v3.0.0.tar.gz"
   sha256 "8222933d906bdb973dbe4ffabb4a7f7318530a4372e741bbf986b359bc0468fd"
   version "3.0.0"
 
@@ -43,9 +43,9 @@ class Elmos < Formula
 
     ldflags = %W[
       -s -w
-      -X codeberg.org/NguyenTrongPhuc552003/elmos/core/app/version.Version=#{version_str}
-      -X codeberg.org/NguyenTrongPhuc552003/elmos/core/app/version.Commit=#{commit}
-      -X codeberg.org/NguyenTrongPhuc552003/elmos/core/app/version.BuildDate=#{build_date}
+      -X github.com/NguyenTrongPhuc552003/elmos/core/app/version.Version=#{version_str}
+      -X github.com/NguyenTrongPhuc552003/elmos/core/app/version.Commit=#{commit}
+      -X github.com/NguyenTrongPhuc552003/elmos/core/app/version.BuildDate=#{build_date}
     ]
 
     system "go", "build", *std_go_args(ldflags:)

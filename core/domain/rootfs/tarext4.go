@@ -8,7 +8,7 @@ import (
 	"io"
 	"strings"
 
-	"codeberg.org/NguyenTrongPhuc552003/elmos/third_party/ext4/compactext4"
+	"github.com/NguyenTrongPhuc552003/elmos/third_party/ext4/compactext4"
 )
 
 // tarToExt4 writes the files of a flattened tar stream (no whiteouts left)

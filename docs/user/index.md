@@ -35,4 +35,4 @@ For advanced features, install crosstool-ng toolchains.
 
 ## Support
 
-Encounter an issue? Check [Troubleshooting](troubleshooting.md) or open an [issue](https://codeberg.org/NguyenTrongPhuc552003/elmos/issues).
+Encounter an issue? Check [Troubleshooting](troubleshooting.md) or open an [issue](https://github.com/NguyenTrongPhuc552003/elmos/issues).

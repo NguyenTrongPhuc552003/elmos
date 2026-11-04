@@ -11,12 +11,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"codeberg.org/NguyenTrongPhuc552003/elmos/core/config"
-	"codeberg.org/NguyenTrongPhuc552003/elmos/core/domain/doctor"
-	"codeberg.org/NguyenTrongPhuc552003/elmos/core/domain/toolchain"
-	"codeberg.org/NguyenTrongPhuc552003/elmos/core/infra/executor"
-	"codeberg.org/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
-	"codeberg.org/NguyenTrongPhuc552003/elmos/core/ui"
+	"github.com/NguyenTrongPhuc552003/elmos/core/config"
+	"github.com/NguyenTrongPhuc552003/elmos/core/domain/doctor"
+	"github.com/NguyenTrongPhuc552003/elmos/core/domain/toolchain"
+	"github.com/NguyenTrongPhuc552003/elmos/core/infra/executor"
+	"github.com/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
+	"github.com/NguyenTrongPhuc552003/elmos/core/ui"
 )
 
 func TestDoctorReportsMissingElfHeaderWithoutDownload(t *testing.T) {

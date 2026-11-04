@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"codeberg.org/NguyenTrongPhuc552003/elmos/third_party/ext4/format"
+	"github.com/NguyenTrongPhuc552003/elmos/third_party/ext4/format"
 )
 
 // Writer writes a compact ext4 file system.

@@ -53,5 +53,5 @@ brew install make
 
 ## Getting Help
 
-- [Issues](https://codeberg.org/NguyenTrongPhuc552003/elmos/issues)
+- [Issues](https://github.com/NguyenTrongPhuc552003/elmos/issues)
 - Check logs in `build/`

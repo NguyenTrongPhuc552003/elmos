@@ -15,9 +15,9 @@ vars:
   DATE:
     sh: date -u +"%Y-%m-%dT%H:%M:%SZ"
   LDFLAGS: >-
-    -X codeberg.org/NguyenTrongPhuc552003/elmos/core/app/version.Version={{.VERSION}}
-    -X codeberg.org/NguyenTrongPhuc552003/elmos/core/app/version.Commit={{.COMMIT}}
-    -X codeberg.org/NguyenTrongPhuc552003/elmos/core/app/version.BuildDate={{.DATE}}
+    -X github.com/NguyenTrongPhuc552003/elmos/core/app/version.Version={{.VERSION}}
+    -X github.com/NguyenTrongPhuc552003/elmos/core/app/version.Commit={{.COMMIT}}
+    -X github.com/NguyenTrongPhuc552003/elmos/core/app/version.BuildDate={{.DATE}}
   GOBIN:
     sh: go env GOPATH 2>/dev/null || echo "$HOME/go"
 
@@ -218,7 +218,7 @@ tasks:
         cat <<EOF
         class Elmos < Formula
           desc "Embedded Linux development on macOS - native kernel builds"
-          homepage "https://codeberg.org/NguyenTrongPhuc552003/elmos"
+          homepage "https://github.com/NguyenTrongPhuc552003/elmos"
           version "{{.VERSION}}"
           license "MIT"
 

@@ -7,8 +7,8 @@ import (
 	"regexp"
 	"strings"
 
-	"codeberg.org/NguyenTrongPhuc552003/elmos/core/config"
-	"codeberg.org/NguyenTrongPhuc552003/elmos/core/ui"
+	"github.com/NguyenTrongPhuc552003/elmos/core/config"
+	"github.com/NguyenTrongPhuc552003/elmos/core/ui"
 	"github.com/spf13/cobra"
 )
 

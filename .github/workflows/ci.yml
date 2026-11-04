@@ -1,0 +1,49 @@
+# GitHub Actions: vet, test and build elmos on Linux, macOS and Windows.
+# elmos's full workflow targets macOS hosts; the other two check that the
+# code builds and its tests pass there (multi-platform direction).
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    name: vet, test, build (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Format check
+        if: runner.os != 'Windows'
+        run: |
+          bad=$(gofmt -l $(git ls-files '*.go'))
+          [ -z "$bad" ] || { echo "Not gofmt-formatted:"; echo "$bad"; exit 1; }
+      - name: Vet
+        run: go vet ./...
+      - name: Test
+        run: go test ./...
+      - name: Build
+        run: go build -o build/ ./cmd/elmos
+
+  macos-e2fsck:
+    name: rootfs image passes e2fsck (macOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Install e2fsprogs
+        run: brew install e2fsprogs
+      - name: Rootfs test with e2fsck available
+        run: go test -run TestCreateDefaultsToOCIAndWritesACleanImage -v ./core/domain/rootfs/

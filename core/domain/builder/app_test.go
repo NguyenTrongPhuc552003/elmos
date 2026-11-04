@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	elconfig "codeberg.org/NguyenTrongPhuc552003/elmos/core/config"
-	"codeberg.org/NguyenTrongPhuc552003/elmos/core/infra/executor"
+	elconfig "github.com/NguyenTrongPhuc552003/elmos/core/config"
+	"github.com/NguyenTrongPhuc552003/elmos/core/infra/executor"
 )
 
 // Audit E12: with only LLVM installed, "llvm-" + "gcc" ran the host

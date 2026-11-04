@@ -41,7 +41,7 @@ Formatted output for CLI.
 Version info set at build time:
 
 ```bash
-go build -ldflags "-X 'codeberg.org/NguyenTrongPhuc552003/elmos/core/app/version.Version=1.0.0' -X 'codeberg.org/NguyenTrongPhuc552003/elmos/core/app/version.Commit=$(git rev-parse HEAD)' -X 'codeberg.org/NguyenTrongPhuc552003/elmos/core/app/version.BuildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)'" -o build/elmos ./cmd/elmos
+go build -ldflags "-X 'github.com/NguyenTrongPhuc552003/elmos/core/app/version.Version=1.0.0' -X 'github.com/NguyenTrongPhuc552003/elmos/core/app/version.Commit=$(git rev-parse HEAD)' -X 'github.com/NguyenTrongPhuc552003/elmos/core/app/version.BuildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)'" -o build/elmos ./cmd/elmos
 ```
 
 Used in `Taskfile.yml`.

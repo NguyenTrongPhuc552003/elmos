@@ -7,8 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"codeberg.org/NguyenTrongPhuc552003/elmos/core/config"
-	"codeberg.org/NguyenTrongPhuc552003/elmos/core/domain/builder"
+	"github.com/NguyenTrongPhuc552003/elmos/core/config"
+	"github.com/NguyenTrongPhuc552003/elmos/core/domain/builder"
 )
 
 // BuildKernel creates the kernel command tree for kernel management.

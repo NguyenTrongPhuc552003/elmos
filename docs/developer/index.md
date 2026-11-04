@@ -25,4 +25,4 @@ This section is for contributors to ELMOS. Learn the architecture, APIs, and pro
 - Familiarity with CLI apps, kernel development
 - macOS for testing
 
-Contribute via [Codeberg](https://codeberg.org/NguyenTrongPhuc552003/elmos).
+Contribute via [GitHub](https://github.com/NguyenTrongPhuc552003/elmos).

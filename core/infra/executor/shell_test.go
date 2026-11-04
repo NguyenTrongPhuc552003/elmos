@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -12,6 +13,9 @@ import (
 // elmos process (audit E11: the kernel build ran macOS make 3.81 although
 // Homebrew GNU make was prepended to the child PATH).
 func TestRunWithEnvUsesChildPath(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses a POSIX shell script as the stub tool")
+	}
 	dir := t.TempDir()
 	out := filepath.Join(dir, "out")
 	stub := filepath.Join(dir, "elmos-test-tool")
@@ -32,7 +36,8 @@ func TestRunWithEnvUsesChildPath(t *testing.T) {
 }
 
 func TestResolveInEnvKeepsExplicitPaths(t *testing.T) {
-	if got := resolveInEnv("/bin/sh", []string{"PATH=/nowhere"}); got != "/bin/sh" {
+	abs := filepath.Join(string(os.PathSeparator), "bin", "sh")
+	if got := resolveInEnv(abs, []string{"PATH=/nowhere"}); got != abs {
 		t.Fatalf("explicit path rewritten to %q", got)
 	}
 	if got := resolveInEnv("sh", nil); got != "sh" {

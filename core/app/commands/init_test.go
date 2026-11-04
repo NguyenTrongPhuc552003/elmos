@@ -9,11 +9,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"codeberg.org/NguyenTrongPhuc552003/elmos/core/config"
-	elcontext "codeberg.org/NguyenTrongPhuc552003/elmos/core/context"
-	"codeberg.org/NguyenTrongPhuc552003/elmos/core/infra/executor"
-	"codeberg.org/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
-	"codeberg.org/NguyenTrongPhuc552003/elmos/core/ui"
+	"github.com/NguyenTrongPhuc552003/elmos/core/config"
+	elcontext "github.com/NguyenTrongPhuc552003/elmos/core/context"
+	"github.com/NguyenTrongPhuc552003/elmos/core/infra/executor"
+	"github.com/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
+	"github.com/NguyenTrongPhuc552003/elmos/core/ui"
 )
 
 func TestUpdateInitConfigWorkspacePaths(t *testing.T) {

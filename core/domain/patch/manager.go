@@ -11,11 +11,11 @@ import (
 	"sort"
 	"strings"
 
-	"codeberg.org/NguyenTrongPhuc552003/elmos/assets"
+	"github.com/NguyenTrongPhuc552003/elmos/assets"
 
-	elconfig "codeberg.org/NguyenTrongPhuc552003/elmos/core/config"
-	"codeberg.org/NguyenTrongPhuc552003/elmos/core/infra/executor"
-	"codeberg.org/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
+	elconfig "github.com/NguyenTrongPhuc552003/elmos/core/config"
+	"github.com/NguyenTrongPhuc552003/elmos/core/infra/executor"
+	"github.com/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
 )
 
 // Manager handles kernel patch operations.

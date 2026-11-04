@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"codeberg.org/NguyenTrongPhuc552003/elmos/core/config"
+	"github.com/NguyenTrongPhuc552003/elmos/core/config"
 )
 
 // BuildArch creates the arch command for architecture management.

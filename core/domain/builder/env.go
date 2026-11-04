@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	elconfig "codeberg.org/NguyenTrongPhuc552003/elmos/core/config"
-	elcontext "codeberg.org/NguyenTrongPhuc552003/elmos/core/context"
-	"codeberg.org/NguyenTrongPhuc552003/elmos/core/domain/toolchain"
-	"codeberg.org/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
+	elconfig "github.com/NguyenTrongPhuc552003/elmos/core/config"
+	elcontext "github.com/NguyenTrongPhuc552003/elmos/core/context"
+	"github.com/NguyenTrongPhuc552003/elmos/core/domain/toolchain"
+	"github.com/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
 )
 
 // getToolchainEnv returns the environment variables with modified PATH and CROSS_COMPILE

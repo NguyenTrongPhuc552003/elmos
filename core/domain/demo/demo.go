@@ -1,5 +1,5 @@
 // Package demo runs the prebuilt quick-start demos: no kernel build, no
-// workspace volume, no sudo. Assets come from Codeberg releases, are
+// workspace volume, no sudo. Assets come from GitHub releases, are
 // checked against the release's SHA256SUMS and cached under ~/.elmos/demo.
 package demo
 
@@ -20,7 +20,7 @@ import (
 
 const (
 	// ReleaseBase is where the demo releases live.
-	ReleaseBase = "https://codeberg.org/NguyenTrongPhuc552003"
+	ReleaseBase = "https://github.com/NguyenTrongPhuc552003"
 	// LinuxTag is the elmos release with the Linux demo: a v6.18 arm64
 	// kernel, an alpine:3 root file system and the KDAL module built for
 	// that kernel.

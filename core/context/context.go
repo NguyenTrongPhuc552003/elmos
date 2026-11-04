@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"codeberg.org/NguyenTrongPhuc552003/elmos/core/config"
-	"codeberg.org/NguyenTrongPhuc552003/elmos/core/infra/executor"
-	"codeberg.org/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
-	"codeberg.org/NguyenTrongPhuc552003/elmos/core/infra/homebrew"
+	"github.com/NguyenTrongPhuc552003/elmos/core/config"
+	"github.com/NguyenTrongPhuc552003/elmos/core/infra/executor"
+	"github.com/NguyenTrongPhuc552003/elmos/core/infra/filesystem"
+	"github.com/NguyenTrongPhuc552003/elmos/core/infra/homebrew"
 )
 
 // Context holds the current build context and state.
