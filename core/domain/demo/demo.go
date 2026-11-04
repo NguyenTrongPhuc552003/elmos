@@ -21,6 +21,9 @@ import (
 const (
 	// ReleaseBase is where the demo releases live.
 	ReleaseBase = "https://github.com/NguyenTrongPhuc552003"
+	// MirrorBase holds the same releases on Codeberg, the project's earlier
+	// home; used when a release is not (yet) on GitHub.
+	MirrorBase = "https://codeberg.org/NguyenTrongPhuc552003"
 	// LinuxTag is the elmos release with the Linux demo: a v6.18 arm64
 	// kernel, an alpine:3 root file system and the KDAL module built for
 	// that kernel.
@@ -35,11 +38,12 @@ type Fetcher struct {
 	Client   *http.Client
 	CacheDir string
 	Base     string // ReleaseBase unless a test overrides it
+	Mirrors  []string
 }
 
 // NewFetcher returns a Fetcher caching under dir.
 func NewFetcher(dir string) *Fetcher {
-	return &Fetcher{Client: http.DefaultClient, CacheDir: dir, Base: ReleaseBase}
+	return &Fetcher{Client: http.DefaultClient, CacheDir: dir, Base: ReleaseBase, Mirrors: []string{MirrorBase}}
 }
 
 func (f *Fetcher) get(ctx context.Context, url, dst string) error {
@@ -117,11 +121,18 @@ func (f *Fetcher) Release(ctx context.Context, repo, tag string) (string, error)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
 	}
-	base := fmt.Sprintf("%s/%s/releases/download/%s/", f.Base, repo, tag)
 	sumsPath := filepath.Join(dir, "SHA256SUMS")
-	if err := f.get(ctx, base+"SHA256SUMS", sumsPath); err != nil {
+	var base string
+	var getErr error
+	for _, b := range append([]string{f.Base}, f.Mirrors...) {
+		base = fmt.Sprintf("%s/%s/releases/download/%s/", b, repo, tag)
+		if getErr = f.get(ctx, base+"SHA256SUMS", sumsPath); getErr == nil {
+			break
+		}
+	}
+	if getErr != nil {
 		if _, statErr := os.Stat(sumsPath); statErr != nil {
-			return "", err
+			return "", getErr
 		}
 	}
 	sums, order, err := parseSums(sumsPath)

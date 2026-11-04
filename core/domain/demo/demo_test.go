@@ -65,6 +65,21 @@ func TestReleaseVerifiesAndCaches(t *testing.T) {
 	}
 }
 
+func TestReleaseFallsBackToMirror(t *testing.T) {
+	files := map[string][]byte{"Image.gz": []byte("kernel")}
+	srv, _ := release(t, files, sum(files["Image.gz"])+"  Image.gz\n")
+	missing := httptest.NewServer(http.NotFoundHandler())
+	t.Cleanup(missing.Close)
+	f := &Fetcher{Client: srv.Client(), CacheDir: t.TempDir(), Base: missing.URL, Mirrors: []string{srv.URL}}
+	dir, err := f.Release(context.Background(), "elmos", "demo-x")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(filepath.Join(dir, "Image.gz")); string(b) != "kernel" {
+		t.Fatalf("Image.gz = %q", b)
+	}
+}
+
 func TestReleaseRejectsWrongHash(t *testing.T) {
 	files := map[string][]byte{"Image.gz": []byte("tampered")}
 	srv, _ := release(t, files, sum([]byte("kernel"))+"  Image.gz\n")
