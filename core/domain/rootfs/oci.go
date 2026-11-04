@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -64,7 +65,9 @@ func withInit(w io.Writer, image io.Reader, initScript []byte) error {
 		if err != nil {
 			return err
 		}
-		if strings.TrimPrefix(filepath.Clean("/"+hdr.Name), "/") == "init" {
+		// Tar member names always use forward slashes, so clean them with
+		// path, not filepath (which would use backslashes on Windows).
+		if strings.TrimPrefix(path.Clean("/"+hdr.Name), "/") == "init" {
 			continue
 		}
 		if err := tw.WriteHeader(hdr); err != nil {
