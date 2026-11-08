@@ -218,6 +218,14 @@ The CLI sets these automatically:
 | Toolchain build fails | Check `elmos doctor` for missing deps |
 | TUI shows help text   | Rebuild with `task build`             |
 
+## Contributing
+
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the
+development setup, the checks CI runs and the commit convention, and
+[CHANGELOG.md](CHANGELOG.md) for recent changes. Please follow the
+[Code of Conduct](CODE_OF_CONDUCT.md) and report security issues as
+described in [SECURITY.md](SECURITY.md).
+
 ## Credits
 
 - **Original Tutorial**: [Building Linux on macOS Natively](https://seiya.me/blog/building-linux-on-macos-natively) by Seiya Suzuki
