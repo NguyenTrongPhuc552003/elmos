@@ -86,3 +86,35 @@ ever set. The second fix in #9 (the manifest step not seeing
 `sdk/versions.env`) was needed and is not yet observed. Run 2 (commit
 `cebfa4d`) was cancelled during its kernel build because it still had the
 S4 failure.
+
+### Run 3 (2026-11-09, commit `ba1653d`, started by the merge push)
+
+| Check | Observed | Verdict |
+| - | - | - |
+| S1 | kernel build 2443 s (40.7 minutes) on 4 CPUs; the run failed at the privacy check | build time as expected; the run did not succeed |
+| S2 | `Linux version 6.18.0 (haven@ci) (Ubuntu clang version 18.1.3 (1ubuntu1), Ubuntu LLD 18.1.3) # SMP PREEMPT 2026-01-01 00:00:00 UTC` | as expected |
+| S3 | `sdk/rootfs` wrote the root filesystem on the Linux runner | as expected |
+| S4 | `Run /init as init process` at 4.4 s of kernel time | as expected |
+| S5 | `elmos-sdk:linux-6.18-3` pushed (manifest digest `sha256:b92524371cfc...`), tagged `linux-6.18`; visibility **public** | **not as expected** |
+| S6 | the workflow's logged-out fetch succeeded ("the package can be fetched without credentials: it is public"); an anonymous token request and manifest fetch from another host returned HTTP 200 | **not as expected** |
+| S7 | `SHA256SUMS` was written and pushed; not yet checked against a pulled copy | not judged |
+| S8 | no release and no Actions artifact were created, but the package itself is publicly readable | **not as expected** |
+
+What was exposed: the kernel (`Image.gz`, built from the public 6.18
+tarball with the neutral build names), its `config`, `Module.symvers` and
+`kernel.release`, the Alpine root filesystem with ELMOS's `/init`, the
+manifest (ELMOS commit, run number, runner type) and `SHA256SUMS`. No
+personal name, path or credential is in them.
+
+Design error: the design assumed a GHCR package is private when it is
+first published. It was public at once. The cause is not confirmed; the
+likely one is that the package is linked to this public repository by the
+`org.opencontainers.image.source` annotation. The privacy check ran after
+the upload, so it could only report the exposure, not prevent it.
+
+Status: SDK publishing is paused (no run is started by hand and nothing
+under `sdk/` or the workflow changes) until the owner has made the package
+private or deleted it. Proposed change before the next run: push an empty
+probe tag first and stop before uploading anything if an anonymous fetch of
+the probe succeeds; if the package has to be deleted, also drop the
+repository-link annotation.
