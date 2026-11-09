@@ -60,3 +60,29 @@ long):
 | S8: nothing public | no release, no Actions artifact, no public link is created |
 
 Results are added below after the first run.
+
+## Results
+
+### Run 1 (2026-11-09, commit `8ba6332`, started by the merge push)
+
+| Check | Observed | Verdict |
+| - | - | - |
+| S1 | the kernel build took 2311 s (38.5 minutes) on 4 CPUs; the run failed later, at the smoke boot | build time as expected; the run did not succeed |
+| S2 | `Linux version 6.18.0 (haven@ci) (Ubuntu clang version 18.1.3 (1ubuntu1), Ubuntu LLD 18.1.3) # SMP PREEMPT 2026-01-01 00:00:00 UTC` | as expected |
+| S3 | `sdk/rootfs` wrote `out/rootfs.ext4` in 13 s on the Linux runner | as expected (the risk did not occur) |
+| S4 | QEMU stopped at once: `failed to find romfile "efi-virtio.rom"` | **not as expected** |
+| S5 to S8 | not reached (steps skipped) | not judged |
+
+S4: QEMU's default network card loads an iPXE ROM from the `ipxe-qemu`
+package, which `--no-install-recommends` leaves out. The smoke boot needs no
+network, so it now runs with `-nic none` (the ROM is not installed).
+
+Correction to pull request #9. Its message said GitHub runs bash with
+`pipefail`, so `strings Image | grep -m1` would fail the kernel build step.
+Run 1 shows the default shell is `bash -e {0}`, without `pipefail`, and the
+step passed: that bug did not exist. The change is kept because it is
+harmless and makes the step safe if `shell: bash` (which adds `pipefail`) is
+ever set. The second fix in #9 (the manifest step not seeing
+`sdk/versions.env`) was needed and is not yet observed. Run 2 (commit
+`cebfa4d`) was cancelled during its kernel build because it still had the
+S4 failure.
