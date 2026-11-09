@@ -118,3 +118,23 @@ private or deleted it. Proposed change before the next run: push an empty
 probe tag first and stop before uploading anything if an anonymous fetch of
 the probe succeeds; if the package has to be deleted, also drop the
 repository-link annotation.
+
+### Run 4 (2026-11-09, commit `4eb897c`, dispatched after the owner made the package private)
+
+The owner set `elmos-sdk` to private and gave `kdal` and `haven` Read
+access. An anonymous token and manifest request for `linux-6.18-3` then
+returned HTTP 403 (it was 200 before).
+
+| Check | Observed | Verdict |
+| - | - | - |
+| S1 | the run succeeded; kernel build 40.4 minutes | as expected |
+| S2 | `Linux version 6.18.0 (haven@ci)` (in the manifest) | as expected |
+| S3 | root filesystem built in 18 s | as expected |
+| S4 | `Run /init as init process` found; the step always lasts the full 300 s because `/init` does not power the machine off | as expected |
+| S5 | `elmos-sdk:linux-6.18-4` pushed and tagged `linux-6.18`; private (anonymous fetch refused) | as expected |
+| S6 | the workflow's logged-out fetch was refused | as expected |
+| S7 | KDAL's CI pulled the package and `sha256sum -c SHA256SUMS` passed; the manifest names commit `4eb897c` and run 4 | as expected |
+| S8 | no release, no Actions artifact; the package is private | as expected |
+
+The probe-before-upload change proposed after run 3 is not made: the
+package's visibility is now set, and a new package name would need it.
