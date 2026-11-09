@@ -63,7 +63,10 @@ jobs:
           cp .config ../out/config
           cp Module.symvers ../out/
           cat include/config/kernel.release > ../out/kernel.release
-          strings arch/arm64/boot/Image | grep -m1 'Linux version' | tee ../version.txt
+          # grep reads all of strings' output: an early exit (grep -m1, head) would
+          # end strings with SIGPIPE and fail the step under the default pipefail
+          strings arch/arm64/boot/Image | grep 'Linux version' > ../version-all.txt
+          head -n 1 ../version-all.txt | tee ../version.txt
           grep -q '(haven@ci)' ../version.txt
       - name: Root filesystem (ELMOS OCI engine)
         run: |
@@ -82,7 +85,10 @@ jobs:
           grep -m1 'Run /init as init process' boot.log
       - name: Manifest and hashes
         run: |
+          # exported: the Python below reads them from its environment
+          set -a
           . sdk/versions.env
+          set +a
           python3 - <<'EOF'
           import hashlib, json, os, subprocess
           out = "out"
