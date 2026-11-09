@@ -1,0 +1,129 @@
+# SDK built by CI (docs/developer/sdk-ci.md): Linux kernel, root filesystem
+# and manifest, published as a PRIVATE package in GitHub's container registry
+# for the project's own repositories (KDAL, HAVEN). Nothing here creates a
+# release, an Actions artifact or a public link.
+name: sdk
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "sdk/**"
+      - ".github/workflows/sdk.yml"
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: sdk
+  cancel-in-progress: false
+
+env:
+  PACKAGE: ghcr.io/nguyentrongphuc552003/elmos-sdk
+
+jobs:
+  sdk:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - uses: oras-project/setup-oras@v2
+      - name: Tools
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends clang lld llvm flex bison bc \
+            libssl-dev libelf-dev qemu-system-arm xz-utils
+      - name: Kernel source (hash checked)
+        run: |
+          . sdk/versions.env
+          curl -fsSL -o linux.tar.xz "https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-${LINUX_VERSION}.tar.xz"
+          echo "${LINUX_SHA256}  linux.tar.xz" | sha256sum -c -
+          tar -xJf linux.tar.xz
+      - name: Kernel build (neutral build user and host)
+        env:
+          KBUILD_BUILD_USER: haven
+          KBUILD_BUILD_HOST: ci
+          KBUILD_BUILD_TIMESTAMP: "2026-01-01 00:00:00 UTC"
+        run: |
+          . sdk/versions.env
+          mkdir -p out
+          cd "linux-${LINUX_VERSION}"
+          make ARCH=arm64 LLVM=1 defconfig
+          scripts/kconfig/merge_config.sh -m .config ../sdk/kernel.cfg
+          make ARCH=arm64 LLVM=1 olddefconfig
+          start=$(date +%s)
+          make ARCH=arm64 LLVM=1 -j"$(nproc)" Image.gz modules
+          echo "kernel build seconds: $(( $(date +%s) - start )) on $(nproc) CPUs" | tee ../build-time.txt
+          cp arch/arm64/boot/Image.gz ../out/
+          cp .config ../out/config
+          cp Module.symvers ../out/
+          cat include/config/kernel.release > ../out/kernel.release
+          strings arch/arm64/boot/Image | grep -m1 'Linux version' | tee ../version.txt
+          grep -q '(haven@ci)' ../version.txt
+      - name: Root filesystem (ELMOS OCI engine)
+        run: |
+          . sdk/versions.env
+          go run ./sdk/rootfs -out out/rootfs.ext4 -image "$ROOTFS_IMAGE" -size "$ROOTFS_SIZE"
+          gzip -9 out/rootfs.ext4
+      - name: Smoke boot in QEMU (TCG)
+        run: |
+          zcat out/Image.gz > "$RUNNER_TEMP/Image"
+          zcat out/rootfs.ext4.gz > "$RUNNER_TEMP/rootfs.ext4"
+          timeout 300 qemu-system-aarch64 -machine virt -cpu cortex-a72 -smp 2 -m 1G \
+            -nographic -no-reboot -kernel "$RUNNER_TEMP/Image" \
+            -drive "file=$RUNNER_TEMP/rootfs.ext4,if=virtio,format=raw" \
+            -append "console=ttyAMA0 root=/dev/vda rw init=/init panic=-1" > boot.log 2>&1 || true
+          tail -20 boot.log
+          grep -m1 'Run /init as init process' boot.log
+      - name: Manifest and hashes
+        run: |
+          . sdk/versions.env
+          python3 - <<'EOF'
+          import hashlib, json, os, subprocess
+          out = "out"
+          files = sorted(f for f in os.listdir(out))
+          sha = lambda p: hashlib.sha256(open(p, "rb").read()).hexdigest()
+          m = {
+              "format": "elmos-sdk/1",
+              "linux": {"version": os.environ["LINUX_VERSION"], "tarball_sha256": os.environ["LINUX_SHA256"],
+                        "release": open(f"{out}/kernel.release").read().strip(),
+                        "config": "arm64 defconfig + sdk/kernel.cfg", "toolchain": "LLVM (Ubuntu 24.04)",
+                        "version_string": open("version.txt").read().strip()},
+              "build": {"user": "haven", "host": "ci", "runner": "ubuntu-24.04-arm",
+                        "time": open("build-time.txt").read().strip()},
+              "rootfs": {"image": os.environ["ROOTFS_IMAGE"], "size": os.environ["ROOTFS_SIZE"],
+                         "engine": "elmos oci (sdk/rootfs)"},
+              "elmos_commit": os.environ["GITHUB_SHA"],
+              "run": os.environ["GITHUB_RUN_NUMBER"],
+              "files": {f: sha(f"{out}/{f}") for f in files},
+          }
+          json.dump(m, open(f"{out}/manifest.json", "w"), indent=1)
+          EOF
+          cd out && sha256sum -- * > SHA256SUMS && cat SHA256SUMS
+      - name: Publish (private GHCR package)
+        run: |
+          . sdk/versions.env
+          echo "${{ secrets.GITHUB_TOKEN }}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
+          TAG="linux-${LINUX_VERSION}-${GITHUB_RUN_NUMBER}"
+          cd out
+          oras push "$PACKAGE:$TAG" \
+            --artifact-type application/vnd.haven.elmos-sdk.v1 \
+            --annotation "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --annotation "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            Image.gz config Module.symvers kernel.release rootfs.ext4.gz manifest.json SHA256SUMS
+          oras tag "$PACKAGE:$TAG" "linux-${LINUX_VERSION}"
+          echo "published $TAG"
+      - name: Privacy check (anonymous fetch must be refused)
+        run: |
+          . sdk/versions.env
+          oras logout ghcr.io
+          if oras manifest fetch "$PACKAGE:linux-${LINUX_VERSION}-${GITHUB_RUN_NUMBER}" > /dev/null 2>&1; then
+            echo "the package can be fetched without credentials: it is public" >&2
+            exit 1
+          fi
+          echo "anonymous fetch refused, as expected"
