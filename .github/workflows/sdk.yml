@@ -77,8 +77,10 @@ jobs:
         run: |
           zcat out/Image.gz > "$RUNNER_TEMP/Image"
           zcat out/rootfs.ext4.gz > "$RUNNER_TEMP/rootfs.ext4"
+          # -nic none: the smoke boot needs no network, and the default NIC needs
+          # an iPXE ROM that --no-install-recommends leaves out (run 1)
           timeout 300 qemu-system-aarch64 -machine virt -cpu cortex-a72 -smp 2 -m 1G \
-            -nographic -no-reboot -kernel "$RUNNER_TEMP/Image" \
+            -nographic -no-reboot -nic none -kernel "$RUNNER_TEMP/Image" \
             -drive "file=$RUNNER_TEMP/rootfs.ext4,if=virtio,format=raw" \
             -append "console=ttyAMA0 root=/dev/vda rw init=/init panic=-1" > boot.log 2>&1 || true
           tail -20 boot.log
