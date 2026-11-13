@@ -1,0 +1,84 @@
+{
+  "schema": "haven-gate-config/1",
+  "engine": {
+    "repo": "https://github.com/NguyenTrongPhuc552003/haven.git",
+    "commit": "400500b9d8e545e57b793f10d9b169a0e84a61a0"
+  },
+  "go_paths": [
+    "cmd",
+    "core",
+    "sdk",
+    "assets"
+  ],
+  "c_paths": [
+    "examples"
+  ],
+  "c_include": [],
+  "exclude": [],
+  "scan_exclude": [],
+  "jscpd_formats": "go,c",
+  "jscpd_ignore": [
+    "**/*_test.go"
+  ],
+  "limits": {
+    "ccn": 15,
+    "length": 100,
+    "dup_lines": 15
+  },
+  "tool_dirs": [
+    "/opt/homebrew/bin",
+    "~/go/bin",
+    "~/.local/bin"
+  ],
+  "golangci": {
+    "linters": [
+      "govet",
+      "staticcheck",
+      "errcheck",
+      "ineffassign",
+      "unused"
+    ]
+  },
+  "stages": {
+    "pre-commit": [
+      "scan"
+    ],
+    "pre-push": [
+      "scan",
+      "gofmt",
+      "golangci-lint",
+      "cppcheck",
+      "lizard",
+      "jscpd"
+    ],
+    "ci": [
+      "scan",
+      "gitleaks",
+      "gofmt",
+      "golangci-lint",
+      "govulncheck",
+      "cppcheck",
+      "lizard",
+      "jscpd"
+    ],
+    "deep": [
+      "scan",
+      "gitleaks",
+      "gofmt",
+      "golangci-lint",
+      "govulncheck",
+      "cppcheck",
+      "lizard",
+      "jscpd"
+    ]
+  },
+  "versions": {
+    "go": "1.27.4",
+    "golangci-lint": "2.15.0",
+    "govulncheck": "1.9.0",
+    "cppcheck": "2.22.0",
+    "lizard": "1.26.0",
+    "jscpd": "5.4.3",
+    "gitleaks": "8.30.1"
+  }
+}

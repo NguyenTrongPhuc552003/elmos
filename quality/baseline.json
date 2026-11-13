@@ -1,0 +1,203 @@
+{
+ "schema": "haven-gate-baseline/2",
+ "findings": [
+  {
+   "key": "0a5919ad24b16c2ae86bf81f",
+   "tool": "lizard",
+   "rule": "complexity",
+   "file": "core/domain/rootfs/tarext4.go",
+   "severity": "MAJOR",
+   "message": "tarToExt4: cyclomatic complexity 17 > 15",
+   "count": 1
+  },
+  {
+   "key": "0c2a53b23cb5ae9ce3f80131",
+   "tool": "golangci-lint",
+   "rule": "errcheck",
+   "file": "core/domain/demo/demo_test.go",
+   "severity": "MAJOR",
+   "message": "Error return value of `zw.Close` is not checked",
+   "count": 1
+  },
+  {
+   "key": "13fcadc63e03f1dc9a7b4343",
+   "tool": "golangci-lint",
+   "rule": "errcheck",
+   "file": "core/domain/rootfs/oci.go",
+   "severity": "MAJOR",
+   "message": "Error return value of `image.Close` is not checked",
+   "count": 1
+  },
+  {
+   "key": "2172ae59f3d3f78572a81ffb",
+   "tool": "lizard",
+   "rule": "complexity",
+   "file": "core/domain/demo/demo.go",
+   "severity": "MAJOR",
+   "message": "Untar: cyclomatic complexity 16 > 15",
+   "count": 1
+  },
+  {
+   "key": "21e6720b2d10d07c775f279c",
+   "tool": "golangci-lint",
+   "rule": "errcheck",
+   "file": "core/domain/demo/demo_test.go",
+   "severity": "MAJOR",
+   "message": "Error return value of `w.Write` is not checked",
+   "count": 1
+  },
+  {
+   "key": "3260c2d07a803e7050aea6fd",
+   "tool": "golangci-lint",
+   "rule": "errcheck",
+   "file": "core/domain/demo/demo_test.go",
+   "severity": "MAJOR",
+   "message": "Error return value of `tw.Close` is not checked",
+   "count": 1
+  },
+  {
+   "key": "40b4a90ee2d54859417e9649",
+   "tool": "lizard",
+   "rule": "complexity",
+   "file": "core/app/commands/gendocs.go",
+   "severity": "MAJOR",
+   "message": "writeCommandDocs: cyclomatic complexity 17 > 15",
+   "count": 1
+  },
+  {
+   "key": "556cfca92106a9efdd2cb37e",
+   "tool": "golangci-lint",
+   "rule": "errcheck",
+   "file": "core/domain/rootfs/oci.go",
+   "severity": "MAJOR",
+   "message": "Error return value of `os.Remove` is not checked",
+   "count": 1
+  },
+  {
+   "key": "5e89782773656e6cb983c049",
+   "tool": "golangci-lint",
+   "rule": "errcheck",
+   "file": "core/domain/demo/demo_test.go",
+   "severity": "MAJOR",
+   "message": "Error return value of `tw.WriteHeader` is not checked",
+   "count": 1
+  },
+  {
+   "key": "683a4c548cd87b46c0cccae1",
+   "tool": "golangci-lint",
+   "rule": "errcheck",
+   "file": "core/domain/demo/demo.go",
+   "severity": "MAJOR",
+   "message": "Error return value of `resp.Body.Close` is not checked",
+   "count": 1
+  },
+  {
+   "key": "76b39d1af2e8aa628252788b",
+   "tool": "golangci-lint",
+   "rule": "errcheck",
+   "file": "core/domain/demo/demo.go",
+   "severity": "MAJOR",
+   "message": "Error return value of `in.Close` is not checked",
+   "count": 2
+  },
+  {
+   "key": "78a36f00a6912327c04890de",
+   "tool": "golangci-lint",
+   "rule": "errcheck",
+   "file": "core/domain/demo/demo.go",
+   "severity": "MAJOR",
+   "message": "Error return value of `os.Remove` is not checked",
+   "count": 1
+  },
+  {
+   "key": "979b2697c9dc3c811150717f",
+   "tool": "golangci-lint",
+   "rule": "errcheck",
+   "file": "core/domain/demo/demo.go",
+   "severity": "MAJOR",
+   "message": "Error return value of `os.Remove` is not checked",
+   "count": 1
+  },
+  {
+   "key": "a2518db152beb791a4b740ed",
+   "tool": "govulncheck",
+   "rule": "GO-2026-6865",
+   "file": "go.mod",
+   "severity": "CRITICAL",
+   "message": "GO-2026-6865 in github.com/klauspost/compress/fse.Decompress (github.com/klauspost/compress@v1.19.2, fixed in v1.20.2)",
+   "count": 1
+  },
+  {
+   "key": "a334b8f2bcf47c5c20b1f0a2",
+   "tool": "golangci-lint",
+   "rule": "errcheck",
+   "file": "core/domain/demo/demo_test.go",
+   "severity": "MAJOR",
+   "message": "Error return value of `os.WriteFile` is not checked",
+   "count": 1
+  },
+  {
+   "key": "a8aeae7ace3825d269321797",
+   "tool": "golangci-lint",
+   "rule": "errcheck",
+   "file": "core/domain/demo/demo_test.go",
+   "severity": "MAJOR",
+   "message": "Error return value of `tw.Write` is not checked",
+   "count": 1
+  },
+  {
+   "key": "a8d32727f496642d726ee1cb",
+   "tool": "golangci-lint",
+   "rule": "errcheck",
+   "file": "sdk/rootfs/main.go",
+   "severity": "MAJOR",
+   "message": "Error return value of `os.RemoveAll` is not checked",
+   "count": 1
+  },
+  {
+   "key": "b5482eeb2c9882bceffb4f08",
+   "tool": "golangci-lint",
+   "rule": "errcheck",
+   "file": "core/domain/patch/manager.go",
+   "severity": "MAJOR",
+   "message": "Error return value of `os.RemoveAll` is not checked",
+   "count": 1
+  },
+  {
+   "key": "b73a3bb718c5b38f4be8881b",
+   "tool": "golangci-lint",
+   "rule": "errcheck",
+   "file": "core/domain/demo/demo.go",
+   "severity": "MAJOR",
+   "message": "Error return value of `f.Close` is not checked",
+   "count": 2
+  },
+  {
+   "key": "b742131d5486a50de92385df",
+   "tool": "golangci-lint",
+   "rule": "errcheck",
+   "file": "core/domain/demo/demo_test.go",
+   "severity": "MAJOR",
+   "message": "Error return value of `os.WriteFile` is not checked",
+   "count": 1
+  },
+  {
+   "key": "e2c6834bf14211d1a2d8cce9",
+   "tool": "golangci-lint",
+   "rule": "errcheck",
+   "file": "core/domain/demo/demo.go",
+   "severity": "MAJOR",
+   "message": "Error return value of `out.Close` is not checked",
+   "count": 3
+  },
+  {
+   "key": "f360d015d78859f7d95e5c48",
+   "tool": "golangci-lint",
+   "rule": "errcheck",
+   "file": "core/domain/demo/demo_test.go",
+   "severity": "MAJOR",
+   "message": "Error return value of `fmt.Fprint` is not checked",
+   "count": 1
+  }
+ ]
+}
