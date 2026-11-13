@@ -36,3 +36,20 @@ preview. Nothing that is published: no MkDocs site is online.
 | D2: tasks | `task --list` shows `docs` and `docs:serve` (new descriptions); `docs:install` and `docs:clean` are gone |
 | D3: the remaining build | haven-docs, copied outside the owner's checkout and pointed at this repository with `SRC_ROOT`: `sync.mjs` and `astro build` succeed and every page of `docs/user` and `docs/developer` is in the built site; its link check passes |
 | D4: ELMOS CI | green |
+
+### Results (2026-11-13)
+
+Design merged first (pull request 17, `20e80c5`); the change after it
+(pull request 18, merged as `9e07802`). D3 used a copy of haven-docs at
+`aa7db1b` outside the owner's checkout, with `SRC_ROOT` pointing at this
+repository, HAVEN and KDAL.
+
+| Check | Observed | Verdict |
+| - | - | - |
+| D1 | `git grep -i mkdocs` matches this page and one line of `CHANGELOG.md` (the entry that records the removal, added in the same change) | **not as expected**: the expectation forgot the changelog entry; no code or configuration refers to MkDocs |
+| D2 | `task --list`: `docs` "Build the project site (../haven-docs) with this checkout's docs", `docs:serve` "Serve the project site ..."; no `docs:install`, no `docs:clean` | as expected |
+| D3 | `sync.mjs`: 60 pages copied; `astro build`: 143 pages; link check: 0 broken internal links; all 27 pages of `docs/user` and `docs/developer` (with `api/`) built; the diagrams page shows the PlantUML source as code | as expected |
+| D4 | ELMOS CI green on pull request 18 (Linux, macOS, Windows, e2fsck) | as expected |
+
+Three of four checks hold; D1 is a prediction error in the check's
+wording, not in the change.
