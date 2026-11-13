@@ -7,6 +7,8 @@ This section is for contributors to ELMOS. Learn the architecture, APIs, and pro
 - [Architecture](architecture.md) - High-level design
 - [Contributing](contributing.md) - Guidelines and workflow
 - [Build System](build-system.md) - Task, CI/CD
+- [SDK built by CI](sdk-ci.md) - The kernel and root file system for KDAL and HAVEN
+- [Documentation site](docs-site.md) - Where these pages are published
 
 ## Code Reference
 
@@ -17,7 +19,7 @@ This section is for contributors to ELMOS. Learn the architecture, APIs, and pro
 
 ## Planning
 
-- [Roadmap](roadmap.md) - Future features
+- [Roadmap](roadmap.md) - Who ELMOS is for, what comes now and later
 
 ## Prerequisites
 
