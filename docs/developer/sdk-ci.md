@@ -138,3 +138,40 @@ returned HTTP 403 (it was 200 before).
 
 The probe-before-upload change proposed after run 3 is not made: the
 package's visibility is now set, and a new package name would need it.
+
+## Smoke boot ends when `/init` is done (design and expectations, 2026-11-13)
+
+Written before the change (owner-approved maintenance item 2 of the ELMOS
+positioning note).
+
+**Problem.** The smoke boot always lasts the full `timeout 300` (run 4,
+S4: the step took 5 min 5 s): ELMOS's embedded `/init`
+(`assets/templates/init/init.sh.tmpl`) ends with `exec /bin/sh`, so the
+guest waits for input that never comes, and the step's `|| true` hides
+whether QEMU exited or was killed.
+
+**Change.**
+
+- `/init`: just before `exec /bin/sh`, if the kernel command line has
+  `elmos_poweroff=1` (the kernel passes such a parameter, which has no
+  dot, to init's environment), print `elmos: elmos_poweroff=1, powering
+  off.` and power off (`poweroff -f`, else the sysrq `o` trigger).
+  Without the parameter nothing changes: users still get the shell.
+- `sdk.yml`, smoke boot: the command line gains `elmos_poweroff=1`; QEMU's
+  exit status is printed and must be 0 (a timeout, status 124, now fails
+  the step); besides `Run /init as init process`, the log must contain the
+  power-off line.
+- `CHANGELOG.md`: one line under Changed.
+
+The SDK workflow runs only on pushes to `main` that touch `sdk/**` or the
+workflow, so the change is checked by the run that its merge starts
+(run 5). It publishes `elmos-sdk:linux-6.18-5` (private, as run 4) and
+moves `linux-6.18`; KDAL and HAVEN stay pinned to run 4.
+
+| Check | Expected |
+| - | - |
+| P1: the change's pull request | CI green (Go tests and build unchanged) |
+| P2: run 5 | succeeds |
+| P3: `boot.log` | `Run /init as init process`, `System ready.`, then `elmos: elmos_poweroff=1, powering off.`; QEMU exit status 0 |
+| P4: smoke step time | under 90 s (run 4: 5 min 5 s) |
+| P5: the rest of the run | S1 to S8 as in run 4 (kernel `haven@ci`, package private, no release or artifact); only the root filesystem's `/init` differs |
