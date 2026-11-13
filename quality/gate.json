@@ -2,7 +2,7 @@
   "schema": "haven-gate-config/1",
   "engine": {
     "repo": "https://github.com/NguyenTrongPhuc552003/haven.git",
-    "commit": "400500b9d8e545e57b793f10d9b169a0e84a61a0"
+    "commit": "27c1e04edc1617f08ec14f809fdbd98c71c8dcc0"
   },
   "go_paths": [
     "cmd",
@@ -49,7 +49,8 @@
       "golangci-lint",
       "cppcheck",
       "lizard",
-      "jscpd"
+      "jscpd",
+      "shellcheck"
     ],
     "ci": [
       "scan",
@@ -59,7 +60,8 @@
       "govulncheck",
       "cppcheck",
       "lizard",
-      "jscpd"
+      "jscpd",
+      "shellcheck"
     ],
     "deep": [
       "scan",
@@ -69,7 +71,8 @@
       "govulncheck",
       "cppcheck",
       "lizard",
-      "jscpd"
+      "jscpd",
+      "shellcheck"
     ]
   },
   "versions": {
@@ -79,6 +82,14 @@
     "cppcheck": "2.22.0",
     "lizard": "1.26.0",
     "jscpd": "5.4.3",
-    "gitleaks": "8.30.1"
-  }
+    "gitleaks": "8.30.1",
+    "shellcheck": "0.11.0"
+  },
+  "sh_paths": [
+    ".githooks"
+  ],
+  "sh_files": [
+    ".githooks/pre-commit",
+    ".githooks/pre-push"
+  ]
 }

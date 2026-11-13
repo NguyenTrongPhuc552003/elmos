@@ -84,15 +84,9 @@ tasks:
       - go fmt ./...
 
   dev:lint:
-    desc: Run linter (golangci-lint or go vet)
+    desc: Run the quality gate on the changes against main (scripts/gate)
     cmds:
-      - |
-        if command -v golangci-lint >/dev/null 2>&1; then
-          golangci-lint run
-        else
-          echo "golangci-lint not installed, running go vet..."
-          go vet ./...
-        fi
+      - scripts/gate pre-push
 
   dev:check:
     desc: Run fmt, lint, and test (pre-commit style)

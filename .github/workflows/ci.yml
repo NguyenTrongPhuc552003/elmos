@@ -1,4 +1,5 @@
-# GitHub Actions: vet, test and build elmos on Linux, macOS and Windows.
+# GitHub Actions: vet, test and build elmos on Linux, macOS and Windows;
+# the quality gate (formatting, linters, vulnerabilities) on Linux.
 # elmos's full workflow targets macOS hosts; the other two check that the
 # code builds and its tests pass there (multi-platform direction).
 name: ci
@@ -44,11 +45,6 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: Format check
-        if: runner.os != 'Windows'
-        run: |
-          bad=$(gofmt -l $(git ls-files '*.go'))
-          [ -z "$bad" ] || { echo "Not gofmt-formatted:"; echo "$bad"; exit 1; }
       - name: Vet
         run: go vet ./...
       - name: Test

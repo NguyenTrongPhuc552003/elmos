@@ -32,7 +32,7 @@ Useful [Task](https://taskfile.dev) targets (see `task --list` for all):
 | `task test` | `go test ./...` |
 | `task test:cover` | Tests with a coverage report (`coverage.html`) |
 | `task dev:fmt` | `go fmt ./...` |
-| `task dev:lint` | `golangci-lint run` if installed, else `go vet ./...` |
+| `task dev:lint` | the quality gate on your changes (`scripts/gate pre-push`) |
 | `task dev:check` | fmt, lint and test in one step |
 | `task dev:setup` | Download dependencies, install the complexity tool, build |
 
@@ -43,10 +43,10 @@ and pull request, on Linux, macOS and Windows. Run the same commands locally
 before you open a pull request:
 
 ```bash
-gofmt -l $(git ls-files '*.go')   # must print nothing (skipped on Windows in CI)
 go vet ./...
 go test ./...
 go build -o build/ ./cmd/elmos
+scripts/gate pre-push   # formatting, linters and copies on your changes
 ```
 
 A second macOS job installs `e2fsprogs` and runs the rootfs test with
@@ -58,6 +58,35 @@ go test -run TestCreateDefaultsToOCIAndWritesACleanImage -v ./core/domain/rootfs
 
 ELMOS's full workflow targets macOS hosts; the Linux and Windows jobs check
 that the code builds and its tests pass there.
+
+## Quality gate
+
+ELMOS uses the quality gate shared by the HAVEN ecosystem
+([design](https://github.com/NguyenTrongPhuc552003/haven/blob/main/docs/quality/gate.md)).
+`scripts/gate` fetches the gate's engine from haven at the commit pinned in
+`quality/gate.json` (once, into `~/.cache/haven-gate/`) and runs it with
+ELMOS's profile. Install the git hooks once per clone:
+
+```bash
+scripts/gate install   # sets core.hooksPath to .githooks
+scripts/gate doctor    # lists the tools found and missing
+```
+
+| Stage | When | Checks |
+| - | - | - |
+| `pre-commit` | `git commit` (hook) | secrets, personal names and home paths in the staged files |
+| `pre-push` | `git push` (hook) | gofmt, golangci-lint (govet, staticcheck, errcheck, ineffassign, unused), cppcheck on `examples/`, lizard, jscpd, shellcheck on the files changed against `main` |
+| `ci` | every pull request, required | the same on the whole tree, plus govulncheck and gitleaks |
+
+Findings are rated BLOCKER, CRITICAL, MAJOR, MINOR or INFO. A BLOCKER always
+stops the change; a CRITICAL or MAJOR finding stops it when it is not in
+`quality/baseline.json`. The baseline holds the findings that existed when
+the gate started: fix them when you can, and after fixing run
+`scripts/gate baseline` and commit the smaller baseline. Never add new
+findings to the baseline to get a change through. `tools/gate/ci-setup.sh`
+in the engine's directory (`scripts/gate engine-dir`) installs the pinned
+tool versions on Linux. A newer engine is taken by changing
+`engine.commit` in a pull request of its own.
 
 ## Commit messages
 
