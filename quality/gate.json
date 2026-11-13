@@ -2,7 +2,7 @@
   "schema": "haven-gate-config/1",
   "engine": {
     "repo": "https://github.com/NguyenTrongPhuc552003/haven.git",
-    "commit": "fca66911b9f39c903a777fd65580fab037399825"
+    "commit": "d63e2d183f084984290b09881fe097f80d0e499f"
   },
   "go_paths": [
     "cmd",
