@@ -60,6 +60,9 @@ Changes since v3.2.0, summarised from the commit history.
   path is `github.com/NguyenTrongPhuc552003/elmos` again, and links, the
   demo release base and the Homebrew formula point at GitHub.
 - Removed the `docs.yml` GitHub Pages workflow and `AGENTS.md`.
+- Removed the MkDocs configuration (`mkdocs.yml`, `docs/index.md`); the
+  documentation is published on the project site (haven-docs), and `task
+  docs` and `task docs:serve` now build or serve it from a sibling checkout.
 - Em-dashes in the repository replaced with ASCII punctuation.
 
 ### Fixed

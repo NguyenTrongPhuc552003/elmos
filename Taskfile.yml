@@ -290,28 +290,19 @@ tasks:
       - task: haven:smoke
       - task: haven:partb
 
+  # The documentation is published on the project site, haven-docs, which
+  # copies README.md, docs/user and docs/developer (docs/developer/docs-site.md).
+  # Both tasks need haven-docs, haven and kdal checked out next to this one.
   docs:
-    desc: Build the documentation site
-    deps: [docs:install]
+    desc: Build the project site (../haven-docs) with this checkout's docs
+    dir: ../haven-docs
     cmds:
-      - python3 -m mkdocs build
-
-  docs:install:
-    desc: Install documentation dependencies if missing
-    internal: true
-    cmds:
-      - python3 -m pip install mkdocs-material "mkdocstrings[python]" mkdocs_puml --break-system-packages
-    status:
-      # Only run if all packages are found in the python environment
-      - python3 -c "import material, mkdocstrings, mkdocs_puml" 2>/dev/null
-
-  docs:clean:
-    desc: Remove generated documentation build files
-    cmds:
-      - rm -rf build/site/
+      - npm ci
+      - npm run build
 
   docs:serve:
-    desc: Serve the documentation site locally and open in browser
-    deps: [docs]
+    desc: Serve the project site (../haven-docs) locally with this checkout's docs
+    dir: ../haven-docs
     cmds:
-      - python3 -m mkdocs serve --open
+      - npm ci
+      - npm run dev
