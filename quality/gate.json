@@ -2,7 +2,7 @@
   "schema": "haven-gate-config/1",
   "engine": {
     "repo": "https://github.com/NguyenTrongPhuc552003/haven.git",
-    "commit": "27c1e04edc1617f08ec14f809fdbd98c71c8dcc0"
+    "commit": "fca66911b9f39c903a777fd65580fab037399825"
   },
   "go_paths": [
     "cmd",
@@ -72,7 +72,9 @@
       "cppcheck",
       "lizard",
       "jscpd",
-      "shellcheck"
+      "shellcheck",
+      "go-race",
+      "go-fuzz"
     ]
   },
   "versions": {
@@ -91,5 +93,18 @@
   "sh_files": [
     ".githooks/pre-commit",
     ".githooks/pre-push"
-  ]
+  ],
+  "fuzz": {
+    "seconds": 60,
+    "targets": [
+      {
+        "name": "FuzzUntar",
+        "package": "./core/domain/demo"
+      },
+      {
+        "name": "FuzzParseSums",
+        "package": "./core/domain/demo"
+      }
+    ]
+  }
 }
