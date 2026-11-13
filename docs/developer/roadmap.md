@@ -1,31 +1,51 @@
 # Roadmap
 
-Planned features and improvements for ELMOS.
+Where ELMOS is going, and where it is not. Reviewed in March 2027 against
+what people actually ask for.
 
-## Short Term (v1.x)
+## Who ELMOS is for
 
-- [ ] Enhanced TUI with progress bars
-- [ ] More architectures (x86_64, PPC)
-- [ ] Kernel version auto-detection
-- [ ] Improved error messages
-- [ ] Documentation site deployment
+People meeting Embedded Linux for the first time (students, software
+developers new to embedded work, teachers), and the HAVEN ecosystem
+([HAVEN](https://github.com/NguyenTrongPhuc552003/haven),
+[KDAL](https://github.com/NguyenTrongPhuc552003/kdal)), which needs a
+reproducible kernel, root file system and QEMU setup.
 
-## Medium Term (v2.x)
+## The niche: learn and prototype
 
-- [ ] Plugin system for custom builders
-- [ ] GUI frontend (Electron/Web)
-- [x] CI on GitHub Actions (Linux, macOS, Windows)
-- [ ] Windows/Linux support
-- [ ] Advanced debugging (KGDB)
+The fastest path from nothing to a running embedded Linux, on the laptop
+the learner already has (macOS, Windows, Linux), with each stage visible:
+toolchain, kernel, root file system, boot in QEMU, a first module.
 
-## Long Term (v3.x)
+ELMOS is not a general distribution builder. If you need a product image
+with many packages, licence reports or long-term maintenance, Buildroot
+and the Yocto Project are the established tools for that.
 
-- [ ] Multi-kernel support
-- [ ] Cloud deployment
-- [ ] IDE integration (VS Code extension)
-- [ ] Performance profiling
-- [ ] Community templates
+## Now
 
-## Contributing
+- Keep the documentation current with what the code does.
+- The SDK (kernel and root file system built by CI for KDAL and HAVEN)
+  stays reproducible and its smoke boot ends on its own.
+- A place for questions and first contributions: GitHub Discussions and
+  the `good first issue` and `help wanted` labels.
+- One documentation site (the project site, haven-docs) instead of two.
 
-Open issues for feature requests. Prioritized by community votes.
+The SDK role for KDAL and HAVEN has priority over the rest.
+
+## Later (not before the March 2027 review)
+
+- A package catalogue beyond Alpine.
+- Real boards beyond the CIX P1 board HAVEN targets.
+- SBOM and licence reports.
+- More kernel versions in the SDK.
+- A path from an ELMOS project to a Buildroot defconfig or a Yocto layer.
+
+## Measured, not claimed
+
+How long the first boot takes on each host is to be measured before it
+is stated anywhere.
+
+## Tell us
+
+Questions and ideas: [Discussions](https://github.com/NguyenTrongPhuc552003/elmos/discussions).
+Bugs and concrete requests: [issues](https://github.com/NguyenTrongPhuc552003/elmos/issues).
