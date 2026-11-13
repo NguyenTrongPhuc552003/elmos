@@ -34,6 +34,11 @@ Changes since v3.2.0, summarised from the commit history.
 - CI on GitHub Actions: gofmt check, `go vet`, `go test` and `go build` on
   Linux, macOS and Windows, plus an `e2fsck` check of the rootfs image on
   macOS.
+- SDK built by CI (`.github/workflows/sdk.yml`, `docs/developer/sdk-ci.md`):
+  Linux v6.18 arm64 (defconfig plus KUnit, LLVM, neutral build names), an
+  alpine:3 root file system and a manifest, smoke-booted in QEMU and
+  published as the private package `ghcr.io/nguyentrongphuc552003/elmos-sdk`
+  for KDAL's and HAVEN's CI.
 - `executor.Recorder`, a host-free executor for domain tests.
 - API reference overview page in the developer documentation.
 
