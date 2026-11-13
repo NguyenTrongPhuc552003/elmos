@@ -175,3 +175,17 @@ moves `linux-6.18`; KDAL and HAVEN stay pinned to run 4.
 | P3: `boot.log` | `Run /init as init process`, `System ready.`, then `elmos: elmos_poweroff=1, powering off.`; QEMU exit status 0 |
 | P4: smoke step time | under 90 s (run 4: 5 min 5 s) |
 | P5: the rest of the run | S1 to S8 as in run 4 (kernel `haven@ci`, package private, no release or artifact); only the root filesystem's `/init` differs |
+
+### Results: run 5 (2026-11-13, commit `8ae1437`, started by the merge of #15)
+
+| Check | Observed | Verdict |
+| - | - | - |
+| P1 | pull request #15 merged with every check green | as expected |
+| P2 | run 5 succeeded | as expected |
+| P3 | `Run /init as init process`, `System ready.`, `elmos: elmos_poweroff=1, powering off.`, `reboot: Power down`; the step's own check passed (the exit status itself is not printed) | as expected |
+| P4 | smoke step 9 s (01:50:18 to 01:50:27 UTC) | as expected (run 4: 5 min 5 s) |
+| P5 | kernel `Linux version 6.18.0 (haven@ci)`, build 2347 s on 4 CPUs; `elmos-sdk:linux-6.18-5` pushed and `linux-6.18` moved to it; anonymous fetch refused; no release or artifact | as expected |
+
+HAVEN and KDAL keep using `linux-6.18-4`, pinned by digest in HAVEN's
+`ecosystem.lock.json` and by tag in KDAL's CI; moving them to run 5 is a
+reviewed change in those repositories.
