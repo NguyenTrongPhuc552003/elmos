@@ -50,4 +50,14 @@ else
 fi
 
 echo "System ready."
+
+# Automated boots (the SDK smoke boot, docs/developer/sdk-ci.md): with
+# elmos_poweroff=1 on the kernel command line, which the kernel passes to
+# init's environment, power off instead of starting a shell.
+if [ "${elmos_poweroff:-}" = 1 ]; then
+    echo "elmos: elmos_poweroff=1, powering off."
+    sync
+    poweroff -f 2>/dev/null || echo o > /proc/sysrq-trigger
+fi
+
 exec /bin/sh

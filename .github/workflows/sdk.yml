@@ -79,12 +79,19 @@ jobs:
           zcat out/rootfs.ext4.gz > "$RUNNER_TEMP/rootfs.ext4"
           # -nic none: the smoke boot needs no network, and the default NIC needs
           # an iPXE ROM that --no-install-recommends leaves out (run 1)
+          # elmos_poweroff=1: /init powers the guest off when it is done, so
+          # QEMU exits with status 0; a hang ends at the timeout (124) and fails
+          rc=0
           timeout 300 qemu-system-aarch64 -machine virt -cpu cortex-a72 -smp 2 -m 1G \
             -nographic -no-reboot -nic none -kernel "$RUNNER_TEMP/Image" \
             -drive "file=$RUNNER_TEMP/rootfs.ext4,if=virtio,format=raw" \
-            -append "console=ttyAMA0 root=/dev/vda rw init=/init panic=-1" > boot.log 2>&1 || true
+            -append "console=ttyAMA0 root=/dev/vda rw init=/init panic=-1 elmos_poweroff=1" \
+            > boot.log 2>&1 || rc=$?
           tail -20 boot.log
+          echo "qemu exit status $rc"
           grep -m1 'Run /init as init process' boot.log
+          grep -m1 'elmos: elmos_poweroff=1, powering off.' boot.log
+          [ "$rc" -eq 0 ]
       - name: Manifest and hashes
         run: |
           # exported: the Python below reads them from its environment

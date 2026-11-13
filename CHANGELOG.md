@@ -51,7 +51,9 @@ Changes since v3.2.0, summarised from the commit history.
 - `kernel clone` and `kernel reset` default to a shallow clone of v6.18
   (`--ref`, `--full`, `--no-patches` to change this).
 - The guest `/init` is embedded and shared by both rootfs engines instead
-  of being read from a repository checkout.
+  of being read from a repository checkout. With `elmos_poweroff=1` on the
+  kernel command line it powers the guest off instead of starting a shell
+  (used by the SDK smoke boot).
 - Documentation marks the native macOS kernel build as experimental and
   describes cloning, rootfs engines, embedded patches and headers.
 - Project home moved to Codeberg and then back to GitHub; the Go module
