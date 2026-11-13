@@ -103,7 +103,9 @@ func parseSums(path string) (map[string]string, []string, error) {
 			continue
 		}
 		name := strings.TrimPrefix(fields[1], "*")
-		if name != filepath.Base(name) || name == "." || name == ".." {
+		// a plain file name: Release joins it to its cache directory
+		// (filepath.Base("/") is "/", so a Base comparison alone lets "/" in)
+		if name == "" || name == "." || name == ".." || strings.ContainsAny(name, `/\`) {
 			return nil, nil, fmt.Errorf("SHA256SUMS: unsafe file name %q", name)
 		}
 		sums[name] = fields[0]
