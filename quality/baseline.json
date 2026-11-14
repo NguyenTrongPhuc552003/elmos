@@ -119,15 +119,6 @@
    "count": 1
   },
   {
-   "key": "a2518db152beb791a4b740ed",
-   "tool": "govulncheck",
-   "rule": "GO-2026-6865",
-   "file": "go.mod",
-   "severity": "CRITICAL",
-   "message": "GO-2026-6865 in github.com/klauspost/compress/fse.Decompress (github.com/klauspost/compress@v1.19.2, fixed in v1.20.2)",
-   "count": 1
-  },
-  {
    "key": "a334b8f2bcf47c5c20b1f0a2",
    "tool": "golangci-lint",
    "rule": "errcheck",
