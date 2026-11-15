@@ -29,8 +29,8 @@ const (
 	// that kernel.
 	LinuxTag = "demo-linux-v6.18-1"
 	// HavenTag and HavenBundle name the HAVEN try bundle release.
-	HavenTag    = "try-20261103"
-	HavenBundle = "haven-try-v0.6.0-162-gab6f825.tar.gz"
+	HavenTag    = "try-20261115.1"
+	HavenBundle = "haven-try-v0.6.0-425-g13dd128.tar.gz"
 )
 
 // Fetcher downloads release assets into a cache directory.
