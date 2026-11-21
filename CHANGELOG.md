@@ -71,6 +71,10 @@ Changes since v3.2.0, summarised from the commit history.
 
 ### Fixed
 
+- `qemu debug` opens the GDB stub on the configured `gdb_port` (it used `-s`, always port 1234,
+  while `elmos gdb` connects to `gdb_port`); the graphical display is `cocoa` on macOS only, so
+  other hosts let QEMU pick; the "QEMU not found" hint fits the host. Found by the new
+  `core/domain/emulator` tests (audit E4).
 - `patch apply` (and the built-in patches at `kernel clone`) no longer reverses a patch that is
   already applied: `patch(1)` ran without `--forward`, took the applied patch for a reversed one and,
   with no one to answer its prompt, reversed it; `patch reverse` no longer applies a patch that is
