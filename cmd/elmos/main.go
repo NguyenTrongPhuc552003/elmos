@@ -1,5 +1,6 @@
 // Package main is the entry point for the elmos CLI application.
-// ELMOS (Embedded Linux on MacOS) provides native Linux kernel build tools for macOS.
+// ELMOS (Embedded Linux on Multi-OS) builds Linux kernels, modules, root file
+// systems and QEMU runs from macOS, Linux and Windows hosts.
 package main
 
 import (

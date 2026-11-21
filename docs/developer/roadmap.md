@@ -1,5 +1,10 @@
 # Roadmap
 
+ELMOS stands for **Embedded Linux on Multi-OS** (renamed from "Embedded
+Linux on macOS" in November 2026): the name states the direction, one
+workbench on macOS, Linux and Windows hosts. Today the full workflow runs on
+macOS; CI builds and tests the CLI on all three.
+
 Where ELMOS is going, and where it is not. Reviewed in March 2027 against
 what people actually ask for.
 
