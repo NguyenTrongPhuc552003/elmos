@@ -56,12 +56,14 @@ func (m *Manager) Apply(ctx context.Context, patchFile string) error {
 		patchPath = fullPath
 	}
 
-	// Check if patch is already applied
-	checkArgs := []string{"-p1", "--dry-run", "-i", patchPath}
+	// Check if patch is already applied. --forward everywhere: without it
+	// patch(1) takes an applied patch for a reversed one and, with no one
+	// to answer its "Assume -R?" prompt, reverses it.
+	checkArgs := []string{"-p1", "--forward", "--dry-run", "-i", patchPath}
 	err := m.exec.RunInDir(ctx, m.cfg.Paths.KernelDir, "patch", checkArgs...)
 	if err != nil {
 		// Try reverse check to see if already applied
-		reverseArgs := []string{"-p1", "--dry-run", "-R", "-i", patchPath}
+		reverseArgs := []string{"-p1", "--forward", "--dry-run", "-R", "-i", patchPath}
 		if m.exec.RunInDir(ctx, m.cfg.Paths.KernelDir, "patch", reverseArgs...) == nil {
 			return fmt.Errorf("patch appears to already be applied")
 		}
@@ -69,7 +71,7 @@ func (m *Manager) Apply(ctx context.Context, patchFile string) error {
 	}
 
 	// Apply the patch
-	applyArgs := []string{"-p1", "-i", patchPath}
+	applyArgs := []string{"-p1", "--forward", "-i", patchPath}
 	if err := m.exec.RunInDir(ctx, m.cfg.Paths.KernelDir, "patch", applyArgs...); err != nil {
 		return fmt.Errorf("failed to apply patch: %w", err)
 	}
@@ -94,7 +96,9 @@ func (m *Manager) Reverse(ctx context.Context, patchFile string) error {
 		patchPath = fullPath
 	}
 
-	reverseArgs := []string{"-p1", "-R", "-i", patchPath}
+	// --forward with -R: a patch that is not applied is refused instead of
+	// being applied by an unanswered "Ignore -R?" prompt.
+	reverseArgs := []string{"-p1", "--forward", "-R", "-i", patchPath}
 	if err := m.exec.RunInDir(ctx, m.cfg.Paths.KernelDir, "patch", reverseArgs...); err != nil {
 		return fmt.Errorf("failed to reverse patch: %w", err)
 	}
