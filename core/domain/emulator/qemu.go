@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 
@@ -43,7 +44,7 @@ func (q *QEMURunner) Run(ctx context.Context, opts RunOptions) error {
 
 	// Check QEMU binary
 	if _, err := q.exec.LookPath(archCfg.QEMUBinary); err != nil {
-		return fmt.Errorf("QEMU not found: %s (run 'brew install qemu')", archCfg.QEMUBinary)
+		return fmt.Errorf("QEMU not found: %s (%s)", archCfg.QEMUBinary, qemuInstallHint(runtime.GOOS))
 	}
 
 	// Check kernel image
@@ -149,7 +150,7 @@ func (q *QEMURunner) buildArgs(archCfg *elconfig.ArchConfig, kernelImage string,
 
 	// Display mode
 	if opts.Graphical {
-		args = append(args, "-display", "cocoa")
+		args = append(args, displayArgs(runtime.GOOS)...)
 		args = append(args,
 			"-device", "virtio-gpu-pci",
 			"-device", "virtio-keyboard-pci",
@@ -166,9 +167,10 @@ func (q *QEMURunner) buildArgs(archCfg *elconfig.ArchConfig, kernelImage string,
 
 	args = append(args, "-append", appendStr)
 
-	// Debug flags
+	// Debug: the stub listens where ConnectGDB connects (QEMU.GDBPort);
+	// -s would always use 1234
 	if opts.Debug {
-		args = append(args, "-s", "-S")
+		args = append(args, "-gdb", fmt.Sprintf("tcp::%d", q.cfg.QEMU.GDBPort), "-S")
 	}
 
 	return args
@@ -262,4 +264,25 @@ func (q *QEMURunner) CheckDebugConfig() error {
 	}
 
 	return nil
+}
+
+// displayArgs is the graphical display for a host: cocoa exists only in
+// macOS builds of QEMU, so other hosts leave the choice to QEMU.
+func displayArgs(goos string) []string {
+	if goos == "darwin" {
+		return []string{"-display", "cocoa"}
+	}
+	return nil
+}
+
+// qemuInstallHint says how to get QEMU on a host.
+func qemuInstallHint(goos string) string {
+	switch goos {
+	case "darwin":
+		return "run 'brew install qemu'"
+	case "windows":
+		return "install QEMU from qemu.org and put it on PATH"
+	default:
+		return "install QEMU's system emulators with your package manager"
+	}
 }
