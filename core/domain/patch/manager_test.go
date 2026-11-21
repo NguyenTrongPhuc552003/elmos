@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -62,6 +63,11 @@ func read(t *testing.T, name string) string {
 
 func needPatch(t *testing.T) {
 	t.Helper()
+	if runtime.GOOS == "windows" {
+		// kernel sources are patched on macOS and Linux hosts only; Git for
+		// Windows' patch(1) cannot open the test's Windows paths (exit 3)
+		t.Skip("kernel patching runs on macOS and Linux hosts")
+	}
 	if _, err := exec.LookPath("patch"); err != nil {
 		t.Skip("patch(1) is not on PATH")
 	}
