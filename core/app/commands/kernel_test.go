@@ -61,7 +61,7 @@ func TestKernelCloneIsPinnedShallowAndPatched(t *testing.T) {
 	}
 	patched := false
 	for _, c := range calls[1:] {
-		if strings.HasPrefix(c, "patch -p1 -i ") {
+		if strings.HasPrefix(c, "patch -p1 --forward -i ") {
 			patched = true
 		}
 	}
