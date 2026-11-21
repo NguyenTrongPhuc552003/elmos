@@ -67,6 +67,10 @@ Changes since v3.2.0, summarised from the commit history.
 
 ### Fixed
 
+- `patch apply` (and the built-in patches at `kernel clone`) no longer reverses a patch that is
+  already applied: `patch(1)` ran without `--forward`, took the applied patch for a reversed one and,
+  with no one to answer its prompt, reversed it; `patch reverse` no longer applies a patch that is
+  not applied. Found by the new tests of `core/domain/patch` (audit E4).
 - The v6.18 `gen_init_cpio` patch is a plain `#ifdef __APPLE__` guard: Linux hosts keep
   `copy_file_range()`, and CI checks that the patches apply and the tool works on Linux and macOS
   (`scripts/check-kernel-patches.sh`, audit E17).
