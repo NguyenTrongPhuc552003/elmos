@@ -1,0 +1,42 @@
+Subject: [PATCH] usr: gen_init_cpio: build on macOS hosts
+
+macOS has neither O_LARGEFILE nor copy_file_range(). Define O_LARGEFILE
+as 0 there (macOS file offsets are always 64-bit) and leave out the
+copy_file_range() fast path, so the existing read/write loop copies the
+file data. Linux hosts keep copy_file_range() unchanged.
+
+Replaces an earlier version that put an #include inside a function and
+wrapped both paths in "#if COPY_FILE_RANGE", which is never defined, so
+Linux hosts lost copy_file_range() too (audit item E17).
+---
+--- a/usr/gen_init_cpio.c
++++ b/usr/gen_init_cpio.c
+@@ -13,6 +13,11 @@
+ #include <errno.h>
+ #include <ctype.h>
+ #include <limits.h>
++
++#ifdef __APPLE__
++/* macOS has no O_LARGEFILE: its file offsets are always 64-bit */
++#define O_LARGEFILE 0
++#endif
+ 
+ /*
+  * Original work by Jeff Garzik
+@@ -456,6 +461,8 @@
+ 		    push_pad(namepadlen ? namepadlen : padlen(offset, 4)) < 0)
+ 			goto error;
+ 
++#ifndef __APPLE__
++		/* macOS has no copy_file_range(); the read/write loop below copies */
+ 		if (size) {
+ 			this_read = copy_file_range(file, NULL, outfd, NULL, size, 0);
+ 			if (this_read > 0) {
+@@ -466,6 +473,7 @@
+ 			}
+ 			/* short or failed copy falls back to read/write... */
+ 		}
++#endif
+ 
+ 		while (size) {
+ 			unsigned char filebuf[65536];

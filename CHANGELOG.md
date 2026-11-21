@@ -67,6 +67,9 @@ Changes since v3.2.0, summarised from the commit history.
 
 ### Fixed
 
+- The v6.18 `gen_init_cpio` patch is a plain `#ifdef __APPLE__` guard: Linux hosts keep
+  `copy_file_range()`, and CI checks that the patches apply and the tool works on Linux and macOS
+  (`scripts/check-kernel-patches.sh`, audit E17).
 - `/init` in OCI layers is matched correctly on Windows.
 - App builds use a Linux cross toolchain instead of the host `llvm-gcc`;
   `doctor` reports a cross GCC found on PATH; `arch <name>` no longer
