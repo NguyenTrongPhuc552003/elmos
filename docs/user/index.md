@@ -1,6 +1,6 @@
 # User Guide Overview
 
-This section provides comprehensive guides for using ELMOS to build and develop Linux kernels on macOS.
+This section provides guides for using ELMOS (Embedded Linux on Multi-OS) to build and develop Linux kernels. The full workflow runs on macOS today; Linux and Windows hosts are in progress (see the roadmap).
 
 ## Getting Started
 

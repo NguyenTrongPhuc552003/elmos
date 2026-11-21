@@ -1,12 +1,16 @@
-# ELMOS - Embedded Linux on macOS
+# ELMOS - Embedded Linux on Multi-OS
 
 [![Build Status](https://img.shields.io/badge/build-v6.18%20ARM64-green)](https://github.com/NguyenTrongPhuc552003/elmos) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Docs](https://img.shields.io/badge/docs-repository-blue)](https://github.com/NguyenTrongPhuc552003/elmos/blob/main/docs)
 
-A complete embedded Linux SDK for macOS. Build kernels, cross-compile with native toolchains, develop kernel modules and userspace apps-all without Docker or VMs. ELMOS provides an integrated development environment with interactive TUI, automatic toolchain management (crosstool-ng), and seamless QEMU integration. Targeting RISC-V, ARM64, ARM, and more, with full support for Linux v6.18+.
+ELMOS (**E**mbedded **L**inux on **M**ulti-**OS**) is an embedded Linux workbench for the laptop you already have. Build kernels, cross-compile with native toolchains, develop kernel modules and userspace apps, all without Docker or VMs.
+
+**Hosts today.** The full workflow runs on macOS. On Linux and Windows the CLI builds and its tests pass in CI on every change, the prebuilt demos (`elmos demo`) and the OCI root file system engine contain no macOS-specific code (not yet run on those hosts), and the rest of the workflow there is the project's direction ([roadmap](docs/developer/roadmap.md)).
+
+ELMOS provides an integrated development environment with interactive TUI, automatic toolchain management (crosstool-ng), and seamless QEMU integration. Targeting RISC-V, ARM64, ARM, and more, with full support for Linux v6.18+.
 
 Inspired by [Seiya's tutorial](https://seiya.me/blog/building-linux-on-macos-natively) (which fixed older kernels like v6.17), we extended it for v6.18's new challenges, like the `copy_file_range()` incompatibility.
 
-**[Read the Full Documentation](https://elmos.vercel.app/)**
+**[Read the full documentation](https://docs-haven.vercel.app/elmos/)**
 
 ## Features
 
@@ -22,9 +26,9 @@ Inspired by [Seiya's tutorial](https://seiya.me/blog/building-linux-on-macos-nat
 
 Documentation is in the repository's `docs/` folder:
 
-- **[User Guide](https://elmos.vercel.app/user/)**: Usage, kernel building, toolchains.
-- **[Developer Guide](https://elmos.vercel.app/developer/)**: Architecture, APIs, code patterns.
-- **[Diagrams](https://elmos.vercel.app/developer/diagrams/)**: Component, Sequence, and Class diagrams.
+- **[User Guide](https://docs-haven.vercel.app/elmos/guide/)**: Usage, kernel building, toolchains.
+- **[Developer Guide](https://docs-haven.vercel.app/elmos/developer/)**: Architecture, APIs, code patterns.
+- **[Diagrams](https://docs-haven.vercel.app/elmos/developer/diagrams/)**: Component, Sequence, and Class diagrams.
 
 ## Try it first (no kernel build, no sudo)
 

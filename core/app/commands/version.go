@@ -14,7 +14,7 @@ func BuildVersion(ctx *Context) *cobra.Command {
 		Short: "Print version information",
 		Run: func(cmd *cobra.Command, args []string) {
 			info := version.Get()
-			ctx.Printer.Print("ELMOS - Embedded Linux on MacOS")
+			ctx.Printer.Print("ELMOS - Embedded Linux on Multi-OS")
 			ctx.Printer.Print("Version:    %s", ui.AccentStyle.Render(info.Version))
 			ctx.Printer.Print("Commit:     %s", info.Commit)
 			ctx.Printer.Print("Built:      %s", info.BuildDate)

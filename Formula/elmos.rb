@@ -1,7 +1,7 @@
 # typed: false
 # frozen_string_literal: true
 
-# ELMOS - Embedded Linux on MacOS
+# ELMOS - Embedded Linux on Multi-OS
 # Homebrew formula for installing elmos CLI tool
 #
 # Installation:
@@ -12,7 +12,7 @@
 #   brew install --HEAD elmos
 
 class Elmos < Formula
-  desc "Embedded Linux on MacOS - Native kernel build tools"
+  desc "Embedded Linux on Multi-OS: kernels, modules, root file systems and QEMU"
   homepage "https://github.com/NguyenTrongPhuc552003/elmos"
   license "MIT"
 

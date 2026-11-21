@@ -44,6 +44,10 @@ Changes since v3.2.0, summarised from the commit history.
 
 ### Changed
 
+- ELMOS now stands for **Embedded Linux on Multi-OS** (was "Embedded Linux on macOS"): the
+  CLI's help and `elmos version`, the README, the Homebrew formula and the docs say so, and the
+  README states what runs on each host today. Documentation links point to docs-haven.vercel.app.
+
 - The OCI engine writes ext4 in pure Go (an adapted copy of hcsshim's ext4
   writer in `third_party/ext4`). e2fsprogs is now optional (debootstrap
   engine only) and dropping the hcsshim module reduces the binary from

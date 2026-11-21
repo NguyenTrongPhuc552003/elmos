@@ -70,8 +70,10 @@ func New(exec executor.Executor, fs filesystem.FileSystem, cfg *config.Config) *
 func (a *App) BuildRootCommand() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:   "elmos",
-		Short: "Embedded Linux on MacOS - Native kernel build tools",
-		Long: `ELMOS provides native Linux kernel build tools for macOS.
+		Short: "Embedded Linux on Multi-OS - kernels, modules, root file systems and QEMU",
+		Long: `ELMOS (Embedded Linux on Multi-OS) builds Linux kernels, modules, root file
+systems and QEMU runs from the laptop you already have (macOS today; Linux and
+Windows hosts in progress).
 
 Common workflow:
   elmos init              # Initialize workspace
