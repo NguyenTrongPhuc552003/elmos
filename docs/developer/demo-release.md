@@ -176,3 +176,14 @@ creates the tag), a pull request moving `demo.LinuxTag` to
 `demo-linux-v6.18-2` (it checks that `elmos demo linux` fetches the
 published release), then the owner deletes `demo-linux-v6.18-1` on GitHub
 and Codeberg.
+
+## Publication (2026-11-22)
+
+The owner said yes to this draft ("Approve", 2026-11-22, 22:53 ICT).
+Published at 15:53 UTC; the tag `demo-linux-v6.18-2` points at
+`3d55296`. `demo.LinuxTag` moves to it in the same pull request as this
+section. Checked on the Mac before that pull request [F]: an `elmos`
+built with the new tag and an empty cache fetched the published release
+from GitHub, `shasum -c` passed on all five files, and the guest reached
+`System ready.` 7.5 s after the command started (download included).
+Left for the owner: deleting `demo-linux-v6.18-1` on GitHub and Codeberg.

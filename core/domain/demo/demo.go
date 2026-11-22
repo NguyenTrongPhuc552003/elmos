@@ -28,7 +28,7 @@ const (
 	// LinuxTag is the elmos release with the Linux demo: a v6.18 arm64
 	// kernel, an alpine:3 root file system and the KDAL module built for
 	// that kernel.
-	LinuxTag = "demo-linux-v6.18-1"
+	LinuxTag = "demo-linux-v6.18-2"
 	// HavenTag and HavenBundle name the HAVEN try bundle release.
 	HavenTag    = "try-20261115.1"
 	HavenBundle = "haven-try-v0.6.0-425-g13dd128.tar.gz"
