@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"strings"
 )
 
 // Install installs crosstool-ng from the latest git source.
@@ -233,51 +235,16 @@ func patchConfigContent(content string, paths ToolchainPaths) string {
 	return content
 }
 
-// replaceConfigValue replaces a config value in the content.
+// replaceConfigValue sets every KEY="..." line of a .config to value. The
+// key must start the line: MY_CT_PREFIX_DIR is not CT_PREFIX_DIR.
 func replaceConfigValue(content, key, value string) string {
-	// Find and replace CT_KEY="..." pattern
-	prefix := key + "=\""
-	start := 0
-	for {
-		idx := indexOf(content[start:], prefix)
-		if idx < 0 {
-			break
-		}
-		idx += start
-		endIdx := indexOf(content[idx+len(prefix):], "\"")
-		if endIdx < 0 {
-			break
-		}
-		endIdx += idx + len(prefix)
-		content = content[:idx] + key + "=\"" + value + "\"" + content[endIdx+1:]
-		start = idx + len(key) + len(value) + 3
-	}
-	return content
+	re := regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(key) + `="[^"\n]*"`)
+	return re.ReplaceAllLiteralString(content, key+"=\""+value+"\"")
 }
 
 // replaceAll replaces all occurrences of old with new.
 func replaceAll(s, old, new string) string {
-	result := ""
-	for {
-		idx := indexOf(s, old)
-		if idx < 0 {
-			result += s
-			break
-		}
-		result += s[:idx] + new
-		s = s[idx+len(old):]
-	}
-	return result
-}
-
-// indexOf returns the index of substr in s, or -1 if not found.
-func indexOf(s, substr string) int {
-	for i := 0; i+len(substr) <= len(s); i++ {
-		if s[i:i+len(substr)] == substr {
-			return i
-		}
-	}
-	return -1
+	return strings.ReplaceAll(s, old, new)
 }
 
 // getBuildEnv returns environment variables for building toolchains.
@@ -355,7 +322,7 @@ func (m *Manager) addLibraryFlags(env []string, brewPrefix string) []string {
 	}
 
 	pkgConfigPath := fmt.Sprintf("%s/share/pkgconfig", brewPrefix)
-	env = appendOrUpdateEnv(env, "PKG_CONFIG_PATH", pkgConfigPath)
+	env = appendOrUpdatePath(env, "PKG_CONFIG_PATH", pkgConfigPath)
 
 	return env
 }
@@ -406,4 +373,22 @@ func appendOrUpdateEnv(env []string, key, value string) []string {
 		}
 	}
 	return append(env, key+"="+value)
+}
+
+// appendOrUpdatePath adds a directory to a search-path variable
+// (PKG_CONFIG_PATH), keeping a ':' between entries; toolchain builds run
+// on macOS and Linux hosts.
+func appendOrUpdatePath(env []string, key, dir string) []string {
+	prefix := key + "="
+	for i, e := range env {
+		if strings.HasPrefix(e, prefix) {
+			if len(e) > len(prefix) {
+				env[i] = e + ":" + dir
+			} else {
+				env[i] = e + dir
+			}
+			return env
+		}
+	}
+	return append(env, prefix+dir)
 }

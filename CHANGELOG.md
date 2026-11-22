@@ -71,6 +71,10 @@ Changes since v3.2.0, summarised from the commit history.
 
 ### Fixed
 
+- `toolchains build`: a crosstool-NG setting is replaced only where its own key starts the line
+  (`MY_CT_PREFIX_DIR` no longer matched `CT_PREFIX_DIR`), and Homebrew's pkg-config directory is
+  added to an existing `PKG_CONFIG_PATH` with a `:` (it was glued on: `/a/opt/...`). Found by the
+  new `core/domain/toolchain` tests (audit E4).
 - `qemu debug` opens the GDB stub on the configured `gdb_port` (it used `-s`, always port 1234,
   while `elmos gdb` connects to `gdb_port`); the graphical display is `cocoa` on macOS only, so
   other hosts let QEMU pick; the "QEMU not found" hint fits the host. Found by the new
