@@ -111,3 +111,23 @@ decides whether that is acceptable in a public binary (it was already in
 
 Not shown here: that `elmos demo linux` fetches the published release
 (the tag pull request checks that, after publication), Windows hosts.
+
+## Corrections before the first run (2026-11-22)
+
+The workflow is written nine days after this design (it had not been,
+though the design was merged on 2026-11-13; found while timing the demo,
+`first-boot.md`). Before its first run:
+
+- **D1**: haven's `ecosystem.lock.json` now pins KDAL `5622c47`, not
+  `f11e87e`; the SDK pins (`linux-6.18-5`, `sha256:cea68ea3...`, ELMOS
+  `8ae1437`, run 5) and QEMU 8.2.2 are unchanged. D1 reads the lock at
+  `haven_ref`, so it expects `5622c47` now.
+- The boot check is `sdk/demoboot` (`go run ./sdk/demoboot DIR`), the
+  name check `sdk/check-public-assets.py` (a copy of haven's), the guest
+  script `sdk/demo/guesync.sh` (the old release's, unchanged), and
+  `demo.PrepareLinux` holds the unpacking `elmos demo linux` did (D10).
+- Checked on the Mac before the workflow ran: `demoboot` on the old
+  release sees every marker except the banner (`Linux version 6.18.0
+  (haven@ci)`), and the name check fails the old release at rule (c)
+  (its banner) and rule (a) (its tar entries carry owner names). D9's
+  "rule (d)" needs `RELEASE_DENY`, which is set only for the local check.

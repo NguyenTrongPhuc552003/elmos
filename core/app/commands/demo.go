@@ -55,16 +55,7 @@ for the HAVEN demo).
 			if err != nil {
 				return err
 			}
-			if err := demo.Gunzip(filepath.Join(dir, "Image.gz"), filepath.Join(dir, "Image")); err != nil {
-				return err
-			}
-			if err := demo.Gunzip(filepath.Join(dir, "rootfs.ext4.gz"), filepath.Join(dir, "rootfs.ext4")); err != nil {
-				return err
-			}
-			if err := os.MkdirAll(filepath.Join(dir, "modules"), 0o755); err != nil {
-				return err
-			}
-			if err := demo.Untar(filepath.Join(dir, "modules.tar.gz"), filepath.Join(dir, "modules")); err != nil {
+			if err := demo.PrepareLinux(dir); err != nil {
 				return err
 			}
 			if !demo.ModulesShared(runtime.GOOS) {
