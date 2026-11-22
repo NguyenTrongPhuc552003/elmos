@@ -187,3 +187,9 @@ built with the new tag and an empty cache fetched the published release
 from GitHub, `shasum -c` passed on all five files, and the guest reached
 `System ready.` 7.5 s after the command started (download included).
 Left for the owner: deleting `demo-linux-v6.18-1` on GitHub and Codeberg.
+
+## Old release deleted (2026-11-22)
+
+The owner deleted `demo-linux-v6.18-1` on GitHub (the API answers 404)
+and all Codeberg repositories, so nothing is left to delete. The demo
+fetcher no longer falls back to Codeberg.

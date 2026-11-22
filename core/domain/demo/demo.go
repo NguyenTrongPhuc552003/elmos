@@ -22,9 +22,6 @@ import (
 const (
 	// ReleaseBase is where the demo releases live.
 	ReleaseBase = "https://github.com/NguyenTrongPhuc552003"
-	// MirrorBase holds the same releases on Codeberg, the project's earlier
-	// home; used when a release is not (yet) on GitHub.
-	MirrorBase = "https://codeberg.org/NguyenTrongPhuc552003"
 	// LinuxTag is the elmos release with the Linux demo: a v6.18 arm64
 	// kernel, an alpine:3 root file system and the KDAL module built for
 	// that kernel.
@@ -44,7 +41,7 @@ type Fetcher struct {
 
 // NewFetcher returns a Fetcher caching under dir.
 func NewFetcher(dir string) *Fetcher {
-	return &Fetcher{Client: http.DefaultClient, CacheDir: dir, Base: ReleaseBase, Mirrors: []string{MirrorBase}}
+	return &Fetcher{Client: http.DefaultClient, CacheDir: dir, Base: ReleaseBase}
 }
 
 func (f *Fetcher) get(ctx context.Context, url, dst string) error {
