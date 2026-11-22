@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	elconfig "github.com/NguyenTrongPhuc552003/elmos/core/config"
@@ -29,6 +30,7 @@ type HealthChecker struct {
 	cfg  *elconfig.Config
 	brew *homebrew.Resolver
 	tm   *toolchain.Manager
+	goos string // the host: Homebrew and the header shims are macOS needs
 }
 
 // NewHealthChecker creates a new HealthChecker with the given dependencies.
@@ -39,7 +41,37 @@ func NewHealthChecker(exec executor.Executor, fs filesystem.FileSystem, cfg *elc
 		cfg:  cfg,
 		brew: homebrew.NewResolver(exec),
 		tm:   tm,
+		goos: runtime.GOOS,
 	}
+}
+
+func (h *HealthChecker) macOS() bool { return h.goos == "darwin" }
+
+// hostTools are what the workflow needs on a host without Homebrew (Linux,
+// Windows): found on PATH, from the system's own packages.
+var hostTools = []struct {
+	cmd      string
+	required bool
+}{
+	{"qemu-system-aarch64", true},
+	{"make", true},
+	{"git", true},
+	{"clang", false},
+}
+
+// checkHostTools checks hostTools on PATH (hosts other than macOS).
+func (h *HealthChecker) checkHostTools() []CheckResult {
+	var results []CheckResult
+	for _, t := range hostTools {
+		r := CheckResult{Name: "Host tools: " + t.cmd, Required: t.required}
+		if p, err := h.exec.LookPath(t.cmd); err == nil {
+			r.Passed, r.Message = true, p
+		} else {
+			r.Message = "install it with your system's package manager"
+		}
+		results = append(results, r)
+	}
+	return results
 }
 
 // CheckAll runs all environment checks and returns the results.
@@ -125,6 +157,10 @@ func (h *HealthChecker) CheckToolchains(ctx context.Context) []CheckResult {
 // CheckHomebrew checks if Homebrew is installed.
 func (h *HealthChecker) CheckHomebrew(ctx context.Context) CheckResult {
 	_, err := h.exec.LookPath("brew")
+	if !h.macOS() {
+		return CheckResult{Name: "Homebrew", Passed: err == nil, Required: false,
+			Message: "not needed on " + h.goos + " (host tools come from the system's packages)"}
+	}
 	return CheckResult{
 		Name:     "Homebrew",
 		Passed:   err == nil,
@@ -135,6 +171,9 @@ func (h *HealthChecker) CheckHomebrew(ctx context.Context) CheckResult {
 
 // CheckPackages checks if required Homebrew packages are installed.
 func (h *HealthChecker) CheckPackages(ctx context.Context) []CheckResult {
+	if !h.macOS() {
+		return h.checkHostTools()
+	}
 	pkgSet, err := h.getInstalledPackageSet()
 	if err != nil {
 		return []CheckResult{{
@@ -226,7 +265,7 @@ func (h *HealthChecker) CheckHeaders(ctx context.Context) []CheckResult {
 		return []CheckResult{{
 			Name:     "Headers directory",
 			Passed:   false,
-			Required: true,
+			Required: h.macOS(), // the shims replace headers macOS lacks
 			Message:  fmt.Sprintf("Directory not found: %s", headersDir),
 		}}
 	}
@@ -237,7 +276,7 @@ func (h *HealthChecker) CheckHeaders(ctx context.Context) []CheckResult {
 		results = append(results, CheckResult{
 			Name:     fmt.Sprintf("Custom Headers: %s", header),
 			Passed:   passed,
-			Required: true,
+			Required: h.macOS(),
 			Message:  "",
 		})
 	}
@@ -247,7 +286,7 @@ func (h *HealthChecker) CheckHeaders(ctx context.Context) []CheckResult {
 	results = append(results, CheckResult{
 		Name:     "Custom Headers: asm/",
 		Passed:   h.fs.IsDir(asmDir),
-		Required: true,
+		Required: h.macOS(),
 		Message:  "",
 	})
 
