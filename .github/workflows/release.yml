@@ -1,0 +1,145 @@
+# An ELMOS release built by CI as a draft, on demand only
+# (docs/developer/release.md). build cross-compiles elmos for macOS, Linux
+# and Windows (arm64 and amd64) with the version, commit and date set,
+# writes SHA256SUMS, checks that nothing private is in the binaries or the
+# notes (the changelog section of the version), and creates a DRAFT
+# release; smoke runs `elmos version` and `elmos doctor` from the draft on
+# the three runner systems; mark writes the results in. Publishing is a
+# separate, explicit step by the owner or on the owner's yes.
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version without the v (for example 3.3.0); CHANGELOG.md must have a section for it
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build the binaries and the draft
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    outputs:
+      id: ${{ steps.draft.outputs.id }}
+    env:
+      VERSION: ${{ inputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: The version is new and has a changelog section
+        run: |
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "FAIL: '$VERSION' is not X.Y.Z"; exit 1; }
+          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null; then
+            echo "FAIL: the Git tag v$VERSION exists"; exit 1
+          fi
+          grep -q "^## \[$VERSION\] - " CHANGELOG.md || { echo "FAIL: CHANGELOG.md has no '## [$VERSION] - DATE' section"; exit 1; }
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Cross-compile
+        run: |
+          mkdir -p dist
+          date=$(git log -1 --format=%cI)
+          ld="-s -w -X github.com/NguyenTrongPhuc552003/elmos/core/app/version.Version=v$VERSION"
+          ld="$ld -X github.com/NguyenTrongPhuc552003/elmos/core/app/version.Commit=$GITHUB_SHA"
+          ld="$ld -X github.com/NguyenTrongPhuc552003/elmos/core/app/version.BuildDate=$date"
+          for t in darwin/arm64 darwin/amd64 linux/amd64 linux/arm64 windows/amd64 windows/arm64; do
+            os=${t%/*} arch=${t#*/} ext=""; [ "$os" = windows ] && ext=.exe
+            CGO_ENABLED=0 GOOS=$os GOARCH=$arch go build -trimpath -ldflags "$ld" \
+              -o "dist/elmos-v$VERSION-$os-$arch$ext" ./cmd/elmos
+          done
+          (cd dist && sha256sum elmos-* > SHA256SUMS)
+          ls -l dist; cat dist/SHA256SUMS
+      - name: Release notes from the changelog
+        run: |
+          awk -v v="$VERSION" '
+            $0 ~ "^## \\[" v "\\] - " {on=1; next}
+            on && /^## \[/ {exit}
+            on {print}' CHANGELOG.md > build-notes.md
+          [ -s build-notes.md ] || { echo "FAIL: empty changelog section"; exit 1; }
+          {
+            echo "ELMOS v$VERSION, Embedded Linux on Multi-OS, built by CI from $GITHUB_SHA (run $GITHUB_RUN_ID)."
+            echo "Binaries for macOS, Linux and Windows (arm64 and amd64); SHA256SUMS below."
+            echo
+            cat build-notes.md
+            echo
+            echo "SHA256SUMS:"
+            echo
+            sed 's/^/    /' dist/SHA256SUMS
+            echo
+            echo "Test results follow when this run's test jobs finish."
+          } > notes.md
+      - name: Nothing private in the binaries or the notes
+        run: python3 sdk/check-public-assets.py dist notes.md
+      - name: Draft release
+        id: draft
+        run: |
+          gh release create "v$VERSION" dist/* --draft --target "$GITHUB_SHA" \
+            --title "v$VERSION: Embedded Linux on Multi-OS [untested]" --notes-file notes.md
+          id=$(gh api "repos/$GITHUB_REPOSITORY/releases" \
+            -q ".[] | select(.draft and .tag_name == \"v$VERSION\") | .id" | head -1)
+          [ -n "$id" ] || { echo "FAIL: no draft for v$VERSION"; exit 1; }
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
+  smoke:
+    name: run it from the draft (${{ matrix.os }})
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-24.04, asset: linux-amd64}
+          - {os: macos-15, asset: darwin-arm64}
+          - {os: windows-latest, asset: windows-amd64.exe}
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write # a draft is readable only with write access
+    steps:
+      - name: Download, check the hash, run
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ID: ${{ needs.build.outputs.id }}
+          VERSION: ${{ inputs.version }}
+          ASSET: ${{ matrix.asset }}
+        run: |
+          name="elmos-v$VERSION-$ASSET"
+          for f in "$name" SHA256SUMS; do
+            aid=$(gh api "repos/$GITHUB_REPOSITORY/releases/$ID/assets" -q ".[] | select(.name == \"$f\") | .id")
+            gh api -H "Accept: application/octet-stream" "repos/$GITHUB_REPOSITORY/releases/assets/$aid" > "$f"
+          done
+          grep " $name\$" SHA256SUMS > mine.sum
+          if command -v sha256sum >/dev/null; then sha256sum -c mine.sum; else shasum -a 256 -c mine.sum; fi
+          chmod +x "$name"
+          ./"$name" version | tee version.txt
+          grep -q "v$VERSION" version.txt
+          ./"$name" doctor || true # reports this runner's tools; its exit status is not the check
+
+  mark:
+    name: write the results into the draft
+    needs: [build, smoke]
+    if: always() && needs.build.result == 'success'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          ID: ${{ needs.build.outputs.id }}
+          VERSION: ${{ inputs.version }}
+          SMOKE: ${{ needs.smoke.result }}
+        run: |
+          if [ "$SMOKE" = success ]; then title="v$VERSION: Embedded Linux on Multi-OS"; else
+            title="v$VERSION: Embedded Linux on Multi-OS [FAILED: do not publish]"; fi
+          body=$(gh api "repos/$GITHUB_REPOSITORY/releases/$ID" -q .body)
+          body=$(printf '%s\n\nRun %s: elmos version from the draft on Ubuntu, macOS and Windows runners: %s.\n' \
+            "${body%Test results follow*}" "$GITHUB_RUN_ID" "$SMOKE")
+          got=$(gh api -X PATCH "repos/$GITHUB_REPOSITORY/releases/$ID" -f tag_name="v$VERSION" \
+            -f name="$title" -f body="$body" -q '"\(.tag_name) \(.draft) \(.name)"')
+          echo "$got"
+          [ "${got%% *}" = "v$VERSION" ] || { echo "FAIL: the draft's tag is ${got%% *}"; exit 1; }
