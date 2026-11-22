@@ -16,6 +16,8 @@ Changes since v3.2.0, summarised from the commit history.
   `demo haven` runs the HAVEN try bundle. Assets are checked against the
   release's SHA256SUMS and cached in `~/.elmos/demo`, so later runs work
   offline. A release not yet on GitHub is fetched from its Codeberg copy.
+  The Linux demo is release `demo-linux-v6.18-2`, built by CI from the
+  pinned SDK and KDAL (`docs/developer/demo-release.md`).
 - OCI rootfs engine, now the default for `rootfs create`: it pulls a
   container image for the target architecture and writes ext4 without
   extracting anything onto the Mac, so ownership, setuid bits and
