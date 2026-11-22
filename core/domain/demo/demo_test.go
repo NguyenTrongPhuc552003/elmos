@@ -130,12 +130,27 @@ func TestLinuxArgsUseShippedDTB(t *testing.T) {
 
 func TestLinuxArgsKeepCacheClean(t *testing.T) {
 	c := filepath.Join(string(os.PathSeparator), "c")
-	args := strings.Join(LinuxArgs(c), " ")
+	args := strings.Join(linuxArgs(c, "linux"), " ")
 	for _, want := range []string{"-kernel " + filepath.Join(c, "Image"),
 		"file=" + filepath.Join(c, "rootfs.ext4") + ",format=raw", "-snapshot",
 		"path=" + filepath.Join(c, "modules"), "readonly=on", "mount_tag=modules_mount"} {
 		if !strings.Contains(args, want) {
 			t.Fatalf("args lack %q: %s", want, args)
 		}
+	}
+}
+
+// QEMU's Windows builds have no virtio-9p: the demo boots without the
+// modules share there instead of failing at -fsdev (docs/developer/first-boot.md, F3).
+func TestLinuxArgsWithoutNinePOnWindows(t *testing.T) {
+	args := strings.Join(linuxArgs(t.TempDir(), "windows"), " ")
+	if strings.Contains(args, "-fsdev") || strings.Contains(args, "virtio-9p") {
+		t.Fatalf("9p on Windows: %s", args)
+	}
+	if !strings.Contains(args, "-kernel") || !strings.Contains(args, "-snapshot") {
+		t.Fatalf("boot arguments lost: %s", args)
+	}
+	if ModulesShared("windows") || !ModulesShared("darwin") || !ModulesShared("linux") {
+		t.Fatal("ModulesShared per host")
 	}
 }
