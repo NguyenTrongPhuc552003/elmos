@@ -5,7 +5,7 @@ User-facing changes in ELMOS. The full list is the repository's
 each release's notes are on its
 [GitHub release page](https://github.com/NguyenTrongPhuc552003/elmos/releases).
 
-## Unreleased (since v3.2.0)
+## v3.3.0 (2026-11-22)
 
 - `elmos demo linux` and `elmos demo haven`: prebuilt demos that need only
   QEMU (no kernel build, no workspace volume, no sudo); assets are checked
@@ -26,6 +26,7 @@ each release's notes are on its
 
 | Version | Date |
 | ------- | ---- |
+| [3.3.0](https://github.com/NguyenTrongPhuc552003/elmos/releases/tag/v3.3.0) | 2026-11-22 |
 | [3.2.0](https://github.com/NguyenTrongPhuc552003/elmos/releases/tag/v3.2.0) | 2026-01-20 |
 | [3.1.0](https://github.com/NguyenTrongPhuc552003/elmos/releases/tag/v3.1.0) | 2026-01-09 |
 | [3.0.0](https://github.com/NguyenTrongPhuc552003/elmos/releases/tag/v3.0.0) | 2026-01-01 |
