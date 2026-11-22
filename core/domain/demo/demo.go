@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -252,18 +253,30 @@ func Untar(src, dir string) error {
 // If the release ships virt-kdal.dtb (QEMU's device tree for exactly this
 // machine plus a "kdal,device" node over the PL061 GPIO), it is used, so
 // KDAL finds a device-tree device and reports its resource demand.
-func LinuxArgs(dir string) []string {
+func LinuxArgs(dir string) []string { return linuxArgs(dir, runtime.GOOS) }
+
+// ModulesShared reports whether the demo on host goos shares the module
+// directory with the guest: QEMU's Windows builds have no virtio-9p
+// (-fsdev), so there the guest boots without KDAL's module.
+func ModulesShared(goos string) bool { return goos != "windows" }
+
+func linuxArgs(dir, goos string) []string {
 	args := []string{
 		"-M", "virt", "-cpu", "cortex-a72", "-smp", "2", "-m", "1G",
 		"-nographic",
 		"-kernel", filepath.Join(dir, "Image"),
 		"-drive", "file=" + filepath.Join(dir, "rootfs.ext4") + ",format=raw,if=virtio",
 		"-snapshot",
-		"-fsdev", "local,id=moddev,path=" + filepath.Join(dir, "modules") + ",security_model=none,readonly=on",
-		"-device", "virtio-9p-pci,fsdev=moddev,mount_tag=modules_mount",
+	}
+	if ModulesShared(goos) {
+		args = append(args,
+			"-fsdev", "local,id=moddev,path="+filepath.Join(dir, "modules")+",security_model=none,readonly=on",
+			"-device", "virtio-9p-pci,fsdev=moddev,mount_tag=modules_mount")
+	}
+	args = append(args,
 		"-netdev", "user,id=net0", "-device", "virtio-net-device,netdev=net0",
 		"-append", "root=/dev/vda rw init=/init console=ttyAMA0",
-	}
+	)
 	if _, err := os.Stat(filepath.Join(dir, "virt-kdal.dtb")); err == nil {
 		args = append(args, "-dtb", filepath.Join(dir, "virt-kdal.dtb"))
 	}

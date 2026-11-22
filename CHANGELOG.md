@@ -71,6 +71,9 @@ Changes since v3.2.0, summarised from the commit history.
 
 ### Fixed
 
+- `elmos demo linux` boots on Windows: QEMU's Windows builds have no virtio-9p, so there the demo
+  leaves out the modules share (the guest boots without KDAL's module) instead of failing at
+  `-fsdev`. Found by the new first-boot timing job (`docs/developer/first-boot.md`).
 - `toolchains build`: a crosstool-NG setting is replaced only where its own key starts the line
   (`MY_CT_PREFIX_DIR` no longer matched `CT_PREFIX_DIR`), and Homebrew's pkg-config directory is
   added to an existing `PKG_CONFIG_PATH` with a `:` (it was glued on: `/a/opt/...`). Found by the

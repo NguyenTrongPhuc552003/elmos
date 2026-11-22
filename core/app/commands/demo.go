@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/spf13/cobra"
 
@@ -65,6 +66,9 @@ for the HAVEN demo).
 			}
 			if err := demo.Untar(filepath.Join(dir, "modules.tar.gz"), filepath.Join(dir, "modules")); err != nil {
 				return err
+			}
+			if !demo.ModulesShared(runtime.GOOS) {
+				ctx.Printer.Info("QEMU on Windows has no virtio-9p: the guest boots without KDAL's module")
 			}
 			ctx.Printer.Step("Booting (exit with Ctrl-A X)...")
 			return ctx.Exec.Run(c.Context(), "qemu-system-aarch64", demo.LinuxArgs(dir)...)
