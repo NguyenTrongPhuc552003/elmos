@@ -71,6 +71,9 @@ Changes since v3.2.0, summarised from the commit history.
 
 ### Fixed
 
+- `doctor` on Linux and Windows hosts no longer reports Homebrew, its packages and the macOS
+  header shims as required: it checks the host tools on PATH instead (QEMU, make, git; clang
+  optional). macOS is unchanged. Tests for `core/domain/doctor` (audit E4).
 - `toolchains build`: a crosstool-NG setting is replaced only where its own key starts the line
   (`MY_CT_PREFIX_DIR` no longer matched `CT_PREFIX_DIR`), and Homebrew's pkg-config directory is
   added to an existing `PKG_CONFIG_PATH` with a `:` (it was glued on: `/a/opt/...`). Found by the
