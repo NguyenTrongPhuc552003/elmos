@@ -6,6 +6,12 @@ Release notes for each version are on its GitHub release page.
 
 ## [Unreleased]
 
+### Removed
+
+- The demo fetcher's Codeberg fallback: the Codeberg repositories are
+  deleted, so demo releases come from GitHub only (the fetcher still takes
+  mirrors, none by default).
+
 ## [3.3.0] - 2026-11-22
 
 Changes since v3.2.0, summarised from the commit history.
