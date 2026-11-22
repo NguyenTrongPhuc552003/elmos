@@ -34,3 +34,26 @@ Homebrew formula moves to the new tag and its hash.
 (`demo-release.md`) is published first and `demo.LinuxTag` moved to it,
 so v3.3.0 does not ship a binary that downloads the old demo, whose
 kernel banner carries a private name.
+
+## v3.3.0 (2026-11-22, run 45041327081 at `171f750`) [F]
+
+| Row | Result |
+| - | - |
+| R1 | six binaries and `SHA256SUMS`; the name check `0 failure(s), 0 note(s)`; a draft `v3.3.0` at `171f750`; no Git tag before publication. **Holds** |
+| R2 | each downloaded binary's hash matches on ubuntu-24.04, macos-15 and windows-latest; `elmos version` prints `Version: v3.3.0`, `Commit: 171f750...`. **Holds** |
+| R3 | title `v3.3.0: Embedded Linux on Multi-OS`. **Holds** |
+
+Published on the owner's yes of 2026-11-22 (16:04 UTC, marked latest);
+the tag `v3.3.0` points at `171f750`, after `demo.LinuxTag` moved to
+`demo-linux-v6.18-2`.
+
+The Homebrew formula, found while moving it to v3.3.0: `go build` with
+`std_go_args` builds the repository root, which has had no Go files since
+the main package moved to `cmd/elmos`, and the version came from `git
+describe`, which a release tarball cannot run. Both fixed; the build
+command was reproduced from the v3.3.0 tarball in the workspace (`elmos
+version` prints `v3.3.0`), and the formula passes `ruby -c`. Not run:
+`brew install` (it writes outside the workspace; the owner's step). The
+formula's comment named a tap repository that does not exist; it now
+gives the tap's URL. The two `release:darwin` targets in `Taskfile.yml`
+built the root the same way and are fixed too.

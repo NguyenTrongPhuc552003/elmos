@@ -185,9 +185,9 @@ tasks:
     cmds:
       - mkdir -p {{.BUILD_DIR}}
       - echo "Building for darwin/arm64..."
-      - GOOS=darwin GOARCH=arm64 go build -ldflags "{{.LDFLAGS}}" -o {{.BINARY}}-darwin-arm64 .
+      - GOOS=darwin GOARCH=arm64 go build -ldflags "{{.LDFLAGS}}" -o {{.BINARY}}-darwin-arm64 ./cmd/elmos
       - echo "Building for darwin/amd64..."
-      - GOOS=darwin GOARCH=amd64 go build -ldflags "{{.LDFLAGS}}" -o {{.BINARY}}-darwin-amd64 .
+      - GOOS=darwin GOARCH=amd64 go build -ldflags "{{.LDFLAGS}}" -o {{.BINARY}}-darwin-amd64 ./cmd/elmos
 
   release:completions:
     desc: Generate shell completions
