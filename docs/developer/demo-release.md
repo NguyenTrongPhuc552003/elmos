@@ -144,3 +144,35 @@ The PCI card is not in the device tree (only the PCIe host bridge is,
 and it is there either way), and the demo itself uses
 `virtio-net-device` (MMIO, no ROM), so D3's expectations are unchanged.
 Nothing was drafted; the tag is free for run 2.
+
+## Run 2 (2026-11-22, run 44997888799 at `3d55296`): every row holds
+
+[F] from the run's log, the draft's API record and its files downloaded
+on the Mac.
+
+| Row | Result |
+| - | - |
+| D1 | pins from haven `main` as corrected: SDK `linux-6.18-5`, `sha256:cea68ea3...`, KDAL `5622c47`, QEMU 8.2.2; the tag resolves to the digest, the manifest and QEMU checks pass. **Holds** |
+| D2 | `vermagic: 6.18.0 SMP preempt mod_unload aarch64`. **Holds** |
+| D3 | `/kdal-gpio@9030000` with `compatible = "kdal,device"`, `reg = <0x00 0x9030000 0x00 0x1000>`, `interrupts = <0x00 0x07 0x04>`; `/chosen` holds only `stdout-path`. **Holds** |
+| D4 | every marker in 1.3 s on the Linux runner (QEMU 8.2.2). **Holds**; the 120 s prediction was far too cautious |
+| D5 | exit 0, one note: `/home/runner` in `kdal.ko`. **Holds** |
+| D6 | `draft: true`, `prerelease: true`, the six files, target `3d55296`; no Git tag `demo-linux-v6.18-2`, no Actions artifact. **Holds** |
+| D7 | every marker in 1.7 s on the macOS runner (Homebrew QEMU 11.1.3): QEMU 8.2.2's device tree works with the newer QEMU. **Holds** |
+| D8 | title `ELMOS Linux demo demo-linux-v6.18-2`, no `[untested]`; notes give both QEMU versions and times. **Holds** |
+| D9 | on the Mac, with `RELEASE_DENY` set only for the command: the draft's files pass `shasum -c` and the check exits 0 (the same one note); `demo-linux-v6.18-1` exits 1 at rules (c) (its banner) and (d) (both denied words), and also at (a) (tar entries with owner names) and (b) (a macOS home path in `kdal.ko`). **Holds**, with two more rules than predicted |
+| D10 | `go test ./...` passes in CI on #40 and #42. **Holds** |
+
+SHA-256 of the draft's files:
+
+    9421fa520e57504180c1d5d90cd73883dc34ec37e6f86bd8fecb581c2296aced  Image.gz
+    e1569d0c58132d586d8cc0116fb24d3774042d4133b56fc51b674780fe975ba6  rootfs.ext4.gz
+    ce0b0493895c3616b9afda6a0caabb3447cf2725217d4856f0062fd2695e22ab  modules.tar.gz
+    c7b4ac8db79d2175f4a031fc5571d6f9ccaac9d8b1355b5c28a1f6b4218dce2a  virt-kdal.dtb
+    265a165fa9c091e6ae3aafdcee3f1ad31c950587ebf68717de9b3c6239353a07  MANIFEST.txt
+
+Next, in this order: the owner's yes on this draft, publication (which
+creates the tag), a pull request moving `demo.LinuxTag` to
+`demo-linux-v6.18-2` (it checks that `elmos demo linux` fetches the
+published release), then the owner deletes `demo-linux-v6.18-1` on GitHub
+and Codeberg.
