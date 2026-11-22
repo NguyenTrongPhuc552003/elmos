@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -28,7 +29,12 @@ func TestDoctorReportsMissingElfHeaderWithoutDownload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(output, "elf.h (missing)") || !strings.Contains(output, "doctor --fix") {
+	// the header shims are required on macOS only (Linux has the headers)
+	want := "elf.h - optional"
+	if runtime.GOOS == "darwin" {
+		want = "elf.h (missing)"
+	}
+	if !strings.Contains(output, want) || !strings.Contains(output, "doctor --fix") {
 		t.Fatalf("doctor did not report missing elf.h and fix option: %s", output)
 	}
 	if *requests != 0 {
