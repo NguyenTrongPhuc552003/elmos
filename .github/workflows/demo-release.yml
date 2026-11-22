@@ -152,7 +152,7 @@ jobs:
                       with open(f"build/mod/{name}", "rb") as f:
                           tf.addfile(info, f)
           EOF
-          qemu-system-aarch64 -M virt,dumpdtb=build/virt.dtb -cpu cortex-a72 -smp 2 -m 1G -nographic
+          qemu-system-aarch64 -M virt,dumpdtb=build/virt.dtb -cpu cortex-a72 -smp 2 -m 1G -nographic -nic none
           cp build/virt.dtb dist/virt-kdal.dtb
           for p in kaslr-seed rng-seed; do fdtget dist/virt-kdal.dtb /chosen "$p" >/dev/null 2>&1 && fdtput -d dist/virt-kdal.dtb /chosen "$p"; done
           fdtput -c dist/virt-kdal.dtb /kdal-gpio@9030000

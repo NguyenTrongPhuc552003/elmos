@@ -131,3 +131,16 @@ though the design was merged on 2026-11-13; found while timing the demo,
   (haven@ci)`), and the name check fails the old release at rule (c)
   (its banner) and rule (a) (its tar entries carry owner names). D9's
   "rule (d)" needs `RELEASE_DENY`, which is set only for the local check.
+
+## Run 1 (2026-11-22, run 44997203315): failed at D3
+
+D1 and D2 passed (pins at haven `c48b62e`: SDK `linux-6.18-5`,
+`sha256:cea68ea3...`, KDAL `5622c47`, QEMU 8.2.2). D3 stopped at the
+device-tree dump: `qemu-system-aarch64: failed to find romfile
+"efi-virtio.rom"`. Without `-nic`, QEMU adds its default network card,
+a virtio-net PCI device whose boot ROM comes from a package that
+`--no-install-recommends` leaves out. The dump now passes `-nic none`.
+The PCI card is not in the device tree (only the PCIe host bridge is,
+and it is there either way), and the demo itself uses
+`virtio-net-device` (MMIO, no ROM), so D3's expectations are unchanged.
+Nothing was drafted; the tag is free for run 2.
