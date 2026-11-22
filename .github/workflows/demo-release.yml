@@ -1,0 +1,266 @@
+# The Linux demo release built by CI, on demand only
+# (docs/developer/demo-release.md). build pulls the pinned private SDK
+# kernel and root file system, builds kdal.ko at the pinned KDAL, makes the
+# device tree, checks the boot and that nothing private is in the assets,
+# and creates a DRAFT pre-release (visible only with write access, no Git
+# tag until published); test-macos boots it from the draft; mark writes
+# the results into the draft. Nothing here publishes or deletes a release
+# or uploads an Actions artifact: publishing is the owner's.
+name: demo-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag, demo-linux-v6.18-N
+        required: true
+      haven_ref:
+        description: haven ref whose ecosystem.lock.json gives the pins
+        required: true
+        default: main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build the demo and the draft
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      packages: read
+    outputs:
+      id: ${{ steps.draft.outputs.id }}
+      seconds: ${{ steps.boot.outputs.seconds }}
+      qemu: ${{ steps.tools.outputs.qemu }}
+    env:
+      TAG: ${{ inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: The tag is new
+        run: |
+          [[ "$TAG" =~ ^demo-linux-v6\.18-[0-9]+$ ]] || { echo "FAIL: '$TAG' is not demo-linux-v6.18-N"; exit 1; }
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
+            echo "FAIL: the Git tag $TAG exists"; exit 1
+          fi
+          if gh api --paginate "repos/$GITHUB_REPOSITORY/releases" -q ".[].tag_name" | grep -qx "$TAG"; then
+            echo "FAIL: a release for $TAG exists"; exit 1
+          fi
+      - uses: actions/checkout@v4
+        with:
+          repository: NguyenTrongPhuc552003/haven
+          ref: ${{ inputs.haven_ref }}
+          path: haven
+      - name: Pins from haven's ecosystem.lock.json (D1)
+        id: pins
+        run: |
+          python3 - <<'EOF' | tee -a "$GITHUB_OUTPUT"
+          import json, subprocess
+          d = json.load(open("haven/ecosystem.lock.json"))
+          s = d["elmos_sdk"]
+          print(f"haven_commit={subprocess.check_output(['git', '-C', 'haven', 'rev-parse', 'HEAD'], text=True).strip()}")
+          print(f"sdk_ref={s['package']}@{s['digest']}")
+          print(f"sdk_tag={s['package']}:{s['tag']}")
+          print(f"sdk_tag_name={s['tag']}")
+          print(f"sdk_digest={s['digest']}")
+          print(f"elmos_commit={s['elmos_commit']}")
+          print(f"sdk_run={s['run']}")
+          print(f"kdal_repository={d['kdal']['repository']}")
+          print(f"kdal_commit={d['kdal']['commit']}")
+          print(f"qemu={d['ci']['qemu']}")
+          EOF
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ steps.pins.outputs.kdal_repository }}
+          ref: ${{ steps.pins.outputs.kdal_commit }}
+          path: kdal
+      - uses: oras-project/setup-oras@v2
+      - name: Tools; QEMU is the pinned version
+        id: tools
+        env:
+          QEMU_PIN: ${{ steps.pins.outputs.qemu }}
+        run: |
+          sudo apt-get -o Acquire::Retries=5 update -qq
+          sudo apt-get -o Acquire::Retries=5 install -y -qq --no-install-recommends \
+            qemu-system-arm device-tree-compiler clang lld llvm make bc flex bison \
+            libelf-dev libssl-dev xz-utils
+          v=$(qemu-system-aarch64 --version | head -1)
+          echo "$v"
+          case "$v" in *"version $QEMU_PIN "*) ;; *) echo "FAIL: QEMU is not the pinned $QEMU_PIN"; exit 1 ;; esac
+          echo "qemu=$QEMU_PIN" >> "$GITHUB_OUTPUT"
+      - name: Pull the pinned SDK by digest (private package)
+        env:
+          SDK_REF: ${{ steps.pins.outputs.sdk_ref }}
+          SDK_TAG: ${{ steps.pins.outputs.sdk_tag }}
+          SDK_DIGEST: ${{ steps.pins.outputs.sdk_digest }}
+          ELMOS_COMMIT: ${{ steps.pins.outputs.elmos_commit }}
+          SDK_RUN: ${{ steps.pins.outputs.sdk_run }}
+          TOKEN: ${{ github.token }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          echo "$TOKEN" | oras login ghcr.io -u "$ACTOR" --password-stdin
+          trap 'oras logout ghcr.io' EXIT
+          got=$(oras resolve "$SDK_TAG")
+          [ "$got" = "$SDK_DIGEST" ] || { echo "FAIL: $SDK_TAG resolves to $got, pinned $SDK_DIGEST"; exit 1; }
+          mkdir -p build/sdk
+          oras pull "$SDK_REF" -o build/sdk
+          python3 - <<'EOF'
+          import json, os
+          m = json.load(open("build/sdk/manifest.json"))
+          ok = m.get("elmos_commit") == os.environ["ELMOS_COMMIT"] and str(m.get("run")) == os.environ["SDK_RUN"]
+          print("SDK", m["linux"]["version_string"], "release", m["linux"]["release"], "elmos", m.get("elmos_commit"), "run", m.get("run"))
+          raise SystemExit(0 if ok else "FAIL: the SDK manifest does not name the pinned ELMOS commit and run")
+          EOF
+      - name: kdal.ko at the pinned KDAL, against the SDK kernel (D2)
+        run: |
+          set -o pipefail
+          kdal/scripts/ci/kernel-prepare.sh "$PWD/build/sdk" | tail -2 > build/kpaths
+          make -C "$(sed -n 1p build/kpaths)" M="$PWD/kdal" ARCH=arm64 LLVM=1 modules > build/kdal-build.log 2>&1 ||
+            { tail -30 build/kdal-build.log; exit 1; }
+          rel=$(python3 -c 'import json; print(json.load(open("build/sdk/manifest.json"))["linux"]["release"])')
+          vm=$(modinfo -F vermagic kdal/kdal.ko)
+          echo "vermagic: $vm (SDK release $rel)"
+          case "$vm" in "$rel "*) ;; *) echo "FAIL: vermagic does not start with $rel"; exit 1 ;; esac
+      - name: The six files (D3)
+        env:
+          HAVEN_COMMIT: ${{ steps.pins.outputs.haven_commit }}
+          SDK_TAG_NAME: ${{ steps.pins.outputs.sdk_tag_name }}
+          SDK_DIGEST: ${{ steps.pins.outputs.sdk_digest }}
+          KDAL_COMMIT: ${{ steps.pins.outputs.kdal_commit }}
+          QEMU_PIN: ${{ steps.pins.outputs.qemu }}
+        run: |
+          mkdir -p dist build/mod/kdal
+          cp build/sdk/Image.gz build/sdk/rootfs.ext4.gz dist/
+          llvm-strip --strip-debug -o build/mod/kdal/kdal.ko kdal/kdal.ko
+          cp sdk/demo/guesync.sh build/mod/guesync.sh
+          python3 - <<'EOF'
+          import tarfile
+          def owner(t):
+              t.uid = t.gid = 0
+              t.uname = t.gname = ""
+              t.mtime = 0
+              return t
+          with tarfile.open("dist/modules.tar.gz", "w:gz", format=tarfile.USTAR_FORMAT) as tf:
+              for name, mode in (("guesync.sh", 0o755), ("kdal", 0o755), ("kdal/kdal.ko", 0o644)):
+                  info = owner(tf.gettarinfo(f"build/mod/{name}", arcname=name))
+                  info.mode = mode
+                  if info.isdir():
+                      tf.addfile(info)
+                  else:
+                      with open(f"build/mod/{name}", "rb") as f:
+                          tf.addfile(info, f)
+          EOF
+          qemu-system-aarch64 -M virt,dumpdtb=build/virt.dtb -cpu cortex-a72 -smp 2 -m 1G -nographic
+          cp build/virt.dtb dist/virt-kdal.dtb
+          for p in kaslr-seed rng-seed; do fdtget dist/virt-kdal.dtb /chosen "$p" >/dev/null 2>&1 && fdtput -d dist/virt-kdal.dtb /chosen "$p"; done
+          fdtput -c dist/virt-kdal.dtb /kdal-gpio@9030000
+          fdtput -t s dist/virt-kdal.dtb /kdal-gpio@9030000 compatible "kdal,device"
+          fdtput -t x dist/virt-kdal.dtb /kdal-gpio@9030000 reg 0 9030000 0 1000
+          fdtput -t x dist/virt-kdal.dtb /kdal-gpio@9030000 interrupts 0 7 4
+          dtc -q -I dtb -O dts dist/virt-kdal.dtb | sed -n '/kdal-gpio@9030000/,/};/p'
+          {
+            echo "elmos Linux demo, release $TAG (built by CI, run $GITHUB_RUN_ID, elmos $GITHUB_SHA)"
+            echo "Pins from haven $HAVEN_COMMIT (ecosystem.lock.json): SDK $SDK_TAG_NAME ($SDK_DIGEST), KDAL $KDAL_COMMIT, QEMU $QEMU_PIN"
+            echo "Image.gz         the SDK package's Image.gz, unchanged"
+            echo "rootfs.ext4.gz   the SDK package's rootfs.ext4.gz (alpine:3, ELMOS's /init), unchanged"
+            echo "modules.tar.gz   kdal/kdal.ko (KDAL $KDAL_COMMIT, built against this kernel, debug information stripped) and guesync.sh"
+            echo "virt-kdal.dtb    QEMU $QEMU_PIN's device tree for the demo machine, seeds removed, plus a kdal,device node over the PL061 GPIO"
+            echo "Run: elmos demo linux   (QEMU virt, cortex-a72; exit with Ctrl-A X)"
+          } > dist/MANIFEST.txt
+          (cd dist && sha256sum Image.gz rootfs.ext4.gz modules.tar.gz virt-kdal.dtb MANIFEST.txt > SHA256SUMS)
+          ls -l dist; cat dist/SHA256SUMS
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Boot check on the runner (D4)
+        id: boot
+        run: |
+          mkdir -p build/boot && cp dist/* build/boot/
+          go run ./sdk/demoboot build/boot 300 | tee build/boot.log | tail -5
+          s=$(sed -n 's/^demoboot: every marker in \([0-9.]*\) s$/\1/p' build/boot.log)
+          echo "seconds=$s" >> "$GITHUB_OUTPUT"
+      - name: Release notes
+        run: |
+          {
+            echo "The ELMOS Linux demo, built by CI from $GITHUB_SHA (run $GITHUB_RUN_ID): Linux v6.18 arm64,"
+            echo "an alpine:3 root file system and the KDAL module. Run it with \`elmos demo linux\`."
+            echo
+            echo "SHA256SUMS:"
+            echo
+            sed 's/^/    /' dist/SHA256SUMS
+            echo
+            echo "Test results follow when this run's test jobs finish."
+          } > build/notes.md
+      - name: Nothing private in the assets (D5)
+        run: python3 sdk/check-public-assets.py dist build/notes.md
+      - name: Draft pre-release (D6)
+        id: draft
+        run: |
+          gh release create "$TAG" dist/* --draft --prerelease --target "$GITHUB_SHA" \
+            --title "ELMOS Linux demo $TAG [untested]" --notes-file build/notes.md
+          id=$(gh api "repos/$GITHUB_REPOSITORY/releases" \
+            -q ".[] | select(.draft and .tag_name == \"$TAG\") | .id" | head -1)
+          [ -n "$id" ] || { echo "FAIL: no draft for $TAG"; exit 1; }
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
+  test-macos:
+    name: boot it from the draft (macOS, Homebrew's QEMU) (D7)
+    needs: build
+    runs-on: macos-15
+    timeout-minutes: 30
+    permissions:
+      contents: write # a draft is readable only with write access
+    outputs:
+      qemu: ${{ steps.t.outputs.qemu }}
+      seconds: ${{ steps.t.outputs.seconds }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: QEMU
+        run: brew install qemu
+      - id: t
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ID: ${{ needs.build.outputs.id }}
+        run: |
+          mkdir -p draft
+          gh api "repos/$GITHUB_REPOSITORY/releases/$ID/assets" -q '.[] | "\(.id) \(.name)"' |
+            while read -r aid name; do
+              gh api -H "Accept: application/octet-stream" "repos/$GITHUB_REPOSITORY/releases/assets/$aid" > "draft/$name"
+            done
+          (cd draft && shasum -a 256 -c SHA256SUMS)
+          echo "qemu=$(qemu-system-aarch64 --version | head -1 | sed 's/.*version \([0-9.]*\).*/\1/')" >> "$GITHUB_OUTPUT"
+          go run ./sdk/demoboot draft 300 | tee boot.log | tail -5
+          echo "seconds=$(sed -n 's/^demoboot: every marker in \([0-9.]*\) s$/\1/p' boot.log)" >> "$GITHUB_OUTPUT"
+
+  mark:
+    name: write the results into the draft (D8)
+    needs: [build, test-macos]
+    if: always() && needs.build.result == 'success'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          ID: ${{ needs.build.outputs.id }}
+          TAG: ${{ inputs.tag }}
+          MAC: ${{ needs.test-macos.result }}
+          MAC_QEMU: ${{ needs.test-macos.outputs.qemu }}
+          MAC_S: ${{ needs.test-macos.outputs.seconds }}
+          LIN_QEMU: ${{ needs.build.outputs.qemu }}
+          LIN_S: ${{ needs.build.outputs.seconds }}
+        run: |
+          if [ "$MAC" = success ]; then title="ELMOS Linux demo $TAG"; else
+            title="ELMOS Linux demo $TAG [FAILED: do not publish]"; fi
+          body=$(gh api "repos/$GITHUB_REPOSITORY/releases/$ID" -q .body)
+          body=$(printf '%s\n\nBoot checks of run %s (every marker, from the kernel banner to "System ready."):\n\n- Linux runner, QEMU %s: %s s\n- macOS runner, QEMU %s: %s (%s s)\n' \
+            "${body%Test results follow*}" "$GITHUB_RUN_ID" "${LIN_QEMU:-?}" "${LIN_S:-?}" "${MAC_QEMU:-?}" "$MAC" "${MAC_S:-?}")
+          got=$(gh api -X PATCH "repos/$GITHUB_REPOSITORY/releases/$ID" -f tag_name="$TAG" \
+            -f name="$title" -f body="$body" -q '"\(.tag_name) \(.draft) \(.name)"')
+          echo "$got"
+          [ "${got%% *}" = "$TAG" ] || { echo "FAIL: the draft's tag is ${got%% *}, not $TAG"; exit 1; }

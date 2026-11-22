@@ -247,6 +247,22 @@ func Untar(src, dir string) error {
 	}
 }
 
+// PrepareLinux unpacks a Linux demo release directory for LinuxArgs: the
+// kernel Image, the root file system and the modules directory. Used by
+// elmos demo linux and by the release workflow's boot check (sdk/demoboot).
+func PrepareLinux(dir string) error {
+	if err := Gunzip(filepath.Join(dir, "Image.gz"), filepath.Join(dir, "Image")); err != nil {
+		return err
+	}
+	if err := Gunzip(filepath.Join(dir, "rootfs.ext4.gz"), filepath.Join(dir, "rootfs.ext4")); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "modules"), 0o755); err != nil {
+		return err
+	}
+	return Untar(filepath.Join(dir, "modules.tar.gz"), filepath.Join(dir, "modules"))
+}
+
 // LinuxArgs is the QEMU command line for the Linux demo in dir: the
 // kernel, the root file system with -snapshot (writes are thrown away, so
 // the cached image stays clean) and the modules share that /init loads.

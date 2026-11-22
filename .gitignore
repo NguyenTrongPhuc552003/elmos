@@ -19,6 +19,8 @@
 build.cfg
 module.cfg
 guesync.sh
+# the Linux demo release's guest script is a source (docs/developer/demo-release.md)
+!sdk/demo/guesync.sh
 
 # Examples: Apps
 # Ignore built binaries (non-extension) but keep sources
