@@ -1,0 +1,52 @@
+# Time to first boot on Linux, macOS and Windows (docs/developer/first-boot.md):
+# elmos demo linux, cold and warm, until the guest prints "System ready.".
+name: first boot
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  first-boot:
+    name: first boot (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: QEMU from the host's package manager
+        shell: bash
+        run: |
+          case "$RUNNER_OS" in
+            Linux) sudo apt-get -o Acquire::Retries=5 update -qq &&
+                   sudo apt-get -o Acquire::Retries=5 install -y -qq --no-install-recommends qemu-system-arm ;;
+            macOS) brew install qemu ;;
+            Windows) choco install qemu -y --no-progress && echo "C:\\Program Files\\qemu" >> "$GITHUB_PATH" ;;
+          esac
+      - name: Build elmos
+        shell: bash
+        run: |
+          exe=""; [ "$RUNNER_OS" = Windows ] && exe=.exe
+          go build -o "build/elmos$exe" ./cmd/elmos
+      - name: Cold and warm first boot
+        shell: bash
+        run: |
+          qemu-system-aarch64 --version | head -1
+          echo "| Run | Ready | Seconds to Booting | Seconds to System ready. | Reason |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| - | - | - | - | - |" >> "$GITHUB_STEP_SUMMARY"
+          bin=build/elmos py=python3
+          [ "$RUNNER_OS" = Windows ] && bin=build/elmos.exe py=python
+          rc=0
+          "$py" scripts/first-boot-time.py "$bin" "$RUNNER_TEMP/demo-cache" "$RUNNER_OS cold" 900 || rc=1
+          "$py" scripts/first-boot-time.py "$bin" "$RUNNER_TEMP/demo-cache" "$RUNNER_OS warm" 600 || rc=1
+          exit $rc
