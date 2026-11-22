@@ -4,7 +4,7 @@
 
 ELMOS (**E**mbedded **L**inux on **M**ulti-**OS**) is an embedded Linux workbench for the laptop you already have. Build kernels, cross-compile with native toolchains, develop kernel modules and userspace apps, all without Docker or VMs.
 
-**Hosts today.** The full workflow runs on macOS. On Linux and Windows the CLI builds and its tests pass in CI on every change, the prebuilt demos (`elmos demo`) and the OCI root file system engine contain no macOS-specific code (not yet run on those hosts), and the rest of the workflow there is the project's direction ([roadmap](docs/developer/roadmap.md)).
+**Hosts today.** The full workflow runs on macOS. On Linux and Windows the CLI builds and its tests pass in CI on every change, the prebuilt Linux demo (`elmos demo linux`) boots on all three in CI every week (under 6 s to a ready guest; on Windows without the KDAL module, which needs virtio-9p), and the rest of the workflow there is the project's direction ([roadmap](docs/developer/roadmap.md)).
 
 ELMOS provides an integrated development environment with interactive TUI, automatic toolchain management (crosstool-ng), and seamless QEMU integration. Targeting RISC-V, ARM64, ARM, and more, with full support for Linux v6.18+.
 
