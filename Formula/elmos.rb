@@ -4,8 +4,9 @@
 # ELMOS - Embedded Linux on Multi-OS
 # Homebrew formula for installing elmos CLI tool
 #
-# Installation:
-#   brew tap NguyenTrongPhuc552003/elmos
+# Installation (this repository is the tap; there is no homebrew-elmos
+# repository, so the tap needs its URL):
+#   brew tap NguyenTrongPhuc552003/elmos https://github.com/NguyenTrongPhuc552003/elmos
 #   brew install elmos
 #
 # Development install (latest from git):
@@ -17,9 +18,9 @@ class Elmos < Formula
   license "MIT"
 
   head "https://github.com/NguyenTrongPhuc552003/elmos.git", branch: "main"
-  url "https://github.com/NguyenTrongPhuc552003/elmos/archive/v3.0.0.tar.gz"
-  sha256 "8222933d906bdb973dbe4ffabb4a7f7318530a4372e741bbf986b359bc0468fd"
-  version "3.0.0"
+  url "https://github.com/NguyenTrongPhuc552003/elmos/archive/v3.3.0.tar.gz"
+  sha256 "1f44ad75fc3f8524981d37a36c6d4dc16f705ebc6b4cd105dca2c13472f12a6b"
+  version "3.3.0"
 
   depends_on "go" => :build
   depends_on "go-task" => :build
@@ -36,19 +37,23 @@ class Elmos < Formula
   depends_on "fakeroot"
 
   def install
-    # Get version from git
-    version_str = Utils.safe_popen_read("git", "describe", "--tags", "--always", "--dirty").strip
-    commit = Utils.safe_popen_read("git", "rev-parse", "--short", "HEAD").strip
+    # A release tarball has no .git: the version comes from the formula
+    # (a --HEAD build from git describe).
+    version_str = if build.head?
+      Utils.safe_popen_read("git", "describe", "--tags", "--always", "--dirty").strip
+    else
+      "v#{version}"
+    end
     build_date = Time.now.utc.iso8601
 
     ldflags = %W[
       -s -w
       -X github.com/NguyenTrongPhuc552003/elmos/core/app/version.Version=#{version_str}
-      -X github.com/NguyenTrongPhuc552003/elmos/core/app/version.Commit=#{commit}
       -X github.com/NguyenTrongPhuc552003/elmos/core/app/version.BuildDate=#{build_date}
     ]
 
-    system "go", "build", *std_go_args(ldflags:)
+    # The main package is cmd/elmos (the repository root has no Go files).
+    system "go", "build", *std_go_args(ldflags: ldflags), "./cmd/elmos"
 
     # Generate and install shell completions
     generate_completions_from_executable(bin/"elmos", "completion")
