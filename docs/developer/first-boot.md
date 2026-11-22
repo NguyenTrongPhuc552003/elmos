@@ -47,3 +47,15 @@ order of magnitude.
   demo leaves out the 9p share and says so; the guest boots without
   KDAL's module there. The next weekly run checks F3 again, expected to
   reach `System ready.`.
+
+## After the fix (2026-11-22, run 44996074950)
+
+| Host | Cold: to `Booting` / to `System ready.` | Warm |
+| - | - | - |
+| Ubuntu 24.04 | 1.5 s / 2.9 s | 0.1 s / 1.6 s |
+| macOS | 3.1 s / 4.7 s | 0.3 s / 2.9 s |
+| Windows | 3.1 s / 5.9 s | 0.3 s / 3.7 s |
+
+[F] F3 now reaches `System ready.` on Windows (without KDAL's module,
+as the demo says there). **The prebuilt Linux demo boots on all three
+hosts**, in seconds on GitHub's runners.
