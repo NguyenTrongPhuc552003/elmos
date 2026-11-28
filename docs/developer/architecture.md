@@ -6,11 +6,12 @@ ELMOS follows a layered, domain-driven architecture in Go with strict separation
 
 For detailed diagrams, see the [Architecture Diagrams](diagrams.md) page:
 
-- [Component Diagram](diagrams.md#component) - Package relationships
-- [Sequence Diagram](diagrams.md#sequence) - Build workflow
-- [Class Diagram](diagrams.md#class) - Domain types
-- [State Diagram](diagrams.md#state) - Workspace lifecycle
-- [Deployment Diagram](diagrams.md#deployment) - Runtime view
+- [Components](diagrams.md#components) - Package groups and their imports (checked by a test)
+- [Kernel build](diagrams.md#kernel-build) - `elmos kernel build`
+- [The HAVEN demo](diagrams.md#the-haven-demo) - `elmos demo haven`
+- [Main types](diagrams.md#main-types) - Domain types
+- [Workspace states](diagrams.md#workspace-states) - The workspace volume
+- [Deployment](diagrams.md#deployment) - Where things live, what QEMU gets
 
 ---
 
@@ -231,7 +232,7 @@ core/
 ├── app/
 │   ├── app.go              # App struct, New(), BuildRootCommand()
 │   ├── commands/           # CLI command handlers
-│   │   ├── context.go      # Shared command context
+│   │   ├── registry.go     # Shared command context
 │   │   ├── kernel.go       # elmos kernel *
 │   │   ├── qemu.go         # elmos qemu *
 │   │   └── ...
@@ -245,6 +246,7 @@ core/
 │   └── context.go          # Build context, mount checks
 ├── domain/
 │   ├── builder/            # Kernel/module/app builders
+│   ├── demo/               # Prebuilt demos from GitHub releases
 │   ├── doctor/             # Health checks
 │   ├── emulator/           # QEMU runner
 │   ├── patch/              # Patch management
@@ -253,9 +255,8 @@ core/
 ├── infra/
 │   ├── executor/           # Command execution
 │   ├── filesystem/         # File operations
-│   ├── homebrew/           # Homebrew paths
-│   └── printer/            # Output formatting
+│   └── homebrew/           # Homebrew paths
 └── ui/
     ├── printer.go          # Styled output
-    └── tui/                 # Interactive TUI
+    └── tui/                # Interactive TUI
 ```
