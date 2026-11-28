@@ -96,16 +96,20 @@ func diagram(t *testing.T) (map[string][]string, map[string]bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	s := string(text)
+	// a Windows checkout may have CRLF line ends
+	s := strings.ReplaceAll(string(text), "\r\n", "\n")
 	start := strings.Index(s, "## Components")
 	if start < 0 {
 		t.Fatal("diagrams.md has no \"## Components\" section")
 	}
 	s = s[start:]
 	begin := strings.Index(s, "```mermaid\n")
-	end := strings.Index(s[begin+1:], "```")
-	if begin < 0 || end < 0 {
+	if begin < 0 {
 		t.Fatal("no mermaid block under \"## Components\"")
+	}
+	end := strings.Index(s[begin+1:], "```")
+	if end < 0 {
+		t.Fatal("the mermaid block under \"## Components\" is not closed")
 	}
 	nodes := map[string][]string{}
 	edges := map[string]bool{}
