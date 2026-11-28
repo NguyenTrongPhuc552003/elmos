@@ -19,7 +19,7 @@ Inspired by [Seiya's tutorial](https://seiya.me/blog/building-linux-on-macos-nat
 - **Environment Doctor**: Comprehensive dependency and toolchain health checks
 - **Kernel Build Automation**: Configure, build, and test Linux kernels with integrated toolchain support
 - **Module & App Development**: Build kernel modules and userspace apps with automatic cross-compilation
-- **Visual Architecture**: PlantUML diagrams for system design and workflows
+- **Visual Architecture**: Mermaid diagrams of the packages, workflows and workspace; a test keeps the package diagram true to the code
 - **QEMU Integration**: Boot and debug kernels with built-in GDB support
 
 ## Documentation
@@ -28,7 +28,7 @@ Documentation is in the repository's `docs/` folder:
 
 - **[User Guide](https://docs-haven.vercel.app/elmos/guide/)**: Usage, kernel building, toolchains.
 - **[Developer Guide](https://docs-haven.vercel.app/elmos/developer/)**: Architecture, APIs, code patterns.
-- **[Diagrams](https://docs-haven.vercel.app/elmos/developer/diagrams/)**: Component, Sequence, and Class diagrams.
+- **[Diagrams](https://docs-haven.vercel.app/elmos/developer/diagrams/)**: components, kernel build, the HAVEN demo, main types, workspace states, deployment.
 
 ## Try it first (no kernel build, no sudo)
 

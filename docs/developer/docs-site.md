@@ -53,3 +53,11 @@ repository, HAVEN and KDAL.
 
 Three of four checks hold; D1 is a prediction error in the check's
 wording, not in the change.
+
+## Diagrams in Mermaid (2026-11-28)
+
+The PlantUML diagrams listed under "What readers lose" are replaced: the
+diagrams page is Mermaid now, which GitHub and the site both draw, and
+`docs/diagrams/*.puml` (the same five diagrams) is removed. The diagrams
+were redrawn from the code; `docs/developer/diagrams_test.go` checks the
+component diagram against the packages and their imports.
